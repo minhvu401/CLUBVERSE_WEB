@@ -19,6 +19,7 @@ export default function RegisterPage() {
     category: "",
     description: "",
   });
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -34,6 +35,13 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
     setMessage(null);
+
+    // check confirm password
+    if (form.password !== confirmPassword) {
+      setError("Mật khẩu xác nhận không khớp");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -84,19 +92,25 @@ export default function RegisterPage() {
     }
   };
 
+  // ---------- STEP VERIFY OTP ----------
   if (step === "verify") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#020617] via-[#020059] to-[#4c1d95] px-4 py-8">
-        <div className="flex w-full max-w-5xl flex-col gap-8 text-white md:flex-row">
+      <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-[#020617] via-[#020059] to-[#4c1d95] px-4 py-8">
+        {/* background circles */}
+        <div className="pointer-events-none absolute -left-40 top-10 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
+        <div className="pointer-events-none absolute left-16 -bottom-32 h-80 w-80 rounded-full bg-[#1e1b4b]/40 blur-3xl" />
+        <div className="pointer-events-none absolute -right-32 -top-24 h-72 w-72 rounded-full bg-[#a855f7]/35 blur-3xl" />
+
+        <div className="relative z-10 flex w-full max-w-5xl flex-col gap-8 text-white md:flex-row">
           {/* Left branding */}
           <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-3xl bg-transparent px-6 py-8 md:items-start">
-            <div className="relative mb-4 h-24 w-24">
-                <Image
-                    src="/clubverse_logo.png"
-                    alt="Clubverse logo"
-                    fill
-                    className="object-contain"
-                />
+            <div className="relative mb-4 h-40 w-64 md:h-52 md:w-80">
+              <Image
+                src="/clubverse_logo.png"
+                alt="Clubverse logo"
+                fill
+                className="object-contain"
+              />
             </div>
             <p className="max-w-md text-sm text-zinc-300">
               Hoàn tất xác thực để tham gia cộng đồng CLUBVERSE.
@@ -112,12 +126,18 @@ export default function RegisterPage() {
               </p>
 
               {error && (
-                <p className="mt-4 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-300" role="alert">
+                <p
+                  className="mt-4 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-300"
+                  role="alert"
+                >
                   {error}
                 </p>
               )}
               {message && (
-                <p className="mt-4 rounded-md bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300" role="status">
+                <p
+                  className="mt-4 rounded-md bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300"
+                  role="status"
+                >
                   {message}
                 </p>
               )}
@@ -158,7 +178,10 @@ export default function RegisterPage() {
 
               <p className="mt-6 text-center text-xs text-zinc-300">
                 Đã xác thực xong?{" "}
-                <Link href="/login" className="font-medium text-violet-300 hover:text-violet-200">
+                <Link
+                  href="/login"
+                  className="font-medium text-violet-300 hover:text-violet-200"
+                >
                   Đăng nhập
                 </Link>
               </p>
@@ -169,42 +192,74 @@ export default function RegisterPage() {
     );
   }
 
+  // ---------- STEP REGISTER ----------
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#020617] via-[#020059] to-[#4c1d95] px-4 py-8">
-      <div className="flex w-full max-w-5xl flex-col gap-8 text-white md:flex-row">
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-[#020617] via-[#020059] to-[#4c1d95] px-4 py-8">
+      {/* background circles giống thiết kế */}
+      <div className="pointer-events-none absolute -left-40 top-10 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
+      <div className="pointer-events-none absolute left-16 -bottom-32 h-80 w-80 rounded-full bg-[#1e1b4b]/40 blur-3xl" />
+      <div className="pointer-events-none absolute -right-32 -top-24 h-72 w-72 rounded-full bg-[#a855f7]/35 blur-3xl" />
+
+      <div className="relative z-10 flex w-full max-w-5xl flex-col gap-8 text-white md:flex-row">
         {/* Left branding */}
         <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-3xl bg-transparent px-6 py-8 md:items-start">
-          <div className="relative mb-4 h-24 w-24">
+          <div className="relative mb-4 h-40 w-64 md:h-52 md:w-80">
             <Image
-              src="/globe.svg"
+              src="/clubverse_logo.png"
               alt="Clubverse logo"
               fill
               className="object-contain"
             />
           </div>
-          <h1 className="text-4xl font-semibold tracking-tight">Clubverse</h1>
           <p className="max-w-md text-sm text-zinc-300">
-            Tham gia CLUBVERSE để bắt đầu hành trình cùng các câu lạc bộ yêu thích của bạn.
+            Tham gia CLUBVERSE để bắt đầu hành trình cùng các câu lạc bộ yêu
+            thích của bạn.
           </p>
         </div>
 
         {/* Right card: register form */}
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/10 p-8 text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-            <div className="mb-6">
+            <div className="mb-6 text-center">
               <h2 className="text-xl font-semibold">Tham gia CLUBVERSE</h2>
               <p className="mt-1 text-xs text-zinc-300">
                 Tạo tài khoản để bắt đầu hành trình của bạn.
               </p>
             </div>
 
+            {/* Continue with Google */}
+            <button
+              type="button"
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-medium text-slate-900 shadow-lg shadow-violet-900/40 hover:bg-slate-100 transition"
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-[11px] font-bold">
+                G
+              </span>
+              <span>Continue with Google</span>
+            </button>
+
+            {/* Divider OR */}
+            <div className="my-4 flex items-center gap-3">
+              <div className="h-px flex-1 bg-white/10" />
+              <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-400">
+                or
+              </span>
+              <div className="h-px flex-1 bg-white/10" />
+            </div>
+
             {error && (
-              <p className="mb-3 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-300" role="alert">
+              <p
+                className="mb-3 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-300"
+                role="alert"
+              >
                 {error}
               </p>
             )}
             {message && (
-              <p className="mb-3 rounded-md bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300" role="status">
+              <p
+                className="mb-3 rounded-md bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300"
+                role="status"
+              >
                 {message}
               </p>
             )}
@@ -267,6 +322,22 @@ export default function RegisterPage() {
                   className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
                   value={form.password}
                   onChange={handleChange("password")}
+                  required
+                />
+              </div>
+
+              {/* Confirm password (chỉ dùng để check, không gửi lên API) */}
+              <div className="space-y-1 text-xs">
+                <label className="block font-medium" htmlFor="confirmPassword">
+                  Confirm Password
+                </label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Enter your password again"
+                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                 />
               </div>
@@ -353,14 +424,17 @@ export default function RegisterPage() {
                 disabled={loading}
                 className="mt-2 flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#6366f1] via-[#8b5cf6] to-[#ec4899] px-4 py-2 text-xs font-medium text-white shadow-lg shadow-violet-900/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? "Đang đăng kí..." : "Đăng kí"}
+                {loading ? "Đang đăng kí..." : "Sign Up"}
               </button>
             </form>
 
             <p className="mt-6 text-center text-xs text-zinc-300">
-              Đã có tài khoản?{" "}
-              <Link href="/login" className="font-medium text-violet-300 hover:text-violet-200">
-                Đăng nhập
+              Already have an account?{" "}
+              <Link
+                href="/login"
+                className="font-medium text-violet-300 hover:text-violet-200"
+              >
+                Sign In
               </Link>
             </p>
           </div>
