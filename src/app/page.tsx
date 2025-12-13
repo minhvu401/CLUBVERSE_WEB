@@ -1,65 +1,178 @@
-import Image from "next/image";
+// app/page.tsx
+import Link from "next/link";
+import Header from "@/app/layout/header/page";
+import Footer from "@/app/layout/footer/page";
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+        <div className="relative min-h-screen overflow-hidden text-white">
+      {/* NỀN TÍM CHỦ ĐẠO, ĐỒNG BỘ VỚI HEADER */}
+      <div
+        className="
+          pointer-events-none absolute inset-0 -z-10
+          bg-[radial-gradient(circle_at_100%_0,#7c3aed_0,#4c1d95_35%,transparent_70%),linear-gradient(to_bottom,#1e1b4b_0,#581c87_40%,#020617_100%)]
+        "
+      />
+
+
+      <Header />
+
+      <main className="mx-auto flex max-w-5xl flex-col gap-20 px-4 pb-16 pt-16 md:pt-20">
+        {/* HERO */}
+        <section className="text-center">
+          <h1 className="text-3xl md:text-4xl font-semibold leading-snug">
+            Find Your Club,
+            <br />
+            One Click Away
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mx-auto mt-4 max-w-xl text-xs md:text-sm text-slate-200/85">
+            Khám phá các câu lạc bộ phù hợp với sở thích, kết nối sinh viên
+            và không bỏ lỡ bất kỳ sự kiện nào trong khuôn viên trường.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+          <div className="mt-8 flex justify-center">
+            <Link href="/login">
+            <button className="rounded-full bg-sky-400 px-6 py-2 text-xs font-semibold text-slate-950 shadow-xl shadow-sky-500/40 hover:bg-sky-300">
+              Tìm câu lạc bộ ngay
+            </button>
+            </Link>
+          </div>
+        </section>
+
+        {/* WHY SECTION */}
+        <section className="space-y-8">
+          <div className="text-center">
+            <h2 className="text-sm font-semibold tracking-wide">
+              TẠI SAO CHỌN CLUBVERSE?
+            </h2>
+            <p className="mt-2 text-xs text-slate-200/80">
+              Tự động gợi ý câu lạc bộ dựa trên sở thích, ngành học và thời gian rảnh của bạn.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              {
+                title: "AI Match",
+                desc: "Thuật toán thông minh giúp tìm ra CLB phù hợp nhất với hồ sơ cá nhân.",
+              },
+              {
+                title: "Tham gia ngay",
+                desc: "Một cú click để đăng ký, nhận thông báo và theo dõi hoạt động.",
+              },
+              {
+                title: "Calendar Sync",
+                desc: "Đồng bộ lịch sinh hoạt với calendar cá nhân, không bỏ lỡ buổi nào.",
+              },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className="rounded-2xl bg-white/10 p-5 text-center shadow-[0_18px_60px_rgba(15,23,42,0.9)] backdrop-blur-md border border-white/5"
+              >
+                <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-sky-500/20 text-xs font-semibold text-sky-300">
+                  ●
+                </div>
+                <h3 className="mt-4 text-sm font-semibold">{item.title}</h3>
+                <p className="mt-2 text-[0.7rem] leading-relaxed text-slate-200/90">
+                  {item.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* TESTIMONIALS */}
+        <section className="space-y-8">
+          <div className="text-center">
+            <h2 className="text-sm font-semibold tracking-wide">
+              What Students Say
+            </h2>
+            <p className="mt-2 text-xs text-slate-200/80">
+              Hơn 1,000+ sinh viên đã tìm được &quot;bộ lạc&quot; của mình.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              {
+                name: "Lâm Anh",
+                role: "Sinh viên Kinh tế",
+                quote:
+                  "Nhờ Clubverse mình tìm được CLB Marketing rất đúng định hướng, môi trường cực kỳ năng động.",
+              },
+              {
+                name: "Minh Đức",
+                role: "Khoa CNTT",
+                quote:
+                  "App dễ dùng, lịch sự kiện được nhắc tự động nên không còn quên buổi sinh hoạt nữa.",
+              },
+              {
+                name: "Kiều My",
+                role: "Năm nhất",
+                quote:
+                  "Mới vào trường nhưng mình nhanh chóng kết nối được với nhiều anh chị và bạn bè.",
+              },
+            ].map((item) => (
+              <article
+                key={item.name}
+                className="flex flex-col gap-3 rounded-2xl bg-white/10 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.9)] backdrop-blur-md border border-white/5"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold">
+                    {item.name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold">{item.name}</p>
+                    <p className="text-[0.65rem] text-slate-300/80">
+                      {item.role}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-[0.7rem] leading-relaxed text-slate-100/90">
+                  “{item.quote}”
+                </p>
+                <div className="mt-1 text-[0.7rem] text-yellow-300">★★★★★</div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* STATS */}
+        <section className="grid gap-4 text-center text-xs md:grid-cols-4">
+          {[
+            { label: "Sinh viên", value: "50K+" },
+            { label: "Câu lạc bộ", value: "2,500+" },
+            { label: "Sự kiện mỗi năm", value: "300+" },
+            { label: "Lượt ghép nối", value: "100K+" },
+          ].map((s) => (
+            <div
+              key={s.label}
+              className="rounded-2xl bg-white/10 px-4 py-5 shadow-[0_18px_60px_rgba(15,23,42,0.9)] backdrop-blur-md border border-white/5"
+            >
+              <div className="text-sm font-semibold">{s.value}</div>
+              <div className="mt-1 text-[0.65rem] text-slate-200/80">
+                {s.label}
+              </div>
+            </div>
+          ))}
+        </section>
+
+        {/* CTA BANNER */}
+        <section className="rounded-3xl bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-sky-500/90 p-[1.5px] shadow-[0_18px_60px_rgba(15,23,42,1)]">
+          <div className="rounded-3xl bg-slate-950/70 px-6 py-8 text-center">
+            <h3 className="text-sm font-semibold">Ready to Find Your Tribe?</h3>
+            <p className="mt-2 max-w-xl mx-auto text-[0.7rem] text-slate-200/90">
+              Hãy để CLUBVERSE giúp bạn kết nối với những cộng đồng phù hợp,
+              mở rộng mối quan hệ và phát triển bản thân trong suốt thời sinh viên.
+            </p>
+            <button className="mt-5 rounded-full bg-sky-400 px-6 py-2 text-xs font-semibold text-slate-950 shadow-xl shadow-sky-500/40 hover:bg-sky-300">
+              Bắt đầu ngay
+            </button>
+          </div>
+        </section>
       </main>
+
+      <Footer />
     </div>
   );
 }

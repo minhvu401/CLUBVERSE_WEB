@@ -1,0 +1,27 @@
+/* reset cơ bản */
+html, body {
+    margin: 0;
+    padding: 0;
+}
+
+/* nếu navbar cố định trên cùng */
+.navbar, .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    height: 72px; /* sửa theo chiều cao thực tế của header */
+}
+
+/* đẩy phần nội dung xuống bằng padding-top (bằng với height của header) */
+main, .hero, .page-content {
+    padding-top: 72px; /* match header height */
+    margin-top: 0;
+}
+
+/* loại bỏ margin-top lớn trên các section gây khoảng cách */
+.section, .hero .container, .banner {
+    margin-top: 0;
+    padding-top: 24px; /* nếu cần, thay đổi cho phù hợp */
+}
