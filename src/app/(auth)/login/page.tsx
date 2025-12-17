@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import Link from "next/link";
@@ -28,7 +29,7 @@ export default function LoginPage() {
       const data = await login({ email, password });
 
       // Lưu qua AuthContext (AuthProvider sẽ tự ghi vào localStorage)
-      saveAuth(data.accessToken, data.user);
+      saveAuth(data.accessToken, data.user as any);
 
       setSuccess("Đăng nhập thành công!");
       router.push("/homepage"); // chuyển về trang home khi thành công
