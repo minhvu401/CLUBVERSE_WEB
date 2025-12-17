@@ -23,7 +23,7 @@ export type User = {
   major?: string;
   year?: number;
 
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 type AuthContextType = {
@@ -34,7 +34,9 @@ type AuthContextType = {
   login: (token: string, user: User) => void;
   logout: () => void;
 
-  updateUser: (patch: Partial<User> | ((prev: User | null) => User | null)) => void;
+  updateUser: (
+    patch: Partial<User> | ((prev: User | null) => User | null)
+  ) => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -50,17 +52,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedToken = localStorage.getItem("accessToken");
     const storedUser = localStorage.getItem("user");
 
-    if (storedToken) setToken(storedToken);
-
+    let parsedUser: User | null = null;
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        parsedUser = JSON.parse(storedUser);
       } catch {
         localStorage.removeItem("user");
       }
     }
 
-    setLoading(false);
+    // Batch all state updates together
+    queueMicrotask(() => {
+      setToken(storedToken);
+      setUser(parsedUser);
+      setLoading(false);
+    });
   }, []);
 
   const login = useCallback((newToken: string, newUser: User) => {
@@ -86,7 +92,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ✅ QUAN TRỌNG: useCallback để updateUser không đổi reference mỗi render
   const updateUser = useCallback<AuthContextType["updateUser"]>((patch) => {
     setUser((prev) => {
-      const next = typeof patch === "function" ? patch(prev) : { ...(prev ?? ({} as User)), ...patch };
+      const next =
+        typeof patch === "function"
+          ? patch(prev)
+          : { ...(prev ?? ({} as User)), ...patch };
 
       if (typeof window !== "undefined") {
         if (next) localStorage.setItem("user", JSON.stringify(next));
