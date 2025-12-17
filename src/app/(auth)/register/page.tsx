@@ -15,7 +15,7 @@ export default function RegisterPage() {
     role: "user",
     school: "",
     major: "",
-    year: 2024,
+    year: 1,
     category: "",
     description: "",
   });
@@ -95,16 +95,11 @@ export default function RegisterPage() {
   // ---------- STEP VERIFY OTP ----------
   if (step === "verify") {
     return (
-      <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-[#020617] via-[#020059] to-[#4c1d95] px-4 py-8">
-        {/* background circles */}
-        <div className="pointer-events-none absolute -left-40 top-10 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
-        <div className="pointer-events-none absolute left-16 -bottom-32 h-80 w-80 rounded-full bg-[#1e1b4b]/40 blur-3xl" />
-        <div className="pointer-events-none absolute -right-32 -top-24 h-72 w-72 rounded-full bg-[#a855f7]/35 blur-3xl" />
-
-        <div className="relative z-10 flex w-full max-w-5xl flex-col gap-8 text-white md:flex-row">
+      <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-[#020617] via-[#020059] to-[#4c1d95] px-6 py-12">
+        <div className="relative z-10 flex w-full max-w-7xl flex-col gap-10 text-white md:flex-row">
           {/* Left branding */}
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-3xl bg-transparent px-6 py-8 md:items-start">
-            <div className="relative mb-4 h-40 w-64 md:h-52 md:w-80">
+          <div className="flex flex-1 flex-col items-center justify-center gap-6 rounded-3xl bg-white/5 px-8 py-12 backdrop-blur-xl shadow-[0_25px_80px_rgba(0,0,0,0.35)]">
+            <div className="relative mb-4 h-64 w-[22rem] md:h-80 md:w-[38rem]">
               <Image
                 src="/clubverse_logo.png"
                 alt="Clubverse logo"
@@ -112,22 +107,22 @@ export default function RegisterPage() {
                 className="object-contain"
               />
             </div>
-            <p className="max-w-md text-sm text-zinc-300">
+            <p className="max-w-md text-base text-zinc-300">
               Hoàn tất xác thực để tham gia cộng đồng CLUBVERSE.
             </p>
           </div>
 
           {/* Right card: OTP verify */}
           <div className="flex flex-1 items-center justify-center">
-            <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/10 p-8 text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-              <h2 className="text-xl font-semibold">Xác thực tài khoản</h2>
-              <p className="mt-1 text-xs text-zinc-300">
+            <div className="w-full max-w-xl rounded-[32px] border border-white/15 bg-white/10 p-12 text-white shadow-[0_25px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+              <h2 className="text-3xl font-semibold">Xác thực tài khoản</h2>
+              <p className="mt-3 text-base text-zinc-300">
                 Mã OTP đã được gửi tới email <strong>{form.email}</strong>.
               </p>
 
               {error && (
                 <p
-                  className="mt-4 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-300"
+                  className="mt-5 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300"
                   role="alert"
                 >
                   {error}
@@ -135,15 +130,15 @@ export default function RegisterPage() {
               )}
               {message && (
                 <p
-                  className="mt-4 rounded-md bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300"
+                  className="mt-5 rounded-xl bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300"
                   role="status"
                 >
                   {message}
                 </p>
               )}
 
-              <form onSubmit={handleVerify} className="mt-4 space-y-4">
-                <div className="space-y-1 text-xs">
+              <form onSubmit={handleVerify} className="mt-6 space-y-6">
+                <div className="space-y-2 text-base">
                   <label className="block font-medium" htmlFor="otp">
                     OTP
                   </label>
@@ -151,7 +146,7 @@ export default function RegisterPage() {
                     id="otp"
                     type="text"
                     placeholder="Nhập mã OTP"
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                    className="w-full rounded-2xl border border-white/20 bg-white/10 px-5 py-4 text-base text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
                     value={otp}
                     onChange={(e) => setOtp(e.target.value)}
                     required
@@ -161,7 +156,7 @@ export default function RegisterPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-2 flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#6366f1] via-[#8b5cf6] to-[#ec4899] px-4 py-2 text-xs font-medium text-white shadow-lg shadow-violet-900/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#6366f1] via-[#8b5cf6] to-[#ec4899] px-6 py-4 text-base font-semibold text-white shadow-lg shadow-violet-900/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? "Đang xác thực..." : "Xác thực"}
                 </button>
@@ -170,13 +165,13 @@ export default function RegisterPage() {
                   type="button"
                   disabled={loading}
                   onClick={handleResend}
-                  className="w-full text-center text-xs text-violet-200 hover:text-violet-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full text-center text-base text-violet-200 hover:text-violet-100 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Gửi lại OTP
                 </button>
               </form>
 
-              <p className="mt-6 text-center text-xs text-zinc-300">
+              <p className="mt-8 text-center text-base text-zinc-300">
                 Đã xác thực xong?{" "}
                 <Link
                   href="/login"
@@ -194,24 +189,19 @@ export default function RegisterPage() {
 
   // ---------- STEP REGISTER ----------
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-[#020617] via-[#020059] to-[#4c1d95] px-4 py-8">
-      {/* background circles giống thiết kế */}
-      <div className="pointer-events-none absolute -left-40 top-10 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
-      <div className="pointer-events-none absolute left-16 -bottom-32 h-80 w-80 rounded-full bg-[#1e1b4b]/40 blur-3xl" />
-      <div className="pointer-events-none absolute -right-32 -top-24 h-72 w-72 rounded-full bg-[#a855f7]/35 blur-3xl" />
-
-      <div className="relative z-10 flex w-full max-w-5xl flex-col gap-8 text-white md:flex-row">
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-[#020617] via-[#020059] to-[#4c1d95] px-6 py-12">
+      <div className="relative z-10 flex w-full max-w-7xl flex-col gap-10 text-white md:flex-row">
         {/* Left branding */}
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-3xl bg-transparent px-6 py-8 md:items-start">
-          <div className="relative mb-4 h-40 w-64 md:h-52 md:w-80">
+        <div className="flex flex-1 flex-col items-center justify-center gap-6 rounded-3xl bg-white/5 px-8 py-12 backdrop-blur-xl shadow-[0_25px_80px_rgba(0,0,0,0.35)]">
+          <div className="relative mb-4 h-64 w-[22rem] md:h-80 md:w-[38rem]">
             <Image
               src="/clubverse_logo.png"
               alt="Clubverse logo"
               fill
-              className="object-contain"
+              className="object-contain drop-shadow-[0_25px_45px_rgba(0,0,0,0.55)]"
             />
           </div>
-          <p className="max-w-md text-sm text-zinc-300">
+          <p className="max-w-md text-base text-zinc-300">
             Tham gia CLUBVERSE để bắt đầu hành trình cùng các câu lạc bộ yêu
             thích của bạn.
           </p>
@@ -219,10 +209,10 @@ export default function RegisterPage() {
 
         {/* Right card: register form */}
         <div className="flex flex-1 items-center justify-center">
-          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/10 p-8 text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+          <div className="w-full max-w-xl rounded-[32px] border border-white/15 bg-white/10 p-8 text-white shadow-[0_25px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
             <div className="mb-6 text-center">
-              <h2 className="text-xl font-semibold">Tham gia CLUBVERSE</h2>
-              <p className="mt-1 text-xs text-zinc-300">
+              <h2 className="text-2xl font-semibold">Tham gia CLUBVERSE</h2>
+              <p className="mt-2 text-sm text-zinc-300">
                 Tạo tài khoản để bắt đầu hành trình của bạn.
               </p>
             </div>
@@ -230,7 +220,7 @@ export default function RegisterPage() {
             {/* Continue with Google */}
             <button
               type="button"
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-medium text-slate-900 shadow-lg shadow-violet-900/40 hover:bg-slate-100 transition"
+              className="flex w-full items-center justify-center gap-2.5 rounded-full bg-white/95 px-5 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-violet-900/40 transition hover:bg-white"
             >
               <span className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-[11px] font-bold">
                 G
@@ -239,9 +229,9 @@ export default function RegisterPage() {
             </button>
 
             {/* Divider OR */}
-            <div className="my-4 flex items-center gap-3">
+            <div className="my-5 flex items-center gap-3">
               <div className="h-px flex-1 bg-white/10" />
-              <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-400">
+              <span className="text-[11px] uppercase tracking-[0.26em] text-zinc-400">
                 or
               </span>
               <div className="h-px flex-1 bg-white/10" />
@@ -249,7 +239,7 @@ export default function RegisterPage() {
 
             {error && (
               <p
-                className="mb-3 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-300"
+                className="mb-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300"
                 role="alert"
               >
                 {error}
@@ -257,7 +247,7 @@ export default function RegisterPage() {
             )}
             {message && (
               <p
-                className="mb-3 rounded-md bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300"
+                className="mb-4 rounded-xl bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300"
                 role="status"
               >
                 {message}
@@ -265,8 +255,40 @@ export default function RegisterPage() {
             )}
 
             {/* Form fields styled similar to design */}
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div className="space-y-1 text-xs">
+            <form onSubmit={handleRegister} className="space-y-3.5">
+              <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+                <div className="space-y-1.5 text-sm">
+                  <label className="block font-medium" htmlFor="fullName">
+                    Full Name
+                  </label>
+                  <input
+                    id="fullName"
+                    type="text"
+                    placeholder="Enter your full name"
+                    className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                    value={form.fullName}
+                    onChange={handleChange("fullName")}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5 text-sm">
+                  <label className="block font-medium" htmlFor="phoneNumber">
+                    Phone Number
+                  </label>
+                  <input
+                    id="phoneNumber"
+                    type="tel"
+                    placeholder="Enter your phone number"
+                    className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                    value={form.phoneNumber}
+                    onChange={handleChange("phoneNumber")}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5 text-sm">
                 <label className="block font-medium" htmlFor="email">
                   Email Address
                 </label>
@@ -274,76 +296,15 @@ export default function RegisterPage() {
                   id="email"
                   type="email"
                   placeholder="Enter your email"
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
                   value={form.email}
                   onChange={handleChange("email")}
                   required
                 />
               </div>
 
-              <div className="space-y-1 text-xs">
-                <label className="block font-medium" htmlFor="fullName">
-                  Full Name
-                </label>
-                <input
-                  id="fullName"
-                  type="text"
-                  placeholder="Enter your full name"
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
-                  value={form.fullName}
-                  onChange={handleChange("fullName")}
-                  required
-                />
-              </div>
-
-              <div className="space-y-1 text-xs">
-                <label className="block font-medium" htmlFor="phoneNumber">
-                  Phone Number
-                </label>
-                <input
-                  id="phoneNumber"
-                  type="tel"
-                  placeholder="Enter your phone number"
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
-                  value={form.phoneNumber}
-                  onChange={handleChange("phoneNumber")}
-                  required
-                />
-              </div>
-
-              <div className="space-y-1 text-xs">
-                <label className="block font-medium" htmlFor="password">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
-                  value={form.password}
-                  onChange={handleChange("password")}
-                  required
-                />
-              </div>
-
-              {/* Confirm password (chỉ dùng để check, không gửi lên API) */}
-              <div className="space-y-1 text-xs">
-                <label className="block font-medium" htmlFor="confirmPassword">
-                  Confirm Password
-                </label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="Enter your password again"
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="space-y-1 text-xs">
+              <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+                <div className="space-y-1.5 text-sm">
                   <label className="block font-medium" htmlFor="school">
                     School
                   </label>
@@ -351,13 +312,14 @@ export default function RegisterPage() {
                     id="school"
                     type="text"
                     placeholder="Enter your school"
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                    className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
                     value={form.school}
                     onChange={handleChange("school")}
                     required
                   />
                 </div>
-                <div className="space-y-1 text-xs">
+
+                <div className="space-y-1.5 text-sm">
                   <label className="block font-medium" htmlFor="major">
                     Major
                   </label>
@@ -365,7 +327,7 @@ export default function RegisterPage() {
                     id="major"
                     type="text"
                     placeholder="Enter your major"
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                    className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
                     value={form.major}
                     onChange={handleChange("major")}
                     required
@@ -373,48 +335,50 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="space-y-1 text-xs">
-                  <label className="block font-medium" htmlFor="year">
-                    Year
-                  </label>
-                  <input
-                    id="year"
-                    type="number"
-                    placeholder="2024"
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
-                    value={form.year}
-                    onChange={handleChange("year")}
-                    required
-                  />
-                </div>
-                <div className="space-y-1 text-xs">
-                  <label className="block font-medium" htmlFor="category">
-                    Category
-                  </label>
-                  <input
-                    id="category"
-                    type="text"
-                    placeholder="Technology, Art, ..."
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
-                    value={form.category}
-                    onChange={handleChange("category")}
-                    required
-                  />
-                </div>
+              <div className="space-y-1.5 text-sm">
+                <label className="block font-medium" htmlFor="year">
+                  Year (Năm đại học)
+                </label>
+                <select
+                  id="year"
+                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                  value={form.year}
+                  onChange={(e) => setForm((prev) => ({ ...prev, year: Number(e.target.value) }))}
+                  required
+                >
+                  <option value={1} className="bg-slate-800">Năm 1</option>
+                  <option value={2} className="bg-slate-800">Năm 2</option>
+                  <option value={3} className="bg-slate-800">Năm 3</option>
+                  <option value={4} className="bg-slate-800">Năm 4</option>
+                </select>
               </div>
 
-              <div className="space-y-1 text-xs">
-                <label className="block font-medium" htmlFor="description">
-                  Description
+              <div className="space-y-1.5 text-sm">
+                <label className="block font-medium" htmlFor="password">
+                  Password
                 </label>
-                <textarea
-                  id="description"
-                  placeholder="Tell us a bit about your club or yourself"
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
-                  rows={3}
-                  value={form.description}
-                  onChange={handleChange("description")}
+                <input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                  value={form.password}
+                  onChange={handleChange("password")}
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5 text-sm">
+                <label className="block font-medium" htmlFor="confirmPassword">
+                  Confirm Password
+                </label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Confirm your password"
+                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-zinc-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                 />
               </div>
@@ -422,13 +386,13 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="mt-2 flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#6366f1] via-[#8b5cf6] to-[#ec4899] px-4 py-2 text-xs font-medium text-white shadow-lg shadow-violet-900/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-2 flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#6366f1] via-[#8b5cf6] to-[#ec4899] px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? "Đang đăng kí..." : "Sign Up"}
               </button>
             </form>
 
-            <p className="mt-6 text-center text-xs text-zinc-300">
+            <p className="mt-6 text-center text-sm text-zinc-300">
               Already have an account?{" "}
               <Link
                 href="/login"
