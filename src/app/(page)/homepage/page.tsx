@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/app/layout/header/page";
@@ -17,6 +17,8 @@ import {
   Clock,
   MapPin,
 } from "lucide-react";
+
+import { getAllClubs, type ClubItem } from "@/app/services/api/auth";
 
 function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
@@ -94,54 +96,61 @@ export default function HomeDashboardPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
 
+  const [clubs, setClubs] = useState<ClubItem[]>([]);
+  const [clubsLoading, setClubsLoading] = useState(false);
+  const [clubsError, setClubsError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!loading && !token) router.push("/login");
   }, [loading, token, router]);
 
+  useEffect(() => {
+    if (!token) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setClubsLoading(true);
+        setClubsError(null);
+
+        const res = await getAllClubs(token);
+
+        if (!cancelled) setClubs(res);
+      } catch (e: any) {
+        if (!cancelled)
+          setClubsError(e?.message ?? "Không tải được danh sách câu lạc bộ");
+      } finally {
+        if (!cancelled) setClubsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
   const displayName = user?.fullName || "Minh";
 
-  const clubs = [
-    {
-      id: 1,
-      name: "Lập Trình Viên Việt Nam",
-      tag: "Công nghệ",
-      desc: "Cộng đồng các lập trình viên chia sẻ kinh nghiệm và học hỏi lẫn nhau.",
-      members: "1,234 thành viên",
-      tone: "violet" as const,
-      icon: "💻",
+  const clubCards = useMemo(() => {
+    const tones = ["violet", "emerald", "fuchsia", "amber", "sky"] as const;
+
+    return clubs.map((c, idx) => ({
+      id: c._id,
+      name: c.fullName ?? "Câu lạc bộ",
+      tag: c.category ?? "Khác",
+      desc: c.description ?? "Chưa có mô tả.",
+      members: `${(c.clubJoined?.length ?? 0).toLocaleString("vi-VN")} thành viên`,
+      tone: tones[idx % tones.length],
+      icon: "🏷️",
       cta: "Tham Gia",
-    },
-    {
-      id: 2,
-      name: "Thiết Kế UI/UX",
-      tag: "Nghệ thuật",
-      desc: "Nơi các designer chia sẻ tác phẩm và học hỏi xu hướng mới.",
-      members: "856 thành viên",
-      tone: "emerald" as const,
-      icon: "🎨",
-      cta: "Tham Gia",
-    },
-    {
-      id: 3,
-      name: "Nhiếp Ảnh Đường Phố",
-      tag: "Nhiếp ảnh",
-      desc: "Cộng đồng yêu thích chụp ảnh đường phố và chia sẻ kỷ thuật.",
-      members: "642 thành viên",
-      tone: "fuchsia" as const,
-      icon: "📷",
-      cta: "Tham Gia",
-    },
-    {
-      id: 4,
-      name: "CLB Start-up & Khởi nghiệp",
-      tag: "Kinh doanh",
-      desc: "Kết nối những bạn trẻ yêu thích kinh doanh và xây dựng sản phẩm.",
-      members: "960 thành viên",
-      tone: "amber" as const,
-      icon: "🚀",
-      cta: "Tham Gia",
-    },
-  ];
+    }));
+  }, [clubs]);
+
+  // ✅ GO TO DETAIL
+  const goClubDetail = (id: string) => {
+    router.push(`/clubs/${id}`);
+  };
 
   const events = [
     {
@@ -207,10 +216,8 @@ export default function HomeDashboardPage() {
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden text-white">
-      {/* ✅ BACKGROUND 100% ĐỒNG BỘ VỚI HEADER (KHÔNG DÙNG bg-[...] NỮA) */}
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-indigo-950 via-purple-900 to-violet-950" />
 
-      {/* glow nhẹ cho depth (đảm bảo không bị trắng) */}
       <div className="pointer-events-none absolute -top-44 left-1/2 -z-10 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-violet-500/25 blur-3xl" />
       <div className="pointer-events-none absolute -top-28 left-10 -z-10 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 right-0 -z-10 h-96 w-96 rounded-full bg-indigo-400/15 blur-3xl" />
@@ -272,47 +279,96 @@ export default function HomeDashboardPage() {
             />
 
             <div className="mt-4 grid gap-4 md:grid-cols-4">
-              {clubs.map((club) => (
-                <motion.article
-                  key={club.id}
-                  whileHover={{ y: -4 }}
-                  transition={{ type: "spring", stiffness: 260, damping: 20 }}
+              {clubsLoading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "relative overflow-hidden rounded-2xl p-4",
+                      "border border-white/10 bg-white/[0.05]"
+                    )}
+                  >
+                    <div className="h-9 w-9 rounded-xl bg-white/10" />
+                    <div className="mt-3 h-4 w-4/5 rounded bg-white/10" />
+                    <div className="mt-2 h-3 w-full rounded bg-white/10" />
+                    <div className="mt-2 h-3 w-5/6 rounded bg-white/10" />
+                    <div className="mt-4 h-8 w-full rounded-full bg-white/10" />
+                  </div>
+                ))
+              ) : clubsError ? (
+                <div
                   className={cn(
-                    "relative overflow-hidden rounded-2xl p-4",
-                    "border border-white/10 bg-white/[0.05] shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+                    "rounded-2xl p-4 text-sm text-white/70",
+                    "border border-white/10 bg-white/[0.05]"
                   )}
                 >
-                  <CornerGlow tone={club.tone} />
-                  <div className="relative">
-                    <div className="flex items-center justify-between">
-                      <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-black/20 text-base">
-                        {club.icon}
+                  {clubsError}
+                </div>
+              ) : clubCards.length === 0 ? (
+                <div
+                  className={cn(
+                    "rounded-2xl p-4 text-sm text-white/70",
+                    "border border-white/10 bg-white/[0.05]"
+                  )}
+                >
+                  Chưa có câu lạc bộ nào.
+                </div>
+              ) : (
+                clubCards.map((club) => (
+                  <motion.article
+                    key={club.id}
+                    whileHover={{ y: -4 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                    className={cn(
+                      "relative cursor-pointer overflow-hidden rounded-2xl p-4",
+                      "border border-white/10 bg-white/[0.05] shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+                    )}
+                    onClick={() => goClubDetail(club.id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") goClubDetail(club.id);
+                    }}
+                  >
+                    <CornerGlow tone={club.tone} />
+                    <div className="relative">
+                      <div className="flex items-center justify-between">
+                        <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-black/20 text-base">
+                          {club.icon}
+                        </div>
+                        <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[0.65rem] text-white/70">
+                          {club.tag}
+                        </span>
                       </div>
-                      <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[0.65rem] text-white/70">
-                        {club.tag}
-                      </span>
+
+                      <h3 className="mt-3 text-sm font-semibold leading-snug">
+                        {club.name}
+                      </h3>
+                      <p className="mt-1.5 line-clamp-3 text-[0.72rem] leading-relaxed text-white/60">
+                        {club.desc}
+                      </p>
+
+                      <div className="mt-3 flex items-center justify-between text-[0.68rem] text-white/55">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Users size={14} />
+                          {club.members}
+                        </span>
+                      </div>
+
+                      {/* ✅ BUTTON GO DETAIL */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          goClubDetail(club.id);
+                        }}
+                        className="mt-3 w-full rounded-full bg-violet-500/90 py-2 text-[0.72rem] font-semibold text-white hover:bg-violet-500"
+                      >
+                        {club.cta}
+                      </button>
                     </div>
-
-                    <h3 className="mt-3 text-sm font-semibold leading-snug">
-                      {club.name}
-                    </h3>
-                    <p className="mt-1.5 line-clamp-3 text-[0.72rem] leading-relaxed text-white/60">
-                      {club.desc}
-                    </p>
-
-                    <div className="mt-3 flex items-center justify-between text-[0.68rem] text-white/55">
-                      <span className="inline-flex items-center gap-1.5">
-                        <Users size={14} />
-                        {club.members}
-                      </span>
-                    </div>
-
-                    <button className="mt-3 w-full rounded-full bg-violet-500/90 py-2 text-[0.72rem] font-semibold text-white hover:bg-violet-500">
-                      {club.cta}
-                    </button>
-                  </div>
-                </motion.article>
-              ))}
+                  </motion.article>
+                ))
+              )}
             </div>
           </section>
 
@@ -380,10 +436,14 @@ export default function HomeDashboardPage() {
                         <button
                           className={cn(
                             "rounded-full px-4 py-1.5 text-[0.72rem] font-semibold text-white",
-                            ev.ctaTone === "emerald" && "bg-emerald-500/80 hover:bg-emerald-500",
-                            ev.ctaTone === "amber" && "bg-amber-400/80 hover:bg-amber-400 text-black",
-                            ev.ctaTone === "fuchsia" && "bg-fuchsia-500/80 hover:bg-fuchsia-500",
-                            ev.ctaTone === "violet" && "bg-violet-500/80 hover:bg-violet-500"
+                            ev.ctaTone === "emerald" &&
+                              "bg-emerald-500/80 hover:bg-emerald-500",
+                            ev.ctaTone === "amber" &&
+                              "bg-amber-400/80 hover:bg-amber-400 text-black",
+                            ev.ctaTone === "fuchsia" &&
+                              "bg-fuchsia-500/80 hover:bg-fuchsia-500",
+                            ev.ctaTone === "violet" &&
+                              "bg-violet-500/80 hover:bg-violet-500"
                           )}
                         >
                           {ev.cta}

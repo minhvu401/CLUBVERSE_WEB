@@ -153,3 +153,82 @@ export const updateStudentProfile = (
     body: JSON.stringify(body),
   });
 };
+
+async function uploadAvatar(token: string, file: File): Promise<string> {
+  const fd = new FormData();
+  fd.append("file", file);
+
+  const res = await fetch("/api/upload-avatar", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`, // nếu bạn muốn check token ở route
+    },
+    body: fd,
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Upload avatar thất bại");
+
+  return data.url as string;
+}
+
+export type ClubItem = {
+  _id: string;
+  fullName?: string;
+  category?: string;
+  description?: string;
+  clubJoined?: any[];
+};
+
+export type GetAllClubsResponse = {
+  total: number;
+  clubs: ClubItem[];
+};
+
+export const getAllClubs = async (accessToken: string): Promise<ClubItem[]> => {
+  const data = await request<GetAllClubsResponse>("/users/clubs", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return Array.isArray(data?.clubs) ? data.clubs : [];
+};
+
+export type ApplyToClubBody = {
+  clubId: string;
+  reason: string;
+};
+
+export type ApplyToClubResponse = {
+  message?: string;
+  application?: any;
+};
+
+export const applyToClub = async (
+  accessToken: string,
+  body: ApplyToClubBody
+): Promise<ApplyToClubResponse> => {
+  const res = await fetch(`${AUTH_BASE_URL}/applications`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    // cố lấy message backend trả về
+    const msg =
+      data?.message ||
+      (res.status === 400
+        ? "Đã đăng ký hoặc đã là thành viên"
+        : `Gửi đơn thất bại (HTTP ${res.status})`);
+    throw new Error(msg);
+  }
+
+  return data;
+};
+

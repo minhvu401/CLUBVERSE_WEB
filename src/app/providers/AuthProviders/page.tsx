@@ -10,6 +10,9 @@ import {
   useMemo,
 } from "react";
 
+// ✅ thêm import này (sửa path cho đúng dự án của bạn)
+import { getProfile } from "@/app/services/api/auth";
+
 export type User = {
   id?: string;
   _id?: string;
@@ -61,7 +64,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Batch all state updates together
     queueMicrotask(() => {
       setToken(storedToken);
       setUser(parsedUser);
@@ -89,7 +91,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // ✅ QUAN TRỌNG: useCallback để updateUser không đổi reference mỗi render
   const updateUser = useCallback<AuthContextType["updateUser"]>((patch) => {
     setUser((prev) => {
       const next =
@@ -106,7 +107,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // ✅ QUAN TRỌNG: memo value để hạn chế rerender không cần thiết
+  // ✅ NEW: có token là tự fetch full profile để lấy avatarUrl (và các field khác)
+  useEffect(() => {
+  if (!token) return;
+
+  let cancelled = false;
+
+  (async () => {
+    try {
+      const profile = await getProfile(token);
+      if (cancelled) return;
+
+      // ✅ map ProfileResponse -> Partial<User>
+      const patch: Partial<User> = {
+        _id: profile._id,
+        email: profile.email,
+        fullName: profile.fullName,
+        role: profile.role,
+        avatarUrl: profile.avatarUrl,
+        phoneNumber: profile.phoneNumber,
+        school: profile.school,
+        major: profile.major,
+        year: profile.year,
+      };
+
+      updateUser(patch);
+    } catch (e) {
+      // optional log
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [token, updateUser]);
+
   const value = useMemo(
     () => ({ user, token, loading, login, logout, updateUser }),
     [user, token, loading, login, logout, updateUser]
@@ -114,7 +149,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+
 export default AuthProvider;
+
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
