@@ -8,6 +8,28 @@ import { useRouter } from "next/navigation";
 import { login } from "@/app/services/api/auth";
 import { useAuth } from "@/app/providers/AuthProviders/page";
 
+function normalizeRole(role: unknown): "user" | "club" | "admin" | "unknown" {
+  const r = String(role || "").trim().toLowerCase();
+  if (r === "user" || r === "club" || r === "admin") return r;
+  return "unknown";
+}
+
+function redirectByRole(
+  role: "user" | "club" | "admin" | "unknown"
+): string {
+  // ✅ bạn đổi route theo project của bạn nếu khác
+  switch (role) {
+    case "admin":
+      return "/admin/dashboard";
+    case "club":
+      return "/club/home";
+    case "user":
+      return "/homepage"; // hoặc "/"
+    default:
+      return "/homepage";
+  }
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,8 +53,11 @@ export default function LoginPage() {
       // Lưu qua AuthContext (AuthProvider sẽ tự ghi vào localStorage)
       saveAuth(data.accessToken, data.user as any);
 
+      const role = normalizeRole((data.user as any)?.role);
+      const target = redirectByRole(role);
+
       setSuccess("Đăng nhập thành công!");
-      router.push("/homepage"); // chuyển về trang home khi thành công
+      router.push(target);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Đăng nhập thất bại";
       setError(message || "Thông tin đăng nhập không hợp lệ");
@@ -168,6 +193,11 @@ export default function LoginPage() {
               >
                 Sign up
               </Link>
+            </p>
+
+            {/* Hint nhỏ (optional) */}
+            <p className="mt-3 text-center text-xs text-white/45">
+              Sau khi login sẽ tự điều hướng theo role: user / club / admin.
             </p>
           </div>
         </div>

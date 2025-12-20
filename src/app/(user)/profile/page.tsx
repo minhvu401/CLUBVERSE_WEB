@@ -1,11 +1,15 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProviders/page";
 import Image from "next/image";
-import { getProfile, updateStudentProfile, type ProfileResponse } from "@/app/services/api/auth";
+import {
+  getProfile,
+  updateStudentProfile,
+  type ProfileResponse,
+} from "@/app/services/api/auth";
 
 import {
   Search,
@@ -22,6 +26,9 @@ import {
   Plus,
   ChevronDown,
   Sparkles,
+  LogOut,
+  UploadCloud,
+  ImageIcon,
 } from "lucide-react";
 
 type Chip = { id: string; label: string };
@@ -45,6 +52,17 @@ function initials(name: string) {
   const a = parts[0]?.[0] ?? "";
   const b = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
   return (a + b).toUpperCase();
+}
+
+/** ✅ parse "Năm 1" / "1" => 1..4 */
+function parseAcademicYear(v: string): number | null {
+  const t = (v || "").trim();
+  if (!t) return null;
+  const m = t.match(/(\d+)/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (![1, 2, 3, 4].includes(n)) return null;
+  return n;
 }
 
 function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string }) {
@@ -77,7 +95,12 @@ function ChipPill({
       : "bg-sky-500/15 text-sky-100 border-sky-400/20";
 
   return (
-    <span className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[0.72rem]", toneCls)}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[0.72rem]",
+        toneCls
+      )}
+    >
       {label}
       {onRemove ? (
         <button
@@ -93,6 +116,7 @@ function ChipPill({
   );
 }
 
+/** ✅ FIX: ChevronDown canh giữa, không lệch */
 function Select({
   value,
   onChange,
@@ -109,7 +133,7 @@ function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[0.78rem] text-white/90 outline-none focus:border-white/20"
+        className="w-full appearance-none rounded-xl border border-white/10 bg-white/[0.06] pl-3 pr-10 py-2 text-[0.78rem] leading-tight text-white/90 outline-none focus:border-white/20"
       >
         <option value="" disabled>
           {placeholder}
@@ -120,10 +144,10 @@ function Select({
           </option>
         ))}
       </select>
-      <ChevronDown
-        size={16}
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60"
-      />
+
+      <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/60">
+        <ChevronDown size={16} />
+      </div>
     </div>
   );
 }
@@ -177,12 +201,97 @@ function SlotPill({ slot }: { slot: Slot }) {
   return <div className={cn("rounded-lg border px-2 py-1 text-[0.68rem]", tone)}>{text}</div>;
 }
 
+/** ✅ NEW: Upload Avatar UI (đẹp, chuyên nghiệp, đúng tone glass) */
+function AvatarUploadBox({
+  shownAvatar,
+  fileName,
+  fileSizeMB,
+  onPick,
+  onClear,
+  overSize,
+}: {
+  shownAvatar: string;
+  fileName: string;
+  fileSizeMB: string;
+  onPick: () => void;
+  onClear: () => void;
+  overSize: boolean;
+}) {
+  return (
+    <div className="space-y-1.5 md:col-span-2">
+      <span className="text-[0.72rem] text-white/60">Avatar</span>
+
+      <div className={cn("relative overflow-hidden rounded-2xl p-4", "border border-white/10 bg-white/[0.06]")}>
+        {/* glow */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(168,85,247,0.16),transparent_55%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_95%_10%,rgba(59,130,246,0.12),transparent_55%)]" />
+
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06]">
+              {shownAvatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={shownAvatar} alt="avatar preview" className="h-full w-full object-cover" />
+              ) : (
+                <div className="grid h-full w-full place-items-center text-white/60">
+                  <ImageIcon className="h-6 w-6" />
+                </div>
+              )}
+            </div>
+
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-white">
+                {fileName || "Chưa chọn ảnh"}
+              </div>
+              <div className="mt-1 text-xs text-white/55">
+                {fileName ? `${fileSizeMB} MB` : "Chọn ảnh JPG/PNG/WebP (tối đa 2MB)."}
+              </div>
+              {overSize ? (
+                <div className="mt-1 text-xs text-rose-200">
+                  Ảnh vượt quá 2MB. Vui lòng chọn ảnh nhỏ hơn.
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <button
+              type="button"
+              onClick={onPick}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[0.78rem] font-semibold text-white/85 hover:bg-white/[0.10] transition"
+            >
+              <UploadCloud className="h-4 w-4" />
+              Chọn ảnh
+            </button>
+
+            <button
+              type="button"
+              onClick={onClear}
+              disabled={!fileName}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[0.78rem] font-semibold text-white/85 hover:bg-white/[0.10] transition",
+                !fileName && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <X className="h-4 w-4" />
+              Xóa
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const router = useRouter();
-  const { token, loading, updateUser } = useAuth();
+
+  const { token, loading, updateUser, logout } = useAuth() as any;
 
   const [pageLoading, setPageLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
   const [toast, setToast] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const [fullName, setFullName] = useState("");
@@ -193,6 +302,12 @@ export default function ProfilePage() {
   const [major, setMajor] = useState("");
   const [year, setYear] = useState("");
 
+  // ✅ avatar upload states
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string>("");
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [skills, setSkills] = useState<Chip[]>([]);
   const [interests, setInterests] = useState<Chip[]>([]);
   const [skillInput, setSkillInput] = useState("");
@@ -200,9 +315,100 @@ export default function ProfilePage() {
 
   const [snapshot, setSnapshot] = useState<any>(null);
 
+  // ✅ url avatar hiển thị: ưu tiên preview (file vừa chọn)
+  const shownAvatar = avatarPreview || avatarUrl;
+
+  // ✅ redirect khi chưa login (nhưng không redirect lúc đang logout)
   useEffect(() => {
-    if (!loading && !token) router.push("/login");
-  }, [loading, token, router]);
+    if (!loading && !token && !loggingOut) router.push("/login");
+  }, [loading, token, router, loggingOut]);
+
+  const handleLogout = async () => {
+    try {
+      setLoggingOut(true);
+
+      if (typeof logout === "function") {
+        await logout();
+      } else {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("authToken");
+        }
+      }
+
+      if (typeof updateUser === "function") {
+        updateUser({
+          fullName: "",
+          email: "",
+          avatarUrl: "",
+          phoneNumber: "",
+          school: "",
+          major: "",
+          year: undefined,
+        });
+      }
+
+      router.replace("/");
+    } finally {
+      setTimeout(() => setLoggingOut(false), 0);
+    }
+  };
+
+  // ✅ cleanup preview blob
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    };
+  }, [avatarPreview]);
+
+  // ✅ Upload API call
+  const uploadAvatar = async (file: File): Promise<string> => {
+    const fd = new FormData();
+    fd.append("file", file);
+
+    const res = await fetch("/api/upload-avatar", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token ?? ""}`,
+      },
+      body: fd,
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Upload avatar thất bại");
+    return data.url as string;
+  };
+
+  // ✅ chọn ảnh + preview
+  const onPickAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
+    if (!f) return;
+
+    if (!f.type.startsWith("image/")) {
+      setToast({ type: "err", text: "Vui lòng chọn file ảnh" });
+      return;
+    }
+
+    const MAX = 2 * 1024 * 1024; // 2MB
+    if (f.size > MAX) {
+      setToast({ type: "err", text: "Ảnh tối đa 2MB" });
+      return;
+    }
+
+    setAvatarFile(f);
+
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    const url = URL.createObjectURL(f);
+    setAvatarPreview(url);
+  };
+
+  const clearAvatarPick = () => {
+    setAvatarFile(null);
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    setAvatarPreview("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   useEffect(() => {
     const run = async () => {
@@ -215,6 +421,9 @@ export default function ProfilePage() {
         const raw = await getProfile(token);
         const p: ProfileResponse = (raw as any)?.user ?? (raw as any);
 
+        const yNum = Number((p as any).year);
+        const yearLabel = yNum >= 1 && yNum <= 4 ? `Năm ${yNum}` : "";
+
         const next = {
           fullName: p.fullName ?? "",
           email: p.email ?? "",
@@ -222,9 +431,15 @@ export default function ProfilePage() {
           avatarUrl: (p as any).avatarUrl ?? "",
           school: (p as any).school ?? "",
           major: (p as any).major ?? "",
-          year: (p as any).year ? String((p as any).year) : "",
-          skills: ((p as any).skills ?? []).map((s: string, idx: number) => ({ id: `s-${idx}`, label: s })),
-          interests: ((p as any).interests ?? []).map((s: string, idx: number) => ({ id: `i-${idx}`, label: s })),
+          year: yearLabel,
+          skills: ((p as any).skills ?? []).map((s: string, idx: number) => ({
+            id: `s-${idx}`,
+            label: s,
+          })),
+          interests: ((p as any).interests ?? []).map((s: string, idx: number) => ({
+            id: `i-${idx}`,
+            label: s,
+          })),
         };
 
         setFullName(next.fullName);
@@ -237,6 +452,8 @@ export default function ProfilePage() {
         setSkills(next.skills);
         setInterests(next.interests);
 
+        clearAvatarPick();
+
         setSnapshot(next);
 
         updateUser({
@@ -246,7 +463,7 @@ export default function ProfilePage() {
           phoneNumber: next.phoneNumber,
           school: next.school,
           major: next.major,
-          year: next.year ? Number(next.year) : undefined,
+          year: yNum >= 1 && yNum <= 4 ? yNum : undefined,
         });
       } catch (e: any) {
         setToast({ type: "err", text: e?.message ?? "Không load được profile" });
@@ -256,6 +473,7 @@ export default function ProfilePage() {
     };
 
     run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, token, updateUser]);
 
   useEffect(() => {
@@ -297,6 +515,9 @@ export default function ProfilePage() {
     setYear(snapshot.year);
     setSkills(snapshot.skills);
     setInterests(snapshot.interests);
+
+    clearAvatarPick();
+
     setToast({ type: "ok", text: "Đã hoàn tác thay đổi" });
   };
 
@@ -304,21 +525,28 @@ export default function ProfilePage() {
     if (!token) return;
 
     if (!fullName.trim()) return setToast({ type: "err", text: "Vui lòng nhập fullName" });
-if (!phoneNumber.trim()) return setToast({ type: "err", text: "Vui lòng nhập phoneNumber" });
-if (!school.trim()) return setToast({ type: "err", text: "Vui lòng nhập school" });
+    if (!phoneNumber.trim()) return setToast({ type: "err", text: "Vui lòng nhập phoneNumber" });
+    if (!school.trim()) return setToast({ type: "err", text: "Vui lòng nhập school" });
     if (!major.trim()) return setToast({ type: "err", text: "Vui lòng nhập major" });
-    if (!year || Number.isNaN(Number(year))) return setToast({ type: "err", text: "Year phải là số" });
+
+    const y = parseAcademicYear(year);
+    if (!y) return setToast({ type: "err", text: "Vui lòng chọn Năm 1 - Năm 4" });
 
     try {
       setSaving(true);
 
+      let finalAvatarUrl = avatarUrl.trim() || "";
+      if (avatarFile) {
+        finalAvatarUrl = await uploadAvatar(avatarFile);
+      }
+
       const payload = {
         fullName: fullName.trim(),
         phoneNumber: phoneNumber.trim(),
-        avatarUrl: avatarUrl.trim() || "",
+        avatarUrl: finalAvatarUrl,
         school: school.trim(),
         major: major.trim(),
-        year: Number(year),
+        year: y,
         skills: skills.map((x) => x.label.trim()).filter(Boolean),
         interests: interests.map((x) => x.label.trim()).filter(Boolean),
       };
@@ -328,6 +556,10 @@ if (!school.trim()) return setToast({ type: "err", text: "Vui lòng nhập schoo
 
       setToast({ type: "ok", text: res?.message || "Cập nhật thành công" });
 
+      const updatedYearNum = Number(updated?.year ?? payload.year);
+      const updatedYearLabel =
+        updatedYearNum >= 1 && updatedYearNum <= 4 ? `Năm ${updatedYearNum}` : "";
+
       updateUser({
         fullName: updated?.fullName ?? payload.fullName,
         email: updated?.email ?? email,
@@ -335,7 +567,7 @@ if (!school.trim()) return setToast({ type: "err", text: "Vui lòng nhập schoo
         phoneNumber: updated?.phoneNumber ?? payload.phoneNumber,
         school: updated?.school ?? payload.school,
         major: updated?.major ?? payload.major,
-        year: updated?.year ?? payload.year,
+        year: updatedYearNum >= 1 && updatedYearNum <= 4 ? updatedYearNum : undefined,
       });
 
       const next = {
@@ -345,7 +577,7 @@ if (!school.trim()) return setToast({ type: "err", text: "Vui lòng nhập schoo
         avatarUrl: updated?.avatarUrl ?? payload.avatarUrl,
         school: updated?.school ?? payload.school,
         major: updated?.major ?? payload.major,
-        year: String(updated?.year ?? payload.year),
+        year: updatedYearLabel,
         skills: (updated?.skills ?? payload.skills).map((s: string, idx: number) => ({
           id: `s-${idx}-${Date.now()}`,
           label: s,
@@ -366,6 +598,8 @@ if (!school.trim()) return setToast({ type: "err", text: "Vui lòng nhập schoo
       setSkills(next.skills);
       setInterests(next.interests);
       setSnapshot(next);
+
+      clearAvatarPick();
     } catch (e: any) {
       setToast({ type: "err", text: e?.message ?? "Cập nhật thất bại" });
     } finally {
@@ -373,12 +607,7 @@ if (!school.trim()) return setToast({ type: "err", text: "Vui lòng nhập schoo
     }
   };
 
-  const yearOptions = useMemo(() => {
-    const now = new Date().getFullYear();
-    const arr: string[] = [];
-    for (let y = now - 6; y <= now + 6; y++) arr.push(String(y));
-    return arr;
-  }, []);
+  const yearOptions = useMemo(() => ["Năm 1", "Năm 2", "Năm 3", "Năm 4"], []);
 
   const days = useMemo(
     () => [
@@ -412,6 +641,10 @@ if (!school.trim()) return setToast({ type: "err", text: "Vui lòng nhập schoo
     []
   );
 
+  const pickedName = avatarFile?.name ?? "";
+  const pickedSizeMB = avatarFile ? (avatarFile.size / 1024 / 1024).toFixed(2) : "0";
+  const overSize = avatarFile ? avatarFile.size > 2 * 1024 * 1024 : false;
+
   return (
     <div className="relative min-h-screen overflow-hidden text-white">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-indigo-950 via-purple-900 to-violet-950" />
@@ -438,23 +671,23 @@ if (!school.trim()) return setToast({ type: "err", text: "Vui lòng nhập schoo
         <aside className={cn("hidden w-72 shrink-0 rounded-3xl p-4 md:block", glass)}>
           <div className="flex items-center gap-3">
             <div className="flex items-center">
-  <div className="relative h-14 w-[250px] overflow-hidden">
-    <Image
-      src="/clubverse_logo_1.png"     // đổi đúng tên file bạn bỏ vào /public
-      alt="Clubverse"
-      fill
-      priority
-      className="object-contain object-left"
-    />
-  </div>
-</div>
+              <div className="relative h-14 w-[250px] overflow-hidden">
+                <Image
+                  src="/clubverse_logo_1.png"
+                  alt="Clubverse"
+                  fill
+                  priority
+                  className="object-contain object-left"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* ✅ FIX: Avatar ở panel bên trái */}
           <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
             <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-white/10 bg-white/[0.06]">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="avatar" className="h-full w-full object-cover" />
+              {shownAvatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={shownAvatar} alt="avatar" className="h-full w-full object-cover" />
               ) : (
                 <div className="grid h-full w-full place-items-center text-xs font-semibold">
                   {initials(fullName || "User")}
@@ -493,7 +726,7 @@ if (!school.trim()) return setToast({ type: "err", text: "Vui lòng nhập schoo
             ))}
           </nav>
 
-          <div className="mt-6 border-t border-white/10 pt-4">
+          <div className="mt-6 border-t border-white/10 pt-4 space-y-2">
             <Link
               href="/settings"
               className="flex items-center gap-3 rounded-xl px-3 py-2 text-[0.78rem] text-white/70 hover:bg-white/[0.06] hover:text-white transition"
@@ -501,10 +734,18 @@ if (!school.trim()) return setToast({ type: "err", text: "Vui lòng nhập schoo
               <Settings size={16} />
               Cài đặt
             </Link>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[0.78rem] text-white/70 hover:bg-white/[0.06] hover:text-white transition"
+            >
+              <LogOut size={16} />
+              Đăng xuất
+            </button>
           </div>
         </aside>
 
-        {/* Main */}
         <main className="min-w-0 flex-1">
           <div className={cn("rounded-3xl p-5 md:p-6", glass)}>
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -533,8 +774,9 @@ if (!school.trim()) return setToast({ type: "err", text: "Vui lòng nhập schoo
             <div className={cn("mt-5 rounded-2xl p-5", "border border-white/10 bg-white/[0.04]")}>
               <div className="flex flex-col items-center gap-2 text-center">
                 <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06]">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="avatar" className="h-full w-full object-cover" />
+                  {shownAvatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={shownAvatar} alt="avatar" className="h-full w-full object-cover" />
                   ) : (
                     <div className="grid h-full w-full place-items-center text-lg font-semibold">
                       {initials(fullName || "User")}
@@ -570,17 +812,27 @@ if (!school.trim()) return setToast({ type: "err", text: "Vui lòng nhập schoo
                   onChange={setMajor}
                   placeholder="VD: Software Engineering"
                 />
+
                 <Select value={year} onChange={setYear} placeholder="Năm" options={yearOptions} />
 
-                <label className="space-y-1.5 md:col-span-2">
-                  <span className="text-[0.72rem] text-white/60">Avatar URL</span>
-                  <input
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    placeholder="https://example.com/avatar.jpg"
-                    className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[0.78rem] text-white/90 outline-none focus:border-white/20"
-                  />
-                </label>
+                {/* ✅ NEW: Avatar uploader đẹp */}
+                <AvatarUploadBox
+                  shownAvatar={shownAvatar}
+                  fileName={pickedName}
+                  fileSizeMB={pickedSizeMB}
+                  overSize={overSize}
+                  onPick={() => fileInputRef.current?.click()}
+                  onClear={clearAvatarPick}
+                />
+
+                {/* input thật (hidden) */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={onPickAvatar}
+                  className="hidden"
+                />
               </div>
             </section>
 
