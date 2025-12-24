@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders/page";
+import { getAllClubs, type ClubItem } from "@/app/services/api/auth";
 
 import { motion } from "framer-motion";
 import {
@@ -136,12 +137,12 @@ function Select({
   );
 }
 
-type Club = {
-  id: number;
+type ClubCard = {
+  id: string;
   name: string;
   tag: string;
   desc: string;
-  members: string;
+  memberCount: number;
   rating: number;
   tone: "violet" | "sky" | "emerald" | "amber" | "fuchsia";
 };
@@ -179,7 +180,12 @@ function ToneBadge({ tone }: { tone: Club["tone"] }) {
       : "bg-violet-500/20 text-violet-100 border-violet-400/20";
 
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[0.65rem]", c)}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[0.65rem]",
+        c
+      )}
+    >
       <Sparkles className="h-3.5 w-3.5" />
       Nổi bật
     </span>
@@ -198,90 +204,76 @@ export default function FindingClubsPage() {
   const [tag, setTag] = useState("Tất cả");
   const [time, setTime] = useState("");
   const [sort, setSort] = useState("");
+  const [clubs, setClubs] = useState<ClubItem[]>([]);
+  const [clubsLoading, setClubsLoading] = useState(false);
+  const [clubsError, setClubsError] = useState<string | null>(null);
 
-  const tagOptions = ["Tất cả", "Nghệ thuật", "Công nghệ", "Thể thao", "Âm nhạc", "Học tập", "Game"];
+  const tagOptions = [
+    "Tất cả",
+    "Nghệ thuật",
+    "Công nghệ",
+    "Thể thao",
+    "Âm nhạc",
+    "Học tập",
+    "Game",
+  ];
 
-  const clubs: Club[] = useMemo(
-    () => [
-      {
-        id: 1,
-        name: "CLB Nghệ thuật số",
-        tag: "Nghệ thuật",
-        desc: "Khám phá và sáng tạo nghệ thuật số, từ digital painting đến 3D modeling.",
-        members: "124 thành viên",
-        rating: 4.6,
-        tone: "violet",
-      },
-      {
-        id: 2,
-        name: "CLB Lập trình",
-        tag: "Công nghệ",
-        desc: "Học hỏi và chia sẻ kỹ thuật lập trình, từ web đến AI/ML cùng nhau.",
-        members: "290 thành viên",
-        rating: 4.8,
-        tone: "sky",
-      },
-      {
-        id: 3,
-        name: "CLB Bóng rổ",
-        tag: "Thể thao",
-        desc: "Cùng rèn luyện thể lực, kỹ năng bóng rổ và tham gia các giải đấu nội bộ.",
-        members: "87 thành viên",
-        rating: 4.7,
-        tone: "emerald",
-      },
-      {
-        id: 4,
-        name: "CLB Âm nhạc",
-        tag: "Âm nhạc",
-        desc: "Sáng tác, luyện tập biểu diễn, jam session và tổ chức mini show định kỳ.",
-        members: "158 thành viên",
-        rating: 4.9,
-        tone: "fuchsia",
-      },
-      {
-        id: 5,
-        name: "CLB Đọc sách",
-        tag: "Học tập",
-        desc: "Thói quen đọc sách mỗi tuần, thảo luận nội dung và chia sẻ góc nhìn.",
-        members: "63 thành viên",
-        rating: 4.5,
-        tone: "amber",
-      },
-      {
-        id: 6,
-        name: "CLB Game Esports",
-        tag: "Game",
-        desc: "Luyện tập, scrim cùng team, tham gia giải đấu và nâng cao kỹ năng chiến thuật.",
-        members: "201 thành viên",
-        rating: 4.4,
-        tone: "violet",
-      },
-      {
-        id: 7,
-        name: "CLB Nhiếp ảnh",
-        tag: "Nghệ thuật",
-        desc: "Chụp ảnh, chỉnh sửa, review concept và đi photowalk cuối tuần.",
-        members: "72 thành viên",
-        rating: 4.6,
-        tone: "sky",
-      },
-      {
-        id: 8,
-        name: "CLB Yoga & Thiền",
-        tag: "Học tập",
-        desc: "Rèn luyện sự dẻo dai, cân bằng tinh thần và hình thành thói quen tốt.",
-        members: "142 thành viên",
-        rating: 4.7,
-        tone: "emerald",
-      },
-    ],
-    []
-  );
+  useEffect(() => {
+    if (!token) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setClubsLoading(true);
+        setClubsError(null);
+        const res = await getAllClubs(token);
+        if (!cancelled) setClubs(res);
+      } catch (error: unknown) {
+        if (!cancelled) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Không tải được danh sách câu lạc bộ";
+          setClubsError(message);
+        }
+      } finally {
+        if (!cancelled) setClubsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  const clubCards = useMemo<ClubCard[]>(() => {
+    const tones: ClubCard["tone"][] = [
+      "violet",
+      "sky",
+      "emerald",
+      "amber",
+      "fuchsia",
+    ];
+    return clubs.map((club, idx) => {
+      const fallbackRating = Math.min(5, 4 + ((idx % tones.length) + 1) * 0.1);
+      return {
+        id: club._id ?? `club-${idx}`,
+        name: club.fullName ?? "Câu lạc bộ",
+        tag: club.category ?? "Khác",
+        desc: club.description ?? "Chưa có mô tả.",
+        memberCount: club.clubJoined?.length ?? 0,
+        rating: typeof club.rating === "number" ? club.rating : fallbackRating,
+        tone: tones[idx % tones.length],
+      };
+    });
+  }, [clubs]);
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
-    return clubs
+    const parseMembers = (value: number) => value;
+
+    return clubCards
       .filter((c) => {
         const okTag = tag === "Tất cả" ? true : c.tag === tag;
         const okQ =
@@ -294,10 +286,11 @@ export default function FindingClubsPage() {
       .sort((a, b) => {
         if (!sort) return 0;
         if (sort === "Rating cao") return b.rating - a.rating;
-        if (sort === "Nhiều thành viên") return b.members.localeCompare(a.members);
+        if (sort === "Nhiều thành viên")
+          return parseMembers(b.memberCount) - parseMembers(a.memberCount);
         return 0;
       });
-  }, [clubs, q, tag, sort]);
+  }, [clubCards, q, tag, sort]);
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden text-white">
@@ -311,11 +304,19 @@ export default function FindingClubsPage() {
 
       {loading ? (
         <main className="mx-auto flex max-w-6xl items-center justify-center px-4 pb-16 pt-28">
-          <div className={cn("rounded-3xl px-6 py-4 text-sm text-white/75", glass)}>Đang tải...</div>
+          <div
+            className={cn("rounded-3xl px-6 py-4 text-sm text-white/75", glass)}
+          >
+            Đang tải...
+          </div>
         </main>
       ) : !token ? (
         <main className="mx-auto flex max-w-6xl items-center justify-center px-4 pb-16 pt-28">
-          <div className={cn("rounded-3xl px-6 py-4 text-sm text-white/75", glass)}>Đang chuyển hướng...</div>
+          <div
+            className={cn("rounded-3xl px-6 py-4 text-sm text-white/75", glass)}
+          >
+            Đang chuyển hướng...
+          </div>
         </main>
       ) : (
         <main className="mx-auto flex max-w-6xl flex-col gap-7 px-4 pb-20 pt-28">
@@ -325,7 +326,8 @@ export default function FindingClubsPage() {
               <div>
                 <h1 className="text-lg font-semibold">Khám phá các CLB</h1>
                 <p className="mt-1 text-[0.75rem] text-white/55">
-                  Tìm kiếm và tham gia các câu lạc bộ phù hợp với sở thích của bạn.
+                  Tìm kiếm và tham gia các câu lạc bộ phù hợp với sở thích của
+                  bạn.
                 </p>
               </div>
 
@@ -365,7 +367,11 @@ export default function FindingClubsPage() {
                             : "border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/[0.06] hover:text-white"
                         )}
                       >
-                        {t === "Tất cả" ? <Sparkles className="h-4 w-4" /> : <TagIcon tag={t} />}
+                        {t === "Tất cả" ? (
+                          <Sparkles className="h-4 w-4" />
+                        ) : (
+                          <TagIcon tag={t} />
+                        )}
                         {t}
                       </button>
                     );
@@ -377,13 +383,23 @@ export default function FindingClubsPage() {
                     value={time}
                     onChange={setTime}
                     placeholder="Thời gian hoạt động"
-                    options={["Buổi sáng", "Buổi chiều", "Buổi tối", "Cuối tuần"]}
+                    options={[
+                      "Buổi sáng",
+                      "Buổi chiều",
+                      "Buổi tối",
+                      "Cuối tuần",
+                    ]}
                   />
                   <Select
                     value={sort}
                     onChange={setSort}
                     placeholder="Sắp xếp theo"
-                    options={["Phổ biến", "Mới nhất", "Rating cao", "Nhiều thành viên"]}
+                    options={[
+                      "Phổ biến",
+                      "Mới nhất",
+                      "Rating cao",
+                      "Nhiều thành viên",
+                    ]}
                   />
                 </div>
               </div>
@@ -393,12 +409,34 @@ export default function FindingClubsPage() {
           {/* STATS (có icon bên phải giống ảnh) */}
           <section className="grid gap-4 md:grid-cols-4">
             {[
-              { label: "Tổng CLB", value: "156", icon: <Sparkles className="h-5 w-5 text-violet-200" /> },
-              { label: "Hoạt động", value: "89", icon: <Activity className="h-5 w-5 text-emerald-200" /> },
-              { label: "Thành viên", value: "2.4k", icon: <UserRound className="h-5 w-5 text-sky-200" /> },
-              { label: "Sự kiện", value: "47", icon: <CalendarDays className="h-5 w-5 text-amber-200" /> },
+              {
+                label: "Tổng CLB",
+                value: "156",
+                icon: <Sparkles className="h-5 w-5 text-violet-200" />,
+              },
+              {
+                label: "Hoạt động",
+                value: "89",
+                icon: <Activity className="h-5 w-5 text-emerald-200" />,
+              },
+              {
+                label: "Thành viên",
+                value: "2.4k",
+                icon: <UserRound className="h-5 w-5 text-sky-200" />,
+              },
+              {
+                label: "Sự kiện",
+                value: "47",
+                icon: <CalendarDays className="h-5 w-5 text-amber-200" />,
+              },
             ].map((s) => (
-              <div key={s.label} className={cn("relative overflow-hidden rounded-2xl p-4", glass)}>
+              <div
+                key={s.label}
+                className={cn(
+                  "relative overflow-hidden rounded-2xl p-4",
+                  glass
+                )}
+              >
                 <CornerGlow tone="violet" />
                 <div className="relative flex items-start justify-between">
                   <div>
@@ -424,63 +462,87 @@ export default function FindingClubsPage() {
             />
 
             <div className="mt-4 grid gap-4 md:grid-cols-4">
-              {filtered.map((club) => (
-                <motion.article
-                  key={club.id}
-                  whileHover={{ y: -4 }}
-                  transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                  className={cn(
-                    "relative overflow-hidden rounded-2xl p-4",
-                    "border border-white/10 bg-white/[0.05] shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
-                  )}
-                >
-                  <CornerGlow tone={club.tone} />
-
-                  <div className="relative">
-                    {/* banner + icon ở góc */}
-                    <div className="relative h-20 overflow-hidden rounded-2xl border border-white/10 bg-black/20">
-                      <div className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-xl border border-white/10 bg-white/[0.06]">
-                        <TagIcon tag={club.tag} />
-                      </div>
-                      <div className="absolute left-3 bottom-3">
-                        <ToneBadge tone={club.tone} />
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between">
-                      <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[0.65rem] text-white/70">
-                        <TagIcon tag={club.tag} />
-                        {club.tag}
-                      </span>
-
-                      <span className="inline-flex items-center gap-1 text-[0.7rem] font-semibold text-white/75">
-                        <Star size={14} className="text-amber-200" />
-                        {club.rating.toFixed(1)}
-                      </span>
-                    </div>
-
-                    <h3 className="mt-2 text-sm font-semibold leading-snug">{club.name}</h3>
-                    <p className="mt-1.5 line-clamp-3 text-[0.72rem] leading-relaxed text-white/60">
-                      {club.desc}
-                    </p>
-
-                    <div className="mt-3 flex items-center justify-between text-[0.68rem] text-white/55">
-                      <span className="inline-flex items-center gap-1.5">
-                        <Users size={14} />
-                        {club.members}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <Crown size={14} />
-                        Top
-                      </span>
-                    </div>
-
-                    <button className="mt-3 w-full rounded-full bg-violet-500/90 py-2 text-[0.72rem] font-semibold text-white hover:bg-violet-500">
-                      Tham gia
-                    </button>
+              {clubsLoading ? (
+                Array.from({ length: 4 }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-2xl border border-white/10 bg-white/[0.05] p-4"
+                  >
+                    <div className="h-20 rounded-2xl bg-white/10" />
+                    <div className="mt-3 h-4 w-3/4 rounded bg-white/10" />
+                    <div className="mt-2 h-3 w-full rounded bg-white/10" />
+                    <div className="mt-2 h-3 w-5/6 rounded bg-white/10" />
+                    <div className="mt-4 h-8 rounded-full bg-white/10" />
                   </div>
-                </motion.article>
-              ))}
+                ))
+              ) : clubsError ? (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4 text-sm text-white/70">
+                  {clubsError}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4 text-sm text-white/70">
+                  Không tìm thấy câu lạc bộ phù hợp. Hãy thử điều chỉnh bộ lọc.
+                </div>
+              ) : (
+                filtered.map((club) => (
+                  <motion.article
+                    key={club.id}
+                    whileHover={{ y: -4 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                    className={cn(
+                      "relative overflow-hidden rounded-2xl p-4",
+                      "border border-white/10 bg-white/[0.05] shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+                    )}
+                  >
+                    <CornerGlow tone={club.tone} />
+
+                    <div className="relative">
+                      <div className="relative h-20 overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+                        <div className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-xl border border-white/10 bg-white/[0.06]">
+                          <TagIcon tag={club.tag} />
+                        </div>
+                        <div className="absolute left-3 bottom-3">
+                          <ToneBadge tone={club.tone} />
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[0.65rem] text-white/70">
+                          <TagIcon tag={club.tag} />
+                          {club.tag}
+                        </span>
+
+                        <span className="inline-flex items-center gap-1 text-[0.7rem] font-semibold text-white/75">
+                          <Star size={14} className="text-amber-200" />
+                          {club.rating.toFixed(1)}
+                        </span>
+                      </div>
+
+                      <h3 className="mt-2 text-sm font-semibold leading-snug">
+                        {club.name}
+                      </h3>
+                      <p className="mt-1.5 line-clamp-3 text-[0.72rem] leading-relaxed text-white/60">
+                        {club.desc}
+                      </p>
+
+                      <div className="mt-3 flex items-center justify-between text-[0.68rem] text-white/55">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Users size={14} />
+                          {club.memberCount.toLocaleString("vi-VN")} thành viên
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <Crown size={14} />
+                          Top
+                        </span>
+                      </div>
+
+                      <button className="mt-3 w-full rounded-full bg-violet-500/90 py-2 text-[0.72rem] font-semibold text-white hover:bg-violet-500">
+                        Tham gia
+                      </button>
+                    </div>
+                  </motion.article>
+                ))
+              )}
             </div>
 
             <div className="mt-6 flex justify-center">

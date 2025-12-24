@@ -1,12 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders/page";
-import { AUTH_BASE_URL } from "@/app/services/api/auth";
+import { toast } from "sonner";
+import {
+  getMyApplications,
+  getClub,
+  cancelApplication,
+  type ApiStatus,
+  type MyApplication,
+  type FilterStatus,
+} from "@/app/services/api/applications";
 
 import {
   CheckCircle2,
@@ -33,37 +41,6 @@ function cn(...classes: Array<string | false | null | undefined>) {
 
 const glass =
   "border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
-
-type ApiStatus = "PENDING" | "APPROVED" | "REJECTED" | "ACCEPTED" | "DECLINED" | string;
-
-type ClubInfo = {
-  _id: string;
-  fullName?: string;
-  email?: string;
-  phoneNumber?: string;
-  category?: string;
-  description?: string;
-};
-
-type MyApplication = {
-  _id: string;
-  clubId: ClubInfo | string; // backend có thể populate hoặc chỉ id
-  reason?: string;
-  status: ApiStatus;
-  submittedAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
-
-  // approve có thể trả thêm
-  interviewDate?: string;
-  interviewLocation?: string;
-  interviewNote?: string;
-
-  // reject có thể trả thêm
-  rejectionReason?: string;
-};
-
-type FilterStatus = "all" | "PENDING" | "APPROVED" | "REJECTED" | "ACCEPTED" | "DECLINED";
 
 function fmtDate(s?: string) {
   if (!s) return "—";
@@ -158,7 +135,12 @@ function StatCard({
           <div className="text-2xl font-semibold text-white">{value}</div>
         </div>
 
-        <div className={cn("h-9 w-9 rounded-xl grid place-items-center border", toneMap[tone])}>
+        <div
+          className={cn(
+            "h-9 w-9 rounded-xl grid place-items-center border",
+            toneMap[tone]
+          )}
+        >
           {icon}
         </div>
       </div>
@@ -166,7 +148,13 @@ function StatCard({
   );
 }
 
-function Card({ className, children }: { className?: string; children: React.ReactNode }) {
+function Card({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
   return <div className={cn("rounded-3xl", glass, className)}>{children}</div>;
 }
 
@@ -185,7 +173,11 @@ function Modal({
 
   return (
     <div className="fixed inset-0 z-[80]">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden />
+      <div
+        className="absolute inset-0 bg-black/60"
+        onClick={onClose}
+        aria-hidden
+      />
       <div className="absolute left-1/2 top-1/2 w-[92vw] max-w-2xl -translate-x-1/2 -translate-y-1/2">
         <div className={cn("rounded-3xl p-5", glass)}>
           <div className="flex items-center justify-between gap-3">
@@ -205,54 +197,15 @@ function Modal({
   );
 }
 
-/** ✅ GET /applications/my-applications?status=... */
-async function getMyApplications(params: { accessToken: string; status?: Exclude<FilterStatus, "all"> }) {
-  const { accessToken, status } = params;
-
-  const url =
-    `${AUTH_BASE_URL}/applications/my-applications` +
-    (status ? `?status=${encodeURIComponent(status)}` : "");
-
-  const res = await fetch(url, {
-    method: "GET",
-    headers: {
-      accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
-  });
-
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    const msg = data?.message || `Không lấy được danh sách đơn (HTTP ${res.status})`;
-    throw new Error(msg);
-  }
-
-  // backend có thể trả [] hoặc { applications: [] } hoặc { data: [] }
-  const list = Array.isArray(data)
-    ? data
-    : Array.isArray(data?.applications)
-    ? data.applications
-    : Array.isArray(data?.data)
-    ? data.data
-    : [];
-
-  return list as MyApplication[];
-}
-
-function getClub(obj: any): ClubInfo {
-  if (!obj) return { _id: "", fullName: "—" };
-  if (typeof obj === "string") return { _id: obj, fullName: "—" };
-  return obj as ClubInfo;
-}
-
 export default function MyApplicationsPage() {
   const router = useRouter();
-  const { user, token, loading } = useAuth() as any;
+  const { user, token, loading } = useAuth();
 
   // page này cho user/member
-  const isUserRole = useMemo(() => String(user?.role || "").toLowerCase() === "user", [user?.role]);
+  const isUserRole = useMemo(
+    () => String(user?.role || "").toLowerCase() === "user",
+    [user?.role]
+  );
 
   useEffect(() => {
     if (loading) return;
@@ -267,12 +220,7 @@ export default function MyApplicationsPage() {
   const [fetching, setFetching] = useState(false);
   const [fetchErr, setFetchErr] = useState<string | null>(null);
 
-  const [toast, setToast] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2200);
-    return () => clearTimeout(t);
-  }, [toast]);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
 
   // detail modal
   const [open, setOpen] = useState(false);
@@ -311,7 +259,8 @@ export default function MyApplicationsPage() {
   }, [token, statusFilter, loading]);
 
   const stats = useMemo(() => {
-    const count = (s: string) => apps.filter((a) => String(a.status).toUpperCase() === s).length;
+    const count = (s: string) =>
+      apps.filter((a) => String(a.status).toUpperCase() === s).length;
     return {
       pending: count("PENDING"),
       approved: count("APPROVED"),
@@ -329,14 +278,49 @@ export default function MyApplicationsPage() {
     return apps.filter((a) => {
       const club = getClub(a.clubId);
       return (
-        String(a._id || "").toLowerCase().includes(query) ||
-        String(a.reason || "").toLowerCase().includes(query) ||
-        String(a.status || "").toLowerCase().includes(query) ||
-        String(club.fullName || "").toLowerCase().includes(query) ||
-        String(club.category || "").toLowerCase().includes(query)
+        String(a._id || "")
+          .toLowerCase()
+          .includes(query) ||
+        String(a.reason || "")
+          .toLowerCase()
+          .includes(query) ||
+        String(a.status || "")
+          .toLowerCase()
+          .includes(query) ||
+        String(club.fullName || "")
+          .toLowerCase()
+          .includes(query) ||
+        String(club.category || "")
+          .toLowerCase()
+          .includes(query)
       );
     });
   }, [apps, q]);
+
+  const handleCancel = useCallback(
+    async (appId: string) => {
+      if (!token) return;
+
+      if (typeof window !== "undefined") {
+        const confirmed = window.confirm("Bạn có chắc muốn hủy đơn này?");
+        if (!confirmed) return;
+      }
+
+      try {
+        setCancelingId(appId);
+        await cancelApplication({ accessToken: token, id: appId });
+        setApps((prev) => prev.filter((item) => item._id !== appId));
+        toast.success("Thành công", { description: "Đã hủy đơn" });
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Không thể hủy đơn"
+        );
+      } finally {
+        setCancelingId(null);
+      }
+    },
+    [token]
+  );
 
   if (loading) {
     return (
@@ -365,21 +349,6 @@ export default function MyApplicationsPage() {
 
       <Header />
 
-      {toast ? (
-        <div className="fixed left-1/2 top-5 z-[70] -translate-x-1/2">
-          <div
-            className={cn(
-              "rounded-2xl border px-4 py-2 text-[0.78rem] backdrop-blur-xl shadow-lg",
-              toast.type === "ok"
-                ? "border-emerald-400/20 bg-emerald-500/15 text-emerald-50"
-                : "border-rose-400/20 bg-rose-500/15 text-rose-50"
-            )}
-          >
-            {toast.text}
-          </div>
-        </div>
-      ) : null}
-
       <main className="mx-auto max-w-6xl px-4 pb-14 pt-10">
         {/* Title */}
         <div className="mb-5">
@@ -388,17 +357,49 @@ export default function MyApplicationsPage() {
           <p className="mt-1 text-sm text-white/60">
             Xem lại yêu cầu/ phản hồi từ câu lạc bộ và trạng thái đơn của bạn
           </p>
-          {fetchErr ? <div className="mt-2 text-sm text-rose-200/90">{fetchErr}</div> : null}
+          {fetchErr ? (
+            <div className="mt-2 text-sm text-rose-200/90">{fetchErr}</div>
+          ) : null}
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
-          <StatCard title="Chờ duyệt" value={stats.pending} tone="yellow" icon={<Clock3 className="h-5 w-5" />} />
-          <StatCard title="Đã duyệt" value={stats.approved} tone="blue" icon={<CheckCircle2 className="h-5 w-5" />} />
-          <StatCard title="CLB từ chối" value={stats.rejected} tone="red" icon={<XCircle className="h-5 w-5" />} />
-          <StatCard title="Bạn chấp nhận" value={stats.accepted} tone="green" icon={<BadgeCheck className="h-5 w-5" />} />
-          <StatCard title="Bạn từ chối" value={stats.declined} tone="gray" icon={<BadgeX className="h-5 w-5" />} />
-          <StatCard title="Tổng" value={stats.total} tone="blue" icon={<Users2 className="h-5 w-5" />} />
+          <StatCard
+            title="Chờ duyệt"
+            value={stats.pending}
+            tone="yellow"
+            icon={<Clock3 className="h-5 w-5" />}
+          />
+          <StatCard
+            title="Đã duyệt"
+            value={stats.approved}
+            tone="blue"
+            icon={<CheckCircle2 className="h-5 w-5" />}
+          />
+          <StatCard
+            title="CLB từ chối"
+            value={stats.rejected}
+            tone="red"
+            icon={<XCircle className="h-5 w-5" />}
+          />
+          <StatCard
+            title="Bạn chấp nhận"
+            value={stats.accepted}
+            tone="green"
+            icon={<BadgeCheck className="h-5 w-5" />}
+          />
+          <StatCard
+            title="Bạn từ chối"
+            value={stats.declined}
+            tone="gray"
+            icon={<BadgeX className="h-5 w-5" />}
+          />
+          <StatCard
+            title="Tổng"
+            value={stats.total}
+            tone="blue"
+            icon={<Users2 className="h-5 w-5" />}
+          />
         </div>
 
         {/* List */}
@@ -406,9 +407,13 @@ export default function MyApplicationsPage() {
           {/* Top bar */}
           <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-sm font-semibold text-white">Danh sách đơn</div>
+              <div className="text-sm font-semibold text-white">
+                Danh sách đơn
+              </div>
               <div className="mt-1 text-xs text-white/55">
-                {fetching ? "Đang tải..." : "Bạn có thể lọc trạng thái và xem chi tiết từng đơn"}
+                {fetching
+                  ? "Đang tải..."
+                  : "Bạn có thể lọc trạng thái và xem chi tiết từng đơn"}
               </div>
             </div>
 
@@ -428,7 +433,9 @@ export default function MyApplicationsPage() {
               <div className="relative">
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  onChange={(e) =>
+                    setStatusFilter(e.target.value as FilterStatus)
+                  }
                   className="appearance-none rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 pr-10 text-sm text-white/85 outline-none hover:bg-white/[0.10]"
                 >
                   <option value="all" className="bg-[#0b1038]">
@@ -467,6 +474,8 @@ export default function MyApplicationsPage() {
               const club = getClub(a.clubId);
               const hasInterview =
                 !!a.interviewDate || !!a.interviewLocation || !!a.interviewNote;
+              const isPending = String(a.status).toUpperCase() === "PENDING";
+              const isCancelling = cancelingId === a._id;
 
               return (
                 <div
@@ -500,7 +509,9 @@ export default function MyApplicationsPage() {
                       </div>
 
                       <p className="mt-3 text-sm text-white/70 leading-relaxed line-clamp-2">
-                        <span className="text-white/80 font-semibold">Lý do:</span>{" "}
+                        <span className="text-white/80 font-semibold">
+                          Lý do:
+                        </span>{" "}
                         {a.reason || "—"}
                       </p>
 
@@ -514,16 +525,22 @@ export default function MyApplicationsPage() {
                           <div className="mt-2 text-sm text-white/75">
                             <div>
                               <span className="text-white/60">Thời gian:</span>{" "}
-                              <span className="font-semibold text-white/90">{fmtDate(a.interviewDate)}</span>
+                              <span className="font-semibold text-white/90">
+                                {fmtDate(a.interviewDate)}
+                              </span>
                             </div>
                             <div className="mt-1">
                               <span className="text-white/60">Địa điểm:</span>{" "}
-                              <span className="font-semibold text-white/90">{a.interviewLocation || "—"}</span>
+                              <span className="font-semibold text-white/90">
+                                {a.interviewLocation || "—"}
+                              </span>
                             </div>
                             {a.interviewNote ? (
                               <div className="mt-1">
                                 <span className="text-white/60">Ghi chú:</span>{" "}
-                                <span className="text-white/85">{a.interviewNote}</span>
+                                <span className="text-white/85">
+                                  {a.interviewNote}
+                                </span>
                               </div>
                             ) : null}
                           </div>
@@ -531,19 +548,33 @@ export default function MyApplicationsPage() {
                       ) : null}
 
                       {/* nếu bị từ chối */}
-                      {String(a.status).toUpperCase() === "REJECTED" && a.rejectionReason ? (
+                      {String(a.status).toUpperCase() === "REJECTED" &&
+                      a.rejectionReason ? (
                         <div className="mt-3 rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4">
                           <div className="flex items-center gap-2 text-sm font-semibold text-rose-100">
                             <XCircle className="h-4 w-4" />
                             Lý do CLB từ chối
                           </div>
-                          <div className="mt-2 text-sm text-white/75">{a.rejectionReason}</div>
+                          <div className="mt-2 text-sm text-white/75">
+                            {a.rejectionReason}
+                          </div>
                         </div>
                       ) : null}
                     </div>
 
                     {/* Right actions */}
-                    <div className="flex shrink-0 items-center justify-end gap-2 md:justify-start">
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 md:justify-start">
+                      {isPending ? (
+                        <button
+                          type="button"
+                          disabled={isCancelling}
+                          onClick={() => handleCancel(a._id)}
+                          className="inline-flex items-center gap-2 rounded-full border border-rose-400/25 bg-rose-500/15 px-4 py-2 text-[0.72rem] font-semibold text-rose-100 hover:bg-rose-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          {isCancelling ? "Đang hủy..." : "Hủy đơn"}
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => {
@@ -581,13 +612,17 @@ export default function MyApplicationsPage() {
           <div className="grid gap-4 md:grid-cols-2">
             {/* left: club */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-              <div className="text-sm font-semibold text-white/90">Câu lạc bộ</div>
+              <div className="text-sm font-semibold text-white/90">
+                Câu lạc bộ
+              </div>
 
               {(() => {
                 const club = getClub(picked.clubId);
                 return (
                   <div className="mt-3 space-y-2 text-sm text-white/75">
-                    <div className="font-semibold text-white/90">{club.fullName || "—"}</div>
+                    <div className="font-semibold text-white/90">
+                      {club.fullName || "—"}
+                    </div>
 
                     <div className="text-xs text-white/55">
                       {club.category ? `Danh mục: ${club.category}` : "—"}
@@ -600,7 +635,9 @@ export default function MyApplicationsPage() {
 
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-white/60" />
-                      <span className="truncate">{club.phoneNumber || "—"}</span>
+                      <span className="truncate">
+                        {club.phoneNumber || "—"}
+                      </span>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -614,7 +651,9 @@ export default function MyApplicationsPage() {
 
             {/* right: application */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-              <div className="text-sm font-semibold text-white/90">Thông tin đơn</div>
+              <div className="text-sm font-semibold text-white/90">
+                Thông tin đơn
+              </div>
 
               <div className="mt-3 space-y-2 text-sm text-white/75">
                 <div className="flex flex-wrap items-center gap-2">
@@ -635,7 +674,9 @@ export default function MyApplicationsPage() {
 
                 <div className="pt-1">
                   <div className="text-xs text-white/60">Updated</div>
-                  <div className="font-semibold text-white/90">{fmtDate(picked.updatedAt)}</div>
+                  <div className="font-semibold text-white/90">
+                    {fmtDate(picked.updatedAt)}
+                  </div>
                 </div>
               </div>
             </div>
@@ -649,7 +690,9 @@ export default function MyApplicationsPage() {
             </div>
 
             {/* interview request */}
-            {(picked.interviewDate || picked.interviewLocation || picked.interviewNote) ? (
+            {picked.interviewDate ||
+            picked.interviewLocation ||
+            picked.interviewNote ? (
               <div className="md:col-span-2 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-sky-100">
                   <Info className="h-4 w-4" />
@@ -658,16 +701,22 @@ export default function MyApplicationsPage() {
                 <div className="mt-2 text-sm text-white/75">
                   <div>
                     <span className="text-white/60">Thời gian:</span>{" "}
-                    <span className="font-semibold text-white/90">{fmtDate(picked.interviewDate)}</span>
+                    <span className="font-semibold text-white/90">
+                      {fmtDate(picked.interviewDate)}
+                    </span>
                   </div>
                   <div className="mt-1">
                     <span className="text-white/60">Địa điểm:</span>{" "}
-                    <span className="font-semibold text-white/90">{picked.interviewLocation || "—"}</span>
+                    <span className="font-semibold text-white/90">
+                      {picked.interviewLocation || "—"}
+                    </span>
                   </div>
                   {picked.interviewNote ? (
                     <div className="mt-1">
                       <span className="text-white/60">Ghi chú:</span>{" "}
-                      <span className="text-white/85">{picked.interviewNote}</span>
+                      <span className="text-white/85">
+                        {picked.interviewNote}
+                      </span>
                     </div>
                   ) : null}
                 </div>
@@ -675,13 +724,16 @@ export default function MyApplicationsPage() {
             ) : null}
 
             {/* rejection reason */}
-            {String(picked.status).toUpperCase() === "REJECTED" && picked.rejectionReason ? (
+            {String(picked.status).toUpperCase() === "REJECTED" &&
+            picked.rejectionReason ? (
               <div className="md:col-span-2 rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-rose-100">
                   <XCircle className="h-4 w-4" />
                   Lý do CLB từ chối
                 </div>
-                <div className="mt-2 text-sm text-white/75">{picked.rejectionReason}</div>
+                <div className="mt-2 text-sm text-white/75">
+                  {picked.rejectionReason}
+                </div>
               </div>
             ) : null}
 

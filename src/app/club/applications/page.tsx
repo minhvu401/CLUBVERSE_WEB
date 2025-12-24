@@ -7,6 +7,11 @@ import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders/page";
 import { AUTH_BASE_URL } from "@/app/services/api/auth";
+import {
+  getClubApplications,
+  approveApplication,
+  rejectApplication,
+} from "@/app/services/api/applications";
 
 import {
   CheckCircle2,
@@ -31,7 +36,7 @@ function cn(...classes: Array<string | false | null | undefined>) {
 const glass =
   "border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
 
-type AppStatus = "pending" | "approved" | "rejected";
+type AppStatus = "PENDING" | "APPROVED" | "REJECTED" | "ACCEPTED" | "DECLINED";
 
 type Application = {
   id: string;
@@ -83,24 +88,34 @@ function StatCard({
 
 function StatusBadge({ status }: { status: AppStatus }) {
   const map: Record<AppStatus, { text: string; cls: string; dot: string }> = {
-    pending: {
+    PENDING: {
       text: "Chờ duyệt",
       cls: "bg-amber-400/15 text-amber-200 border-amber-400/25",
       dot: "bg-amber-300",
     },
-    approved: {
+    APPROVED: {
+      text: "Đã duyệt",
+      cls: "bg-sky-400/15 text-sky-200 border-sky-400/25",
+      dot: "bg-sky-300",
+    },
+    ACCEPTED: {
       text: "Đã chấp nhận",
       cls: "bg-emerald-400/15 text-emerald-200 border-emerald-400/25",
       dot: "bg-emerald-300",
     },
-    rejected: {
+    DECLINED: {
+      text: "Đã từ chối (sau PV)",
+      cls: "bg-white/10 text-white/70 border-white/15",
+      dot: "bg-white/50",
+    },
+    REJECTED: {
       text: "Từ chối",
       cls: "bg-rose-400/15 text-rose-200 border-rose-400/25",
       dot: "bg-rose-300",
     },
   };
 
-  const cfg = map[status];
+  const cfg = map[status] || map.PENDING;
 
   return (
     <span
@@ -191,105 +206,16 @@ function Modal({
   );
 }
 
-/** ✅ Fetch API: GET /applications/club/{clubId}?status=... */
-async function getApplicationsByClub(params: {
-  accessToken: string;
-  clubId: string;
-  status?: AppStatus;
-}) {
-  const { accessToken, clubId, status } = params;
-
-  const url =
-    `${AUTH_BASE_URL}/applications/club/${clubId}` +
-    (status ? `?status=${encodeURIComponent(status)}` : "");
-
-  const res = await fetch(url, {
-    method: "GET",
-    headers: {
-      accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
-  });
-
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    const msg =
-      data?.message || `Không lấy được danh sách đơn (HTTP ${res.status})`;
-    throw new Error(msg);
-  }
-
-  return data;
-}
-
-/** ✅ PATCH approve */
-async function approveApplication(params: {
-  accessToken: string;
-  id: string;
-  interviewDate: string; // ISO string
-  interviewLocation: string;
-  interviewNote?: string;
-}) {
-  const { accessToken, id, interviewDate, interviewLocation, interviewNote } = params;
-
-  const res = await fetch(`${AUTH_BASE_URL}/applications/${id}/approve`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({
-      interviewDate,
-      interviewLocation,
-      interviewNote: interviewNote || "",
-    }),
-  });
-
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    const msg = data?.message || `Duyệt đơn thất bại (HTTP ${res.status})`;
-    throw new Error(msg);
-  }
-
-  return data;
-}
-
-/** ✅ PATCH reject */
-async function rejectApplication(params: {
-  accessToken: string;
-  id: string;
-  rejectionReason: string;
-}) {
-  const { accessToken, id, rejectionReason } = params;
-
-  const res = await fetch(`${AUTH_BASE_URL}/applications/${id}/reject`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ rejectionReason }),
-  });
-
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    const msg = data?.message || `Từ chối đơn thất bại (HTTP ${res.status})`;
-    throw new Error(msg);
-  }
-
-  return data;
-}
 
 /** ✅ Map response -> UI */
 function mapAppFromApi(raw: any): Application {
   const s = String(raw?.status || "").toUpperCase();
   const status: AppStatus =
-    s === "APPROVED" ? "approved" : s === "REJECTED" ? "rejected" : "pending";
+    s === "PENDING" ? "PENDING" :
+    s === "APPROVED" ? "APPROVED" :
+    s === "REJECTED" ? "REJECTED" :
+    s === "ACCEPTED" ? "ACCEPTED" :
+    s === "DECLINED" ? "DECLINED" : "PENDING";
 
   const u = raw?.userId ?? {};
   const name = u?.fullName ?? "Không rõ tên";
@@ -372,19 +298,12 @@ export default function ClubApplicationsPage() {
         setFetching(true);
         setFetchErr(null);
 
-        const data = await getApplicationsByClub({
+        const list = await getClubApplications({
           accessToken: token,
           clubId,
           status: statusFilter === "all" ? undefined : statusFilter,
         });
 
-        const list = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.applications)
-          ? data.applications
-          : Array.isArray(data?.data)
-          ? data.data
-          : [];
 
         const mapped = list.map(mapAppFromApi).filter((x: Application) => x.id);
 
@@ -405,9 +324,9 @@ export default function ClubApplicationsPage() {
   }, [token, clubId, statusFilter, loading]);
 
   const stats = useMemo(() => {
-    const pending = apps.filter((a) => a.status === "pending").length;
-    const approved = apps.filter((a) => a.status === "approved").length;
-    const rejected = apps.filter((a) => a.status === "rejected").length;
+    const pending = apps.filter((a) => a.status === "PENDING").length;
+    const approved = apps.filter((a) => a.status === "APPROVED").length;
+    const rejected = apps.filter((a) => a.status === "REJECTED").length;
     const total = apps.length;
     return { pending, approved, rejected, total };
   }, [apps]);
@@ -475,7 +394,7 @@ export default function ClubApplicationsPage() {
       });
 
       setApps((prev) =>
-        prev.map((a) => (a.id === approveId ? { ...a, status: "approved" } : a))
+        prev.map((a) => (a.id === approveId ? { ...a, status: "APPROVED" } : a))
       );
 
       setToast({ type: "ok", text: data?.message || "Duyệt đơn thành công" });
@@ -512,7 +431,7 @@ export default function ClubApplicationsPage() {
       });
 
       setApps((prev) =>
-        prev.map((a) => (a.id === rejectId ? { ...a, status: "rejected" } : a))
+        prev.map((a) => (a.id === rejectId ? { ...a, status: "REJECTED" } : a))
       );
 
       setToast({ type: "ok", text: data?.message || "Từ chối đơn thành công" });
@@ -638,9 +557,11 @@ export default function ClubApplicationsPage() {
                     className="appearance-none rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 pr-10 text-sm text-white/85 outline-none hover:bg-white/[0.10]"
                   >
                     <option value="all" className="bg-[#0b1038]">Tất cả trạng thái</option>
-                    <option value="pending" className="bg-[#0b1038]">Chờ duyệt</option>
-                    <option value="approved" className="bg-[#0b1038]">Đã chấp nhận</option>
-                    <option value="rejected" className="bg-[#0b1038]">Từ chối</option>
+                    <option value="PENDING" className="bg-[#0b1038]">Chờ duyệt</option>
+                    <option value="APPROVED" className="bg-[#0b1038]">Đã duyệt</option>
+                    <option value="REJECTED" className="bg-[#0b1038]">Từ chối</option>
+                    <option value="ACCEPTED" className="bg-[#0b1038]">Đã chấp nhận</option>
+                    <option value="DECLINED" className="bg-[#0b1038]">Đã từ chối (sau PV)</option>
                   </select>
                   <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/55" />
                 </div>
@@ -686,7 +607,7 @@ export default function ClubApplicationsPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center justify-end gap-2 md:justify-start">
-                    {a.status === "pending" ? (
+                    {a.status === "PENDING" ? (
                       <>
                         <ActionButton tone="green" onClick={() => openApprove(a.id)}>
                           <CheckCircle2 className="h-4 w-4" />

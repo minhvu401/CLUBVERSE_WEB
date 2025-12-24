@@ -7,6 +7,12 @@ import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders/page";
 import { AUTH_BASE_URL } from "@/app/services/api/auth";
+import {
+  getApplicationById,
+  approveApplication,
+  rejectApplication,
+  finalDecision,
+} from "@/app/services/api/applications";
 
 import {
   ArrowLeft,
@@ -21,6 +27,8 @@ import {
   X,
   XCircle,
   NotebookPen,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -30,7 +38,7 @@ function cn(...classes: Array<string | false | null | undefined>) {
 const glass =
   "border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
 
-type RawStatus = "PENDING" | "APPROVED" | "REJECTED" | string;
+type RawStatus = "PENDING" | "APPROVED" | "REJECTED" | "ACCEPTED" | "DECLINED" | string;
 
 type ClubInfo = {
   _id: string;
@@ -85,13 +93,25 @@ function StatusBadge({ status }: { status: RawStatus }) {
       icon: <Clock3 className="h-4 w-4" />,
     },
     APPROVED: {
+      text: "Đã duyệt (chờ phản hồi)",
+      cls: "bg-sky-400/15 text-sky-200 border-sky-400/25",
+      dot: "bg-sky-300",
+      icon: <CheckCircle2 className="h-4 w-4" />,
+    },
+    ACCEPTED: {
       text: "Đã chấp nhận",
       cls: "bg-emerald-400/15 text-emerald-200 border-emerald-400/25",
       dot: "bg-emerald-300",
-      icon: <CheckCircle2 className="h-4 w-4" />,
+      icon: <ThumbsUp className="h-4 w-4" />,
+    },
+    DECLINED: {
+      text: "Đã từ chối (sau PV)",
+      cls: "bg-white/10 text-white/70 border-white/15",
+      dot: "bg-white/50",
+      icon: <ThumbsDown className="h-4 w-4" />,
     },
     REJECTED: {
-      text: "Từ chối",
+      text: "CLB từ chối",
       cls: "bg-rose-400/15 text-rose-200 border-rose-400/25",
       dot: "bg-rose-300",
       icon: <XCircle className="h-4 w-4" />,
@@ -178,93 +198,6 @@ function Modal({
   );
 }
 
-/** ✅ giả định endpoint: GET /applications/{id}
- * Nếu backend bạn đang dùng khác path thì chỉ đổi ở đây.
- */
-async function getApplicationDetail(accessToken: string, applicationId: string) {
-  const res = await fetch(`${AUTH_BASE_URL}/applications/${applicationId}`, {
-    method: "GET",
-    headers: {
-      accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
-  });
-
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    const msg =
-      data?.message || `Không lấy được chi tiết đơn (HTTP ${res.status})`;
-    throw new Error(msg);
-  }
-
-  // backend có thể trả { application: {...} } hoặc trả thẳng object
-  return (data?.application ?? data) as ApplicationDetail;
-}
-
-/** ✅ PATCH /applications/{id}/approve */
-async function approveApplication(params: {
-  accessToken: string;
-  id: string;
-  interviewDate: string; // ISO
-  interviewLocation: string;
-  interviewNote?: string;
-}) {
-  const { accessToken, id, interviewDate, interviewLocation, interviewNote } =
-    params;
-
-  const res = await fetch(`${AUTH_BASE_URL}/applications/${id}/approve`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({
-      interviewDate,
-      interviewLocation,
-      interviewNote: interviewNote || "",
-    }),
-  });
-
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    const msg = data?.message || `Duyệt đơn thất bại (HTTP ${res.status})`;
-    throw new Error(msg);
-  }
-
-  return data;
-}
-
-/** ✅ PATCH /applications/{id}/reject */
-async function rejectApplication(params: {
-  accessToken: string;
-  id: string;
-  rejectionReason: string;
-}) {
-  const { accessToken, id, rejectionReason } = params;
-
-  const res = await fetch(`${AUTH_BASE_URL}/applications/${id}/reject`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ rejectionReason }),
-  });
-
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    const msg = data?.message || `Từ chối đơn thất bại (HTTP ${res.status})`;
-    throw new Error(msg);
-  }
-
-  return data;
-}
 
 function fmtDate(s?: string) {
   if (!s) return "—";
@@ -323,8 +256,11 @@ export default function ApplicationDetailPage() {
         setFetching(true);
         setErr(null);
 
-        const res = await getApplicationDetail(token, applicationId);
-        if (!cancelled) setData(res);
+        const res = await getApplicationById({
+          accessToken: token,
+          id: applicationId,
+        });
+        if (!cancelled) setData(res as any);
       } catch (e: any) {
         if (!cancelled) setErr(e?.message || "Lỗi tải chi tiết đơn");
       } finally {
@@ -345,6 +281,7 @@ export default function ApplicationDetailPage() {
     [data?.status]
   );
   const canAction = statusUpper === "PENDING";
+  const canFinalDecision = statusUpper === "APPROVED";
 
   // ✅ approve modal state
   const [approveOpen, setApproveOpen] = useState(false);
@@ -357,6 +294,12 @@ export default function ApplicationDetailPage() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [submittingReject, setSubmittingReject] = useState(false);
+
+  // ✅ final decision modal state
+  const [finalOpen, setFinalOpen] = useState(false);
+  const [finalDecisionType, setFinalDecisionType] = useState<"accepted" | "declined">("accepted");
+  const [finalRejectionReason, setFinalRejectionReason] = useState("");
+  const [submittingFinal, setSubmittingFinal] = useState(false);
 
   const onApprove = async () => {
     if (!token || !applicationId) return;
@@ -441,6 +384,44 @@ export default function ApplicationDetailPage() {
       setToast({ type: "err", text: e?.message || "Từ chối đơn thất bại" });
     } finally {
       setSubmittingReject(false);
+    }
+  };
+
+  const onFinalDecision = async () => {
+    if (!token || !applicationId) return;
+
+    if (finalDecisionType === "declined" && !finalRejectionReason.trim()) {
+      setToast({ type: "err", text: "Vui lòng nhập lý do từ chối" });
+      return;
+    }
+
+    try {
+      setSubmittingFinal(true);
+
+      const res = await finalDecision({
+        accessToken: token,
+        id: applicationId,
+        decision: finalDecisionType,
+        rejectionReason: finalDecisionType === "declined" ? finalRejectionReason.trim() : undefined,
+      });
+
+      setData((prev) =>
+        prev
+          ? ({
+              ...prev,
+              status: finalDecisionType === "accepted" ? "ACCEPTED" : "DECLINED",
+              rejectionReason: finalDecisionType === "declined" ? finalRejectionReason.trim() : prev.rejectionReason,
+              updatedAt: new Date().toISOString(),
+            } as any)
+          : prev
+      );
+
+      setToast({ type: "ok", text: res?.message || "Quyết định thành công" });
+      setFinalOpen(false);
+    } catch (e: any) {
+      setToast({ type: "err", text: e?.message || "Quyết định thất bại" });
+    } finally {
+      setSubmittingFinal(false);
     }
   };
 
@@ -666,50 +647,73 @@ export default function ApplicationDetailPage() {
                 <Card className="p-6">
                   <h3 className="text-sm font-semibold text-white">Hành động</h3>
 
-                  {!canAction ? (
+                  {!canAction && !canFinalDecision ? (
                     <div className="mt-3 text-sm text-white/60">
                       Đơn đã được xử lý. Không thể duyệt/từ chối lại.
                     </div>
                   ) : null}
 
                   <div className="mt-4 grid gap-2">
-                    <button
-                      type="button"
-                      disabled={!canAction}
-                      className={cn(
-                        "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold",
-                        canAction
-                          ? "bg-emerald-500/85 text-white hover:bg-emerald-500"
-                          : "bg-white/10 text-white/45 cursor-not-allowed"
-                      )}
-                      onClick={() => {
-                        setInterviewDate("");
-                        setInterviewLocation("");
-                        setInterviewNote("");
-                        setApproveOpen(true);
-                      }}
-                    >
-                      <CheckCircle2 className="h-4 w-4" />
-                      Duyệt
-                    </button>
+                    {canAction ? (
+                      <>
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold bg-emerald-500/85 text-white hover:bg-emerald-500"
+                          onClick={() => {
+                            setInterviewDate("");
+                            setInterviewLocation("");
+                            setInterviewNote("");
+                            setApproveOpen(true);
+                          }}
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          Duyệt
+                        </button>
 
-                    <button
-                      type="button"
-                      disabled={!canAction}
-                      className={cn(
-                        "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold",
-                        canAction
-                          ? "bg-rose-500/85 text-white hover:bg-rose-500"
-                          : "bg-white/10 text-white/45 cursor-not-allowed"
-                      )}
-                      onClick={() => {
-                        setRejectionReason("");
-                        setRejectOpen(true);
-                      }}
-                    >
-                      <XCircle className="h-4 w-4" />
-                      Từ chối
-                    </button>
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold bg-rose-500/85 text-white hover:bg-rose-500"
+                          onClick={() => {
+                            setRejectionReason("");
+                            setRejectOpen(true);
+                          }}
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Từ chối
+                        </button>
+                      </>
+                    ) : canFinalDecision ? (
+                      <>
+                        <div className="mb-2 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-3 text-xs text-sky-100">
+                          Đơn đã được duyệt. Bạn có thể đưa ra quyết định cuối cùng sau phỏng vấn.
+                        </div>
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold bg-emerald-500/85 text-white hover:bg-emerald-500"
+                          onClick={() => {
+                            setFinalDecisionType("accepted");
+                            setFinalRejectionReason("");
+                            setFinalOpen(true);
+                          }}
+                        >
+                          <ThumbsUp className="h-4 w-4" />
+                          Chấp nhận
+                        </button>
+
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold bg-rose-500/85 text-white hover:bg-rose-500"
+                          onClick={() => {
+                            setFinalDecisionType("declined");
+                            setFinalRejectionReason("");
+                            setFinalOpen(true);
+                          }}
+                        >
+                          <ThumbsDown className="h-4 w-4" />
+                          Từ chối
+                        </button>
+                      </>
+                    ) : null}
 
                     <button
                       type="button"
@@ -849,6 +853,65 @@ export default function ApplicationDetailPage() {
               )}
             >
               {submittingReject ? "Đang từ chối..." : "Xác nhận từ chối"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ✅ MODAL FINAL DECISION */}
+      <Modal
+        open={finalOpen}
+        title={finalDecisionType === "accepted" ? "Chấp nhận ứng viên" : "Từ chối ứng viên sau phỏng vấn"}
+        onClose={() => setFinalOpen(false)}
+        busy={submittingFinal}
+      >
+        <div className="space-y-3">
+          <div className="text-[0.78rem] text-white/65">
+            {finalDecisionType === "accepted"
+              ? "Xác nhận chấp nhận ứng viên vào câu lạc bộ. Họ sẽ trở thành thành viên chính thức."
+              : "Nhập lý do từ chối sau phỏng vấn để gửi cho ứng viên."}
+          </div>
+
+          {finalDecisionType === "declined" && (
+            <textarea
+              rows={4}
+              value={finalRejectionReason}
+              onChange={(e) => setFinalRejectionReason(e.target.value)}
+              placeholder='VD: "Ứng viên chưa đạt yêu cầu về kỹ năng"'
+              className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-3 text-sm text-white/90 outline-none placeholder:text-white/35 focus:border-white/20"
+            />
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              type="button"
+              disabled={submittingFinal}
+              onClick={() => setFinalOpen(false)}
+              className={cn(
+                "rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[0.78rem] font-semibold text-white/80 hover:bg-white/[0.10]",
+                submittingFinal && "opacity-60 cursor-not-allowed"
+              )}
+            >
+              Hủy
+            </button>
+
+            <button
+              type="button"
+              disabled={submittingFinal}
+              onClick={onFinalDecision}
+              className={cn(
+                "rounded-full px-4 py-2 text-[0.78rem] font-semibold text-white",
+                finalDecisionType === "accepted"
+                  ? "bg-emerald-500/85 hover:bg-emerald-500"
+                  : "bg-rose-500/85 hover:bg-rose-500",
+                submittingFinal && "opacity-60 cursor-not-allowed"
+              )}
+            >
+              {submittingFinal
+                ? "Đang xử lý..."
+                : finalDecisionType === "accepted"
+                ? "Xác nhận chấp nhận"
+                : "Xác nhận từ chối"}
             </button>
           </div>
         </div>

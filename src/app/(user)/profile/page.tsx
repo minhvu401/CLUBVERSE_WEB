@@ -4,11 +4,14 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProviders/page";
+import { toast } from "sonner";
 import Image from "next/image";
 import {
   getProfile,
   updateStudentProfile,
   type ProfileResponse,
+  type UpdateStudentProfileRequest,
+  type UpdateStudentProfileResponse,
 } from "@/app/services/api/auth";
 
 import {
@@ -23,6 +26,7 @@ import {
   Settings,
   Save,
   X,
+  ArrowLeft,
   Plus,
   ChevronDown,
   Sparkles,
@@ -38,6 +42,48 @@ type Slot = {
   label?: string;
   tone: "green" | "purple" | "blue" | "red" | "gray";
 };
+
+type ProfileDraft = {
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  avatarUrl: string;
+  school: string;
+  major: string;
+  year: string;
+  skills: Chip[];
+  interests: Chip[];
+};
+
+type ProfileApiPayload = ProfileResponse | { user?: ProfileResponse };
+
+function getYearLabel(year?: number | null): string {
+  if (!year) return "";
+  return year >= 1 && year <= 4 ? `Năm ${year}` : "";
+}
+
+function profileToDraft(
+  profile: ProfileResponse,
+  seed: string = `${Date.now()}`
+): ProfileDraft {
+  return {
+    fullName: profile.fullName ?? "",
+    email: profile.email ?? "",
+    phoneNumber: profile.phoneNumber ?? "",
+    avatarUrl: profile.avatarUrl ?? "",
+    school: profile.school ?? "",
+    major: profile.major ?? "",
+    year: getYearLabel(profile.year),
+    skills: (profile.skills ?? []).map((skill, idx) => ({
+      id: `s-${seed}-${idx}`,
+      label: skill,
+    })),
+    interests: (profile.interests ?? []).map((interest, idx) => ({
+      id: `i-${seed}-${idx}`,
+      label: interest,
+    })),
+  };
+}
 
 const glass =
   "border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
@@ -65,10 +111,16 @@ function parseAcademicYear(v: string): number | null {
   return n;
 }
 
-function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string }) {
+function SectionTitle({
+  icon,
+  title,
+}: {
+  icon: React.ReactNode;
+  title: string;
+}) {
   return (
     <div className="flex items-center gap-2 text-sm font-semibold text-white/90">
-      <span className="grid h-7 w-7 place-items-center rounded-lg border border-white/10 bg-white/[0.06]">
+      <span className="grid h-7 w-7 place-items-center rounded-lg border border-white/10 bg-white/6">
         {icon}
       </span>
       {title}
@@ -105,7 +157,7 @@ function ChipPill({
       {onRemove ? (
         <button
           onClick={onRemove}
-          className="grid h-4 w-4 place-items-center rounded-full bg-white/10 hover:bg-white/[0.15]"
+          className="grid h-4 w-4 place-items-center rounded-full bg-white/10 hover:bg-white/15"
           aria-label="Remove"
           type="button"
         >
@@ -133,7 +185,7 @@ function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none rounded-xl border border-white/10 bg-white/[0.06] pl-3 pr-10 py-2 text-[0.78rem] leading-tight text-white/90 outline-none focus:border-white/20"
+        className="w-full appearance-none rounded-xl border border-white/10 bg-white/6 pl-3 pr-10 py-2 text-[0.78rem] leading-tight text-white/90 outline-none focus:border-white/20"
       >
         <option value="" disabled>
           {placeholder}
@@ -177,7 +229,7 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className={cn(
-          "w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[0.78rem] text-white/90 outline-none focus:border-white/20",
+          "w-full rounded-xl border border-white/10 bg-white/6 px-3 py-2 text-[0.78rem] text-white/90 outline-none focus:border-white/20",
           disabled && "opacity-70"
         )}
       />
@@ -197,8 +249,16 @@ function SlotPill({ slot }: { slot: Slot }) {
       ? "bg-white/10 border-white/10 text-white/75"
       : "bg-sky-500/25 border-sky-400/20 text-sky-50";
 
-  const text = slot.label ? slot.label : slot.end ? `${slot.start} - ${slot.end}` : slot.start;
-  return <div className={cn("rounded-lg border px-2 py-1 text-[0.68rem]", tone)}>{text}</div>;
+  const text = slot.label
+    ? slot.label
+    : slot.end
+    ? `${slot.start} - ${slot.end}`
+    : slot.start;
+  return (
+    <div className={cn("rounded-lg border px-2 py-1 text-[0.68rem]", tone)}>
+      {text}
+    </div>
+  );
 }
 
 /** ✅ NEW: Upload Avatar UI (đẹp, chuyên nghiệp, đúng tone glass) */
@@ -221,17 +281,26 @@ function AvatarUploadBox({
     <div className="space-y-1.5 md:col-span-2">
       <span className="text-[0.72rem] text-white/60">Avatar</span>
 
-      <div className={cn("relative overflow-hidden rounded-2xl p-4", "border border-white/10 bg-white/[0.06]")}>
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-2xl p-4",
+          "border border-white/10 bg-white/6"
+        )}
+      >
         {/* glow */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(168,85,247,0.16),transparent_55%)]" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_95%_10%,rgba(59,130,246,0.12),transparent_55%)]" />
 
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06]">
+            <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-white/10 bg-white/6">
               {shownAvatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={shownAvatar} alt="avatar preview" className="h-full w-full object-cover" />
+                <img
+                  src={shownAvatar}
+                  alt="avatar preview"
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <div className="grid h-full w-full place-items-center text-white/60">
                   <ImageIcon className="h-6 w-6" />
@@ -244,7 +313,9 @@ function AvatarUploadBox({
                 {fileName || "Chưa chọn ảnh"}
               </div>
               <div className="mt-1 text-xs text-white/55">
-                {fileName ? `${fileSizeMB} MB` : "Chọn ảnh JPG/PNG/WebP (tối đa 2MB)."}
+                {fileName
+                  ? `${fileSizeMB} MB`
+                  : "Chọn ảnh JPG/PNG/WebP (tối đa 2MB)."}
               </div>
               {overSize ? (
                 <div className="mt-1 text-xs text-rose-200">
@@ -258,7 +329,7 @@ function AvatarUploadBox({
             <button
               type="button"
               onClick={onPick}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[0.78rem] font-semibold text-white/85 hover:bg-white/[0.10] transition"
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-4 py-2 text-[0.78rem] font-semibold text-white/85 hover:bg-white/10 transition"
             >
               <UploadCloud className="h-4 w-4" />
               Chọn ảnh
@@ -269,7 +340,7 @@ function AvatarUploadBox({
               onClick={onClear}
               disabled={!fileName}
               className={cn(
-                "inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[0.78rem] font-semibold text-white/85 hover:bg-white/[0.10] transition",
+                "inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-4 py-2 text-[0.78rem] font-semibold text-white/85 hover:bg-white/10 transition",
                 !fileName && "opacity-50 cursor-not-allowed"
               )}
             >
@@ -286,13 +357,11 @@ function AvatarUploadBox({
 export default function ProfilePage() {
   const router = useRouter();
 
-  const { token, loading, updateUser, logout } = useAuth() as any;
+  const { token, loading, updateUser, logout } = useAuth();
 
   const [pageLoading, setPageLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-
-  const [toast, setToast] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -312,8 +381,8 @@ export default function ProfilePage() {
   const [interests, setInterests] = useState<Chip[]>([]);
   const [skillInput, setSkillInput] = useState("");
   const [interestInput, setInterestInput] = useState("");
-
-  const [snapshot, setSnapshot] = useState<any>(null);
+  const [snapshot, setSnapshot] = useState<ProfileDraft | null>(null);
+  const [profileId, setProfileId] = useState<string>("");
 
   // ✅ url avatar hiển thị: ưu tiên preview (file vừa chọn)
   const shownAvatar = avatarPreview || avatarUrl;
@@ -386,13 +455,13 @@ export default function ProfilePage() {
     if (!f) return;
 
     if (!f.type.startsWith("image/")) {
-      setToast({ type: "err", text: "Vui lòng chọn file ảnh" });
+      toast.error("Vui lòng chọn file ảnh");
       return;
     }
 
     const MAX = 2 * 1024 * 1024; // 2MB
     if (f.size > MAX) {
-      setToast({ type: "err", text: "Ảnh tối đa 2MB" });
+      toast.error("Ảnh tối đa 2MB");
       return;
     }
 
@@ -412,35 +481,15 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const run = async () => {
-      if (loading) return;
-      if (!token) return;
+      if (loading || !token) return;
 
       try {
         setPageLoading(true);
 
-        const raw = await getProfile(token);
-        const p: ProfileResponse = (raw as any)?.user ?? (raw as any);
-
-        const yNum = Number((p as any).year);
-        const yearLabel = yNum >= 1 && yNum <= 4 ? `Năm ${yNum}` : "";
-
-        const next = {
-          fullName: p.fullName ?? "",
-          email: p.email ?? "",
-          phoneNumber: (p as any).phoneNumber ?? "",
-          avatarUrl: (p as any).avatarUrl ?? "",
-          school: (p as any).school ?? "",
-          major: (p as any).major ?? "",
-          year: yearLabel,
-          skills: ((p as any).skills ?? []).map((s: string, idx: number) => ({
-            id: `s-${idx}`,
-            label: s,
-          })),
-          interests: ((p as any).interests ?? []).map((s: string, idx: number) => ({
-            id: `i-${idx}`,
-            label: s,
-          })),
-        };
+        const raw = (await getProfile(token)) as ProfileApiPayload;
+        const profile =
+          "user" in raw && raw.user ? raw.user : (raw as ProfileResponse);
+        const next = profileToDraft(profile, profile._id);
 
         setFullName(next.fullName);
         setEmail(next.email);
@@ -451,10 +500,10 @@ export default function ProfilePage() {
         setYear(next.year);
         setSkills(next.skills);
         setInterests(next.interests);
+        setSnapshot(next);
+        setProfileId(profile._id);
 
         clearAvatarPick();
-
-        setSnapshot(next);
 
         updateUser({
           fullName: next.fullName,
@@ -463,10 +512,17 @@ export default function ProfilePage() {
           phoneNumber: next.phoneNumber,
           school: next.school,
           major: next.major,
-          year: yNum >= 1 && yNum <= 4 ? yNum : undefined,
+          year:
+            typeof profile.year === "number" &&
+            profile.year >= 1 &&
+            profile.year <= 4
+              ? profile.year
+              : undefined,
         });
-      } catch (e: any) {
-        setToast({ type: "err", text: e?.message ?? "Không load được profile" });
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : "Không load được profile";
+        toast.error(message);
       } finally {
         setPageLoading(false);
       }
@@ -475,12 +531,6 @@ export default function ProfilePage() {
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, token, updateUser]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2200);
-    return () => clearTimeout(t);
-  }, [toast]);
 
   const addSkill = () => {
     const t = skillInput.trim();
@@ -518,19 +568,19 @@ export default function ProfilePage() {
 
     clearAvatarPick();
 
-    setToast({ type: "ok", text: "Đã hoàn tác thay đổi" });
+    toast.success("Hoàn tác", { description: "Đã hoàn tác thay đổi" });
   };
 
   const handleSave = async () => {
     if (!token) return;
 
-    if (!fullName.trim()) return setToast({ type: "err", text: "Vui lòng nhập fullName" });
-    if (!phoneNumber.trim()) return setToast({ type: "err", text: "Vui lòng nhập phoneNumber" });
-    if (!school.trim()) return setToast({ type: "err", text: "Vui lòng nhập school" });
-    if (!major.trim()) return setToast({ type: "err", text: "Vui lòng nhập major" });
+    if (!fullName.trim()) return toast.error("Vui lòng nhập fullName");
+    if (!phoneNumber.trim()) return toast.error("Vui lòng nhập phoneNumber");
+    if (!school.trim()) return toast.error("Vui lòng nhập school");
+    if (!major.trim()) return toast.error("Vui lòng nhập major");
 
     const y = parseAcademicYear(year);
-    if (!y) return setToast({ type: "err", text: "Vui lòng chọn Năm 1 - Năm 4" });
+    if (!y) return toast.error("Vui lòng chọn Năm 1 - Năm 4");
 
     try {
       setSaving(true);
@@ -540,7 +590,7 @@ export default function ProfilePage() {
         finalAvatarUrl = await uploadAvatar(avatarFile);
       }
 
-      const payload = {
+      const payload: UpdateStudentProfileRequest = {
         fullName: fullName.trim(),
         phoneNumber: phoneNumber.trim(),
         avatarUrl: finalAvatarUrl,
@@ -551,42 +601,52 @@ export default function ProfilePage() {
         interests: interests.map((x) => x.label.trim()).filter(Boolean),
       };
 
-      const res: any = await updateStudentProfile(token, payload);
-      const updated: any = res?.user ?? res?.data ?? null;
+      const res = await updateStudentProfile(token, payload);
+      const fallbackData = (
+        res as UpdateStudentProfileResponse & {
+          data?: ProfileResponse;
+        }
+      ).data;
+      const updatedProfile = res.user ?? fallbackData ?? null;
 
-      setToast({ type: "ok", text: res?.message || "Cập nhật thành công" });
-
-      const updatedYearNum = Number(updated?.year ?? payload.year);
-      const updatedYearLabel =
-        updatedYearNum >= 1 && updatedYearNum <= 4 ? `Năm ${updatedYearNum}` : "";
-
-      updateUser({
-        fullName: updated?.fullName ?? payload.fullName,
-        email: updated?.email ?? email,
-        avatarUrl: updated?.avatarUrl ?? payload.avatarUrl,
-        phoneNumber: updated?.phoneNumber ?? payload.phoneNumber,
-        school: updated?.school ?? payload.school,
-        major: updated?.major ?? payload.major,
-        year: updatedYearNum >= 1 && updatedYearNum <= 4 ? updatedYearNum : undefined,
+      toast.success("Thành công", {
+        description: res?.message || "Cập nhật thành công",
       });
 
-      const next = {
-        fullName: updated?.fullName ?? payload.fullName,
-        email: updated?.email ?? email,
-        phoneNumber: updated?.phoneNumber ?? payload.phoneNumber,
-        avatarUrl: updated?.avatarUrl ?? payload.avatarUrl,
-        school: updated?.school ?? payload.school,
-        major: updated?.major ?? payload.major,
-        year: updatedYearLabel,
-        skills: (updated?.skills ?? payload.skills).map((s: string, idx: number) => ({
-          id: `s-${idx}-${Date.now()}`,
-          label: s,
-        })),
-        interests: (updated?.interests ?? payload.interests).map((s: string, idx: number) => ({
-          id: `i-${idx}-${Date.now()}`,
-          label: s,
-        })),
+      const resolvedProfile: ProfileResponse = updatedProfile ?? {
+        _id: profileId || "local-profile",
+        email,
+        fullName: payload.fullName,
+        phoneNumber: payload.phoneNumber,
+        avatarUrl: payload.avatarUrl,
+        school: payload.school,
+        major: payload.major,
+        year: payload.year,
+        skills: payload.skills,
+        interests: payload.interests,
       };
+
+      setProfileId(resolvedProfile._id);
+
+      const updatedYearNum =
+        typeof resolvedProfile.year === "number" && resolvedProfile.year >= 1
+          ? resolvedProfile.year
+          : payload.year;
+
+      updateUser({
+        fullName: resolvedProfile.fullName ?? payload.fullName,
+        email: resolvedProfile.email ?? email,
+        avatarUrl: resolvedProfile.avatarUrl ?? payload.avatarUrl,
+        phoneNumber: resolvedProfile.phoneNumber ?? payload.phoneNumber,
+        school: resolvedProfile.school ?? payload.school,
+        major: resolvedProfile.major ?? payload.major,
+        year:
+          updatedYearNum >= 1 && updatedYearNum <= 4
+            ? updatedYearNum
+            : undefined,
+      });
+
+      const next = profileToDraft(resolvedProfile, resolvedProfile._id);
 
       setFullName(next.fullName);
       setEmail(next.email);
@@ -600,8 +660,10 @@ export default function ProfilePage() {
       setSnapshot(next);
 
       clearAvatarPick();
-    } catch (e: any) {
-      setToast({ type: "err", text: e?.message ?? "Cập nhật thất bại" });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Cập nhật thất bại";
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -642,33 +704,22 @@ export default function ProfilePage() {
   );
 
   const pickedName = avatarFile?.name ?? "";
-  const pickedSizeMB = avatarFile ? (avatarFile.size / 1024 / 1024).toFixed(2) : "0";
+  const pickedSizeMB = avatarFile
+    ? (avatarFile.size / 1024 / 1024).toFixed(2)
+    : "0";
   const overSize = avatarFile ? avatarFile.size > 2 * 1024 * 1024 : false;
 
   return (
     <div className="relative min-h-screen overflow-hidden text-white">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-indigo-950 via-purple-900 to-violet-950" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-linear-to-r from-indigo-950 via-purple-900 to-violet-950" />
       <div className="pointer-events-none absolute -top-44 left-1/2 -z-10 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-violet-500/25 blur-3xl" />
       <div className="pointer-events-none absolute -top-28 left-10 -z-10 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 right-0 -z-10 h-96 w-96 rounded-full bg-indigo-400/15 blur-3xl" />
 
-      {toast ? (
-        <div className="fixed left-1/2 top-5 z-[60] -translate-x-1/2">
-          <div
-            className={cn(
-              "rounded-2xl border px-4 py-2 text-[0.78rem] backdrop-blur-xl shadow-lg",
-              toast.type === "ok"
-                ? "border-emerald-400/20 bg-emerald-500/15 text-emerald-50"
-                : "border-rose-400/20 bg-rose-500/15 text-rose-50"
-            )}
-          >
-            {toast.text}
-          </div>
-        </div>
-      ) : null}
-
       <div className="mx-auto flex max-w-7xl gap-4 px-4 py-6">
-        <aside className={cn("hidden w-72 shrink-0 rounded-3xl p-4 md:block", glass)}>
+        <aside
+          className={cn("hidden w-72 shrink-0 rounded-3xl p-4 md:block", glass)}
+        >
           <div className="flex items-center gap-3">
             <div className="flex items-center">
               <div className="relative h-14 w-[250px] overflow-hidden">
@@ -683,11 +734,15 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-            <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-white/10 bg-white/[0.06]">
+          <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/4 p-3">
+            <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-white/10 bg-white/6">
               {shownAvatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={shownAvatar} alt="avatar" className="h-full w-full object-cover" />
+                <img
+                  src={shownAvatar}
+                  alt="avatar"
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <div className="grid h-full w-full place-items-center text-xs font-semibold">
                   {initials(fullName || "User")}
@@ -696,19 +751,46 @@ export default function ProfilePage() {
             </div>
 
             <div className="min-w-0">
-              <p className="truncate text-xs font-semibold">{fullName || "—"}</p>
+              <p className="truncate text-xs font-semibold">
+                {fullName || "—"}
+              </p>
               <p className="text-[0.68rem] text-emerald-300/80">● Sinh viên</p>
             </div>
           </div>
 
           <nav className="mt-5 space-y-1.5 text-[0.78rem]">
             {[
-              { icon: <Home size={16} />, label: "Trang chủ", href: "/homepage" },
-              { icon: <Users size={16} />, label: "Câu lạc bộ", href: "/clubs" },
-              { icon: <CalendarDays size={16} />, label: "Sự kiện", href: "/events" },
-              { icon: <User size={16} />, label: "Hồ sơ của tôi", href: "/profile", active: true },
-              { icon: <MessageSquare size={16} />, label: "Tin nhắn", href: "/messages" },
-              { icon: <Inbox size={16} />, label: "Đơn đã gửi", href: "/requests" },
+              {
+                icon: <Home size={16} />,
+                label: "Trang chủ",
+                href: "/homepage",
+              },
+              {
+                icon: <Users size={16} />,
+                label: "Câu lạc bộ",
+                href: "/clubs",
+              },
+              {
+                icon: <CalendarDays size={16} />,
+                label: "Sự kiện",
+                href: "/events",
+              },
+              {
+                icon: <User size={16} />,
+                label: "Hồ sơ của tôi",
+                href: "/profile",
+                active: true,
+              },
+              {
+                icon: <MessageSquare size={16} />,
+                label: "Tin nhắn",
+                href: "/messages",
+              },
+              {
+                icon: <Inbox size={16} />,
+                label: "Đơn đã gửi",
+                href: "/requests",
+              },
             ].map((it) => (
               <Link
                 key={it.label}
@@ -716,11 +798,15 @@ export default function ProfilePage() {
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3 py-2 transition",
                   it.active
-                    ? "bg-gradient-to-r from-emerald-500/80 to-sky-500/60 text-slate-950 font-semibold"
-                    : "text-white/70 hover:bg-white/[0.06] hover:text-white"
+                    ? "bg-linear-to-r from-emerald-500/80 to-sky-500/60 text-slate-950 font-semibold"
+                    : "text-white/70 hover:bg-white/6 hover:text-white"
                 )}
               >
-                <span className={cn("opacity-90", it.active && "text-slate-950")}>{it.icon}</span>
+                <span
+                  className={cn("opacity-90", it.active && "text-slate-950")}
+                >
+                  {it.icon}
+                </span>
                 {it.label}
               </Link>
             ))}
@@ -729,7 +815,7 @@ export default function ProfilePage() {
           <div className="mt-6 border-t border-white/10 pt-4 space-y-2">
             <Link
               href="/settings"
-              className="flex items-center gap-3 rounded-xl px-3 py-2 text-[0.78rem] text-white/70 hover:bg-white/[0.06] hover:text-white transition"
+              className="flex items-center gap-3 rounded-xl px-3 py-2 text-[0.78rem] text-white/70 hover:bg-white/6 hover:text-white transition"
             >
               <Settings size={16} />
               Cài đặt
@@ -738,7 +824,7 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[0.78rem] text-white/70 hover:bg-white/[0.06] hover:text-white transition"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[0.78rem] text-white/70 hover:bg-white/6 hover:text-white transition"
             >
               <LogOut size={16} />
               Đăng xuất
@@ -749,13 +835,25 @@ export default function ProfilePage() {
         <main className="min-w-0 flex-1">
           <div className={cn("rounded-3xl p-5 md:p-6", glass)}>
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h1 className="text-lg font-semibold">Hồ sơ cá nhân</h1>
-                <p className="mt-1 text-[0.75rem] text-white/55">Cập nhật thông tin sinh viên</p>
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.push("/homepage")}
+                  className="inline-flex items-center gap-2 self-start rounded-full border border-white/10 bg-white/6 px-4 py-1.5 text-[0.75rem] font-medium text-white/85 transition hover:bg-white/10"
+                >
+                  <ArrowLeft size={14} />
+                  Về trang chủ
+                </button>
+                <div>
+                  <h1 className="text-lg font-semibold">Hồ sơ cá nhân</h1>
+                  <p className="mt-1 text-[0.75rem] text-white/55">
+                    Cập nhật thông tin sinh viên
+                  </p>
+                </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2">
+                <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-4 py-2">
                   <Search size={16} className="text-white/55" />
                   <input
                     placeholder="Tìm kiếm..."
@@ -764,19 +862,28 @@ export default function ProfilePage() {
                 </div>
                 <button
                   type="button"
-                  className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.06] hover:bg-white/[0.10]"
+                  className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/6 hover:bg-white/10"
                 >
                   <Bell size={16} />
                 </button>
               </div>
             </div>
 
-            <div className={cn("mt-5 rounded-2xl p-5", "border border-white/10 bg-white/[0.04]")}>
+            <div
+              className={cn(
+                "mt-5 rounded-2xl p-5",
+                "border border-white/10 bg-white/4"
+              )}
+            >
               <div className="flex flex-col items-center gap-2 text-center">
-                <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06]">
+                <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-white/10 bg-white/6">
                   {shownAvatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={shownAvatar} alt="avatar" className="h-full w-full object-cover" />
+                    <img
+                      src={shownAvatar}
+                      alt="avatar"
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
                     <div className="grid h-full w-full place-items-center text-lg font-semibold">
                       {initials(fullName || "User")}
@@ -790,21 +897,45 @@ export default function ProfilePage() {
               </div>
 
               {pageLoading ? (
-                <p className="mt-3 text-center text-[0.75rem] text-white/55">Đang tải profile...</p>
+                <p className="mt-3 text-center text-[0.75rem] text-white/55">
+                  Đang tải profile...
+                </p>
               ) : null}
             </div>
           </div>
 
           <div className="mt-4 grid gap-4">
             <section className={cn("rounded-3xl p-5 md:p-6", glass)}>
-              <SectionTitle icon={<User size={16} />} title="Thông tin cá nhân" />
+              <SectionTitle
+                icon={<User size={16} />}
+                title="Thông tin cá nhân"
+              />
 
               <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <Field label="Họ và tên" value={fullName} onChange={setFullName} />
-                <Field label="Email" value={email} onChange={setEmail} type="email" disabled />
+                <Field
+                  label="Họ và tên"
+                  value={fullName}
+                  onChange={setFullName}
+                />
+                <Field
+                  label="Email"
+                  value={email}
+                  onChange={setEmail}
+                  type="email"
+                  disabled
+                />
 
-                <Field label="Số điện thoại" value={phoneNumber} onChange={setPhoneNumber} />
-                <Field label="Trường" value={school} onChange={setSchool} placeholder="VD: FPTU" />
+                <Field
+                  label="Số điện thoại"
+                  value={phoneNumber}
+                  onChange={setPhoneNumber}
+                />
+                <Field
+                  label="Trường"
+                  value={school}
+                  onChange={setSchool}
+                  placeholder="VD: FPTU"
+                />
 
                 <Field
                   label="Chuyên ngành"
@@ -813,7 +944,12 @@ export default function ProfilePage() {
                   placeholder="VD: Software Engineering"
                 />
 
-                <Select value={year} onChange={setYear} placeholder="Năm" options={yearOptions} />
+                <Select
+                  value={year}
+                  onChange={setYear}
+                  placeholder="Năm"
+                  options={yearOptions}
+                />
 
                 {/* ✅ NEW: Avatar uploader đẹp */}
                 <AvatarUploadBox
@@ -837,18 +973,25 @@ export default function ProfilePage() {
             </section>
 
             <section className={cn("rounded-3xl p-5 md:p-6", glass)}>
-              <SectionTitle icon={<Sparkles size={16} />} title="Kỹ năng & Sở thích" />
+              <SectionTitle
+                icon={<Sparkles size={16} />}
+                title="Kỹ năng & Sở thích"
+              />
 
               <div className="mt-4 space-y-6">
                 <div className="space-y-2">
-                  <p className="text-[0.78rem] font-semibold text-white/85">Kỹ năng</p>
+                  <p className="text-[0.78rem] font-semibold text-white/85">
+                    Kỹ năng
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     {skills.map((c) => (
                       <ChipPill
                         key={c.id}
                         label={c.label}
                         tone="blue"
-                        onRemove={() => setSkills((prev) => prev.filter((x) => x.id !== c.id))}
+                        onRemove={() =>
+                          setSkills((prev) => prev.filter((x) => x.id !== c.id))
+                        }
                       />
                     ))}
                   </div>
@@ -858,7 +1001,7 @@ export default function ProfilePage() {
                       value={skillInput}
                       onChange={(e) => setSkillInput(e.target.value)}
                       placeholder="Thêm kỹ năng mới..."
-                      className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[0.78rem] text-white/90 outline-none focus:border-white/20"
+                      className="w-full rounded-xl border border-white/10 bg-white/6 px-3 py-2 text-[0.78rem] text-white/90 outline-none focus:border-white/20"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
@@ -877,7 +1020,9 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-[0.78rem] font-semibold text-white/85">Sở thích</p>
+                  <p className="text-[0.78rem] font-semibold text-white/85">
+                    Sở thích
+                  </p>
 
                   <div className="flex flex-wrap gap-2">
                     {interests.map((c) => (
@@ -885,7 +1030,11 @@ export default function ProfilePage() {
                         key={c.id}
                         label={c.label}
                         tone="purple"
-                        onRemove={() => setInterests((prev) => prev.filter((x) => x.id !== c.id))}
+                        onRemove={() =>
+                          setInterests((prev) =>
+                            prev.filter((x) => x.id !== c.id)
+                          )
+                        }
                       />
                     ))}
                   </div>
@@ -895,7 +1044,7 @@ export default function ProfilePage() {
                       value={interestInput}
                       onChange={(e) => setInterestInput(e.target.value)}
                       placeholder="Thêm sở thích mới..."
-                      className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[0.78rem] text-white/90 outline-none focus:border-white/20"
+                      className="w-full rounded-xl border border-white/10 bg-white/6 px-3 py-2 text-[0.78rem] text-white/90 outline-none focus:border-white/20"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
@@ -916,9 +1065,12 @@ export default function ProfilePage() {
             </section>
 
             <section className={cn("rounded-3xl p-5 md:p-6", glass)}>
-              <SectionTitle icon={<CalendarDays size={16} />} title="Lịch rảnh" />
+              <SectionTitle
+                icon={<CalendarDays size={16} />}
+                title="Lịch rảnh"
+              />
 
-              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/4 p-4">
                 <div className="grid grid-cols-7 gap-2 text-center">
                   {days.map((d) => (
                     <div key={d.key} className="text-[0.7rem] text-white/65">
@@ -944,7 +1096,7 @@ export default function ProfilePage() {
 
                 <button
                   type="button"
-                  className="mt-4 w-full rounded-xl bg-gradient-to-r from-sky-500/90 to-emerald-500/90 px-4 py-2 text-[0.78rem] font-semibold text-slate-950 hover:from-sky-400 hover:to-emerald-400"
+                  className="mt-4 w-full rounded-xl bg-linear-to-r from-sky-500/90 to-emerald-500/90 px-4 py-2 text-[0.78rem] font-semibold text-slate-950 hover:from-sky-400 hover:to-emerald-400"
                 >
                   + Thêm khung giờ rảnh
                 </button>
@@ -956,7 +1108,7 @@ export default function ProfilePage() {
                   onClick={handleCancel}
                   disabled={saving}
                   className={cn(
-                    "inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-5 py-2 text-[0.78rem] font-semibold text-white/80 hover:bg-white/[0.10]",
+                    "inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/6 px-5 py-2 text-[0.78rem] font-semibold text-white/80 hover:bg-white/10",
                     saving && "opacity-70 cursor-not-allowed"
                   )}
                 >

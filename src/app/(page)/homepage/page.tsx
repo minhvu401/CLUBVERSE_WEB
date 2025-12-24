@@ -117,9 +117,14 @@ export default function HomeDashboardPage() {
         const res = await getAllClubs(token);
 
         if (!cancelled) setClubs(res);
-      } catch (e: any) {
-        if (!cancelled)
-          setClubsError(e?.message ?? "Không tải được danh sách câu lạc bộ");
+      } catch (error: unknown) {
+        if (!cancelled) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Không tải được danh sách câu lạc bộ";
+          setClubsError(message);
+        }
       } finally {
         if (!cancelled) setClubsLoading(false);
       }
@@ -140,7 +145,9 @@ export default function HomeDashboardPage() {
       name: c.fullName ?? "Câu lạc bộ",
       tag: c.category ?? "Khác",
       desc: c.description ?? "Chưa có mô tả.",
-      members: `${(c.clubJoined?.length ?? 0).toLocaleString("vi-VN")} thành viên`,
+      members: `${(c.clubJoined?.length ?? 0).toLocaleString(
+        "vi-VN"
+      )} thành viên`,
       tone: tones[idx % tones.length],
       icon: "🏷️",
       cta: "Tham Gia",
@@ -226,28 +233,38 @@ export default function HomeDashboardPage() {
 
       {loading ? (
         <main className="mx-auto flex max-w-6xl items-center justify-center px-4 pb-16 pt-28">
-          <div className={cn("rounded-3xl px-6 py-4 text-sm text-white/75", glass)}>
+          <div
+            className={cn("rounded-3xl px-6 py-4 text-sm text-white/75", glass)}
+          >
             Đang tải...
           </div>
         </main>
       ) : !token ? (
         <main className="mx-auto flex max-w-6xl items-center justify-center px-4 pb-16 pt-28">
-          <div className={cn("rounded-3xl px-6 py-4 text-sm text-white/75", glass)}>
+          <div
+            className={cn("rounded-3xl px-6 py-4 text-sm text-white/75", glass)}
+          >
             Đang chuyển hướng...
           </div>
         </main>
       ) : (
         <main className="mx-auto flex max-w-6xl flex-col gap-7 px-4 pb-20 pt-28">
           {/* HERO */}
-          <section className={cn("relative overflow-hidden rounded-3xl p-6 md:p-8", glass)}>
+          <section
+            className={cn(
+              "relative overflow-hidden rounded-3xl p-6 md:p-8",
+              glass
+            )}
+          >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.10),transparent_60%)]" />
             <div className="relative">
               <h1 className="text-center text-2xl font-semibold md:text-3xl">
-                Chào mừng, {displayName} <span className="inline-block">🌟</span>
+                Chào mừng, {displayName}{" "}
+                <span className="inline-block">🌟</span>
               </h1>
               <p className="mx-auto mt-2 max-w-2xl text-center text-[0.78rem] text-white/60 md:text-sm">
-                Khám phá thế giới câu lạc bộ với những gợi ý thông minh và sự kiện
-                sắp tới dành riêng cho bạn.
+                Khám phá thế giới câu lạc bộ với những gợi ý thông minh và sự
+                kiện sắp tới dành riêng cho bạn.
               </p>
 
               <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -327,7 +344,8 @@ export default function HomeDashboardPage() {
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") goClubDetail(club.id);
+                      if (e.key === "Enter" || e.key === " ")
+                        goClubDetail(club.id);
                     }}
                   >
                     <CornerGlow tone={club.tone} />
@@ -396,12 +414,16 @@ export default function HomeDashboardPage() {
                   <div className="relative flex gap-4">
                     <div className="w-14 shrink-0 rounded-2xl border border-white/10 bg-black/20 px-2 py-2 text-center">
                       <div className="text-lg font-semibold">{ev.day}</div>
-                      <div className="text-[0.6rem] text-white/55">{ev.month}</div>
+                      <div className="text-[0.6rem] text-white/55">
+                        {ev.month}
+                      </div>
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="truncate text-sm font-semibold">{ev.title}</h3>
+                        <h3 className="truncate text-sm font-semibold">
+                          {ev.title}
+                        </h3>
                       </div>
 
                       <p className="mt-1.5 line-clamp-2 text-[0.72rem] text-white/60">
@@ -430,7 +452,9 @@ export default function HomeDashboardPage() {
                               />
                             ))}
                           </div>
-                          <span className="text-[0.68rem] text-white/55">{ev.attendees}</span>
+                          <span className="text-[0.68rem] text-white/55">
+                            {ev.attendees}
+                          </span>
                         </div>
 
                         <button
@@ -461,12 +485,17 @@ export default function HomeDashboardPage() {
             {stats.map((s) => (
               <div
                 key={s.label}
-                className={cn("relative overflow-hidden rounded-2xl p-4 text-center", glass)}
+                className={cn(
+                  "relative overflow-hidden rounded-2xl p-4 text-center",
+                  glass
+                )}
               >
                 <CornerGlow tone="violet" />
                 <div className="relative">
                   <div className="text-2xl font-semibold">{s.value}</div>
-                  <div className="mt-1 text-[0.7rem] text-white/60">{s.label}</div>
+                  <div className="mt-1 text-[0.7rem] text-white/60">
+                    {s.label}
+                  </div>
                 </div>
               </div>
             ))}
