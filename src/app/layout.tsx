@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/app/providers/AuthProviders/page";
+import { Toaster } from "sonner";
 export const metadata: Metadata = {
   title: "Clubverse",
   description: "Clubverse app",
@@ -14,9 +15,8 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <AuthProvider>{children}</AuthProvider>
+        <Toaster position="top-center" richColors closeButton duration={4200} />
       </body>
     </html>
   );
