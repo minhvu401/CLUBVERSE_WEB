@@ -1,3 +1,6 @@
+import { MyApplication } from "./applications";
+import { PostItem } from "./post";
+
 export const AUTH_BASE_URL = "https://clubverse.onrender.com";
 
 export interface LoginRequest {
@@ -114,8 +117,8 @@ export interface ProfileResponse {
   description?: string;
   socialLink?: string[];
   rating?: number;
-  clubJoined?: any[];
-  posts?: any[];
+  clubJoined?: Array<{ _id?: string } | string>;
+  posts?: PostItem[];
 }
 
 export const getProfile = (accessToken: string): Promise<ProfileResponse> => {
@@ -177,7 +180,8 @@ export type ClubItem = {
   fullName?: string;
   category?: string;
   description?: string;
-  clubJoined?: any[];
+  clubJoined?: Array<{ _id?: string } | string>;
+  rating?: number;
 };
 
 export type GetAllClubsResponse = {
@@ -200,7 +204,7 @@ export type ApplyToClubBody = {
 
 export type ApplyToClubResponse = {
   message?: string;
-  application?: any;
+  application?: MyApplication;
 };
 
 export const applyToClub = async (
@@ -231,4 +235,3 @@ export const applyToClub = async (
 
   return data;
 };
-
