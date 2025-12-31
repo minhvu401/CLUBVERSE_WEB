@@ -119,6 +119,8 @@ export interface ProfileResponse {
   rating?: number;
   clubJoined?: Array<{ _id?: string } | string>;
   posts?: PostItem[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export const getProfile = (accessToken: string): Promise<ProfileResponse> => {
