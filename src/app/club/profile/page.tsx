@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
-import Image from "next/image";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProviders/page";
 
 import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
+
+import { getProfile, type ProfileResponse } from "@/app/services/api/auth";
 
 import {
   Users,
@@ -25,7 +26,6 @@ function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-// ✅ glass đồng bộ homepage user
 const glass =
   "border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
 
@@ -50,13 +50,7 @@ function Stars({ value }: { value: number }) {
   );
 }
 
-function InfoLine({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
+function InfoLine({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex gap-4">
       <div className="min-w-[120px] text-xs text-white/55">{label}</div>
@@ -65,10 +59,49 @@ function InfoLine({
   );
 }
 
+type ClubHomeVM = {
+  name: string;
+  tagline: string;
+  avatarUrl: string;
+  info: {
+    tenClb: string;
+    thanhLap: string;
+    soThanhVien: string;
+    diaChi: string;
+    chuTich: string;
+    email: string;
+    hotline: string;
+  };
+  quickStats: {
+    totalPosts: number;
+    activeMembers: number;
+    events: number;
+  };
+  rating: {
+    score: number;
+    count: number;
+  };
+  description: string;
+  features: Array<{ title: string; desc: string; icon: any }>;
+};
+
+function buildTaglineFromProfile(p: any) {
+  const cat = String(p?.category || "").trim();
+  if (cat) return `Danh mục: ${cat}`;
+
+  const desc = String(p?.description || "").trim();
+  if (!desc) return "Nơi kết nối và phát triển cộng đồng câu lạc bộ.";
+  const firstLine = desc.split("\n").find((x: string) => x.trim()) || desc;
+  return firstLine.length > 90 ? firstLine.slice(0, 90) + "…" : firstLine;
+}
+
+function toNumberSafe(v: any, fallback = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 export default function HomeClubPage() {
   const router = useRouter();
-
-  // ✅ CHỈ SỬA PHẦN NÀY: lấy loading/token để tránh redirect sớm khi refresh
   const { user, token, loading } = useAuth() as any;
 
   const isClubRole = useMemo(
@@ -77,48 +110,30 @@ export default function HomeClubPage() {
   );
 
   useEffect(() => {
-    // ✅ quan trọng: đợi AuthProvider load xong mới check
     if (loading) return;
-
-    // chưa đăng nhập -> về trang login (hoặc "/" nếu bạn muốn)
-    if (!token) {
-      router.replace("/login"); // bạn muốn về "/" thì đổi chỗ này
-      return;
-    }
-
-    // có token nhưng không phải club -> đá về home
-    if (!isClubRole) {
-      router.replace("/");
-    }
+    if (!token) return router.replace("/login");
+    if (!isClubRole) router.replace("/");
   }, [loading, token, isClubRole, router]);
 
-  // ===== Mock data (bạn map API sau) =====
-  const club = {
-    name: "Câu lạc bộ Công nghệ Sáng tạo",
-    tagline:
-      "Nơi kết nối những tài năng đam mê công nghệ và sáng tạo, cùng nhau\nxây dựng tương lai số",
-    avatarUrl:
-      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=240&q=80",
+  const [pageLoading, setPageLoading] = useState(true);
+
+  const [club, setClub] = useState<ClubHomeVM>(() => ({
+    name: "Câu lạc bộ",
+    tagline: "Nơi kết nối và phát triển cộng đồng câu lạc bộ.",
+    // ✅ đổi fallback về local để không bị next/image chặn host
+    avatarUrl: "/clubverse_logo_1.png",
     info: {
-      tenClb: "Câu lạc bộ Công nghệ Sáng tạo",
-      thanhLap: "15/08/2020",
-      soThanhVien: "1200",
-      diaChi: "KCN Linh Trung, Việt Nam",
-      chuTich: "Nguyễn Văn A",
-      email: "contact@clubverse.vn",
-      hotline: "0123 456 789",
+      tenClb: "—",
+      thanhLap: "—",
+      soThanhVien: "—",
+      diaChi: "—",
+      chuTich: "—",
+      email: "—",
+      hotline: "—",
     },
-    quickStats: {
-      totalPosts: 42,
-      activeMembers: 28,
-      events: 15,
-    },
-    rating: {
-      score: 4.8,
-      count: 156,
-    },
-    description:
-      "Câu lạc bộ Công nghệ Sáng tạo là nơi dành cho những bạn trẻ yêu thích công nghệ, lập trình và đổi mới sáng tạo. Chúng tôi cam kết tạo ra môi trường học tập – chia sẻ – trải nghiệm thực tế thông qua các workshop, dự án và hoạt động networking.\n\nVới sứ mệnh “Kết nối – Học hỏi – Sáng tạo”, chúng tôi tổ chức các buổi workshop, hackathon, và thảo luận chuyên đề về các xu hướng công nghệ mới.\n\nTham gia cùng chúng tôi để khám phá tiềm năng của bản thân, mở rộng mạng lưới quan hệ và đóng góp những sản phẩm ý nghĩa cho cộng đồng.",
+    quickStats: { totalPosts: 0, activeMembers: 0, events: 0 },
+    rating: { score: 0, count: 0 },
+    description: "—",
     features: [
       {
         title: "Workshop Công nghệ",
@@ -136,11 +151,92 @@ export default function HomeClubPage() {
         icon: Network,
       },
     ],
-  };
+  }));
+
+  useEffect(() => {
+    if (loading) return;
+    if (!token) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setPageLoading(true);
+
+        const raw = await getProfile(token);
+        const p: ProfileResponse = (raw as any)?.user ?? (raw as any);
+
+        const avatar = String((p as any)?.avatarUrl || "").trim();
+        const fullName = String((p as any)?.fullName || "").trim();
+        const desc = String((p as any)?.description || "").trim();
+
+        const ratingScore = toNumberSafe((p as any)?.rating, 0);
+        const postsLen = Array.isArray((p as any)?.posts) ? (p as any).posts.length : 0;
+
+        const established =
+          String((p as any)?.createdAt || (p as any)?.establishedAt || "").trim() || "—";
+
+        const membersCount =
+          (p as any)?.membersCount ?? (p as any)?.totalMembers ?? (p as any)?.memberCount ?? null;
+
+        const eventsCount =
+          (p as any)?.eventsCount ?? (p as any)?.totalEvents ?? (p as any)?.eventCount ?? null;
+
+        const activeMembers =
+          (p as any)?.activeMembers ?? (p as any)?.activeMemberCount ?? null;
+
+        const address = String((p as any)?.address || (p as any)?.location || "").trim() || "—";
+        const president =
+          String((p as any)?.presidentName || (p as any)?.ownerName || "").trim() || "—";
+
+        const email = String((p as any)?.email || "").trim() || "—";
+        const phone = String((p as any)?.phoneNumber || "").trim() || "—";
+
+        const next: ClubHomeVM = {
+          ...club,
+          name: fullName || club.name,
+          tagline: buildTaglineFromProfile(p),
+          avatarUrl: avatar || club.avatarUrl,
+          info: {
+            tenClb: fullName || "—",
+            thanhLap: established,
+            soThanhVien: membersCount != null ? String(membersCount) : "—",
+            diaChi: address,
+            chuTich: president,
+            email,
+            hotline: phone,
+          },
+          quickStats: {
+            totalPosts: postsLen,
+            activeMembers: activeMembers != null ? toNumberSafe(activeMembers, 0) : 0,
+            events: eventsCount != null ? toNumberSafe(eventsCount, 0) : 0,
+          },
+          rating: {
+            score: ratingScore,
+            count: toNumberSafe((p as any)?.ratingCount, 0),
+          },
+          description: desc || "—",
+        };
+
+        if (!cancelled) setClub(next);
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setPageLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, loading]);
+
+  // ✅ avatar source safe (dù remote cũng ok vì dùng <img>)
+  const avatarSrc = (club.avatarUrl || "").trim() || "/clubverse_logo_1.png";
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden text-white">
-      {/* ✅ BACKGROUND giống homepage user */}
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-indigo-950 via-purple-900 to-violet-950" />
       <div className="pointer-events-none absolute -top-44 left-1/2 -z-10 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-violet-500/25 blur-3xl" />
       <div className="pointer-events-none absolute -top-28 left-10 -z-10 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
@@ -149,17 +245,15 @@ export default function HomeClubPage() {
       <Header />
 
       <main className="mx-auto max-w-6xl px-4 pb-14 pt-10">
-        {/* HERO */}
         <section className={cn("relative overflow-hidden rounded-3xl p-6 md:p-8", glass)}>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.10),transparent_60%)]" />
           <div className="relative flex flex-col items-center text-center">
-            {/* ✅ GIỮ Y NGUYÊN NHƯ BAN ĐẦU */}
             <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-white/15 bg-white/10 shadow-[0_20px_55px_rgba(0,0,0,0.35)]">
-              <Image
-                src={club.avatarUrl}
+              {/* ✅ FIX: dùng <img> để không bị next/image chặn host */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={avatarSrc}
                 alt="Club avatar"
-                width={96}
-                height={96}
                 className="h-full w-full object-cover"
               />
             </div>
@@ -171,12 +265,14 @@ export default function HomeClubPage() {
             <p className="mt-2 max-w-2xl whitespace-pre-line text-sm text-white/65 leading-relaxed">
               {club.tagline}
             </p>
+
+            {pageLoading ? (
+              <div className="mt-3 text-xs text-white/50">Đang tải thông tin CLB…</div>
+            ) : null}
           </div>
         </section>
 
-        {/* Row cards */}
         <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
-          {/* Thông tin cơ bản */}
           <section className={cn("rounded-3xl p-5 md:p-6 lg:col-span-2", glass)}>
             <div className="flex items-center gap-2">
               <div className="h-9 w-9 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center">
@@ -234,7 +330,6 @@ export default function HomeClubPage() {
             </div>
           </section>
 
-          {/* Right column */}
           <div className="space-y-5">
             <section className={cn("rounded-3xl p-5 md:p-6", glass)}>
               <div className="flex items-center gap-2">
@@ -268,18 +363,19 @@ export default function HomeClubPage() {
 
               <div className="mt-5 flex flex-col items-center">
                 <div className="text-3xl font-semibold text-yellow-200">
-                  {club.rating.score}
+                  {Number(club.rating.score || 0).toFixed(1)}
                 </div>
-                <Stars value={club.rating.score} />
+                <Stars value={club.rating.score || 0} />
                 <div className="mt-2 text-xs text-white/55">
-                  Dựa trên {club.rating.count} đánh giá
+                  {club.rating.count
+                    ? `Dựa trên ${club.rating.count} đánh giá`
+                    : "Chưa có dữ liệu đánh giá"}
                 </div>
               </div>
             </section>
           </div>
         </div>
 
-        {/* Giới thiệu */}
         <section className={cn("mt-6 rounded-3xl p-5 md:p-6", glass)}>
           <div className="flex items-center gap-2">
             <div className="h-9 w-9 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center">
@@ -293,7 +389,6 @@ export default function HomeClubPage() {
           </p>
         </section>
 
-        {/* 3 cards dưới */}
         <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-3">
           {club.features.map((f) => {
             const Icon = f.icon;

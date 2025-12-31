@@ -27,6 +27,11 @@ import {
   Phone,
   MapPin,
   Rocket,
+  Clock3,
+  BadgeCheck,
+  CheckCircle2,
+  XCircle,
+  RotateCcw,
 } from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -35,6 +40,8 @@ function cn(...classes: Array<string | false | null | undefined>) {
 
 const glass =
   "border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
+
+type ApiStatus = "PENDING" | "APPROVED" | "REJECTED" | "ACCEPTED" | "DECLINED" | string;
 
 type ClubDetail = {
   _id: string;
@@ -58,6 +65,51 @@ type ClubDetail = {
 };
 
 type TabKey = "about" | "events" | "members";
+
+// ✅ minimal type để check membership qua applications
+type ClubInfo = { _id: string };
+type MyApplication = {
+  _id: string;
+  clubId: ClubInfo | string;
+  status: ApiStatus;
+};
+
+function upperStatus(s?: ApiStatus) {
+  return String(s || "").toUpperCase();
+}
+
+function getAppClubId(a: MyApplication) {
+  if (!a?.clubId) return "";
+  if (typeof a.clubId === "string") return a.clubId;
+  return String((a.clubId as any)?._id || "");
+}
+
+/** ✅ GET /applications/my-applications */
+async function getMyApplications(accessToken: string) {
+  const res = await fetch(`${AUTH_BASE_URL}/applications/my-applications`, {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    cache: "no-store",
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.message || `Không lấy được applications (HTTP ${res.status})`);
+  }
+
+  const list = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.applications)
+    ? data.applications
+    : Array.isArray(data?.data)
+    ? data.data
+    : [];
+
+  return list as MyApplication[];
+}
 
 function Pill({ icon, text }: { icon: React.ReactNode; text: React.ReactNode }) {
   return (
@@ -176,7 +228,6 @@ async function applyToClub(accessToken: string, body: { clubId: string; reason: 
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    // 400: đã đăng ký hoặc đã là thành viên (theo swagger)
     const msg =
       data?.message ||
       (res.status === 400
@@ -204,6 +255,14 @@ export default function ClubDetailPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [toast, setToast] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  // ✅ membership state (FE validate)
+  const [joinState, setJoinState] = useState<{
+    checking: boolean;
+    isMember: boolean; // ✅ đã trong CLB
+    hasApplied: boolean; // ✅ đã có đơn
+    status?: ApiStatus;
+  }>({ checking: false, isMember: false, hasApplied: false });
 
   const fallback = useMemo<ClubDetail>(
     () => ({
@@ -287,6 +346,49 @@ export default function ClubDetailPage() {
     run();
   }, [clubId, token, loading, fallback]);
 
+  // ✅ FE check: đã trong CLB chưa (dựa trên applications)
+  useEffect(() => {
+    if (loading) return;
+
+    if (!token || !clubId) {
+      setJoinState({ checking: false, isMember: false, hasApplied: false });
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setJoinState((p) => ({ ...p, checking: true }));
+
+        const apps = await getMyApplications(token);
+        if (cancelled) return;
+
+        const found = apps.find((a) => getAppClubId(a) === String(clubId));
+        if (!found) {
+          setJoinState({ checking: false, isMember: false, hasApplied: false });
+          return;
+        }
+
+        const st = upperStatus(found.status);
+        const isMember = st === "ACCEPTED";
+
+        setJoinState({
+          checking: false,
+          isMember,
+          hasApplied: true,
+          status: found.status,
+        });
+      } catch {
+        if (!cancelled) setJoinState({ checking: false, isMember: false, hasApplied: false });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, clubId, loading]);
+
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 2200);
@@ -350,10 +452,105 @@ export default function ClubDetailPage() {
     []
   );
 
-  // ✅ SUBMIT APPLICATION
+  // ✅ button config (REJECTED => enable "Nộp lại")
+  const joinBtn = useMemo(() => {
+    if (!token) {
+      return {
+        disabled: false,
+        label: "Đăng nhập để tham gia",
+        icon: <Plus size={16} />,
+        cls:
+          "inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-5 py-2.5 text-[0.78rem] font-semibold text-white/85 hover:bg-white/[0.10]",
+        onClick: () => router.push("/login"),
+      };
+    }
+
+    if (joinState.checking) {
+      return {
+        disabled: true,
+        label: "Đang kiểm tra...",
+        icon: <Clock3 size={16} />,
+        cls:
+          "inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-5 py-2.5 text-[0.78rem] font-semibold text-white/70 opacity-80 cursor-not-allowed",
+        onClick: () => {},
+      };
+    }
+
+    if (joinState.isMember) {
+      return {
+        disabled: true,
+        label: "Đã là thành viên",
+        icon: <BadgeCheck size={16} />,
+        cls:
+          "inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/15 px-5 py-2.5 text-[0.78rem] font-semibold text-emerald-50 cursor-not-allowed",
+        onClick: () => {},
+      };
+    }
+
+    if (joinState.hasApplied) {
+      const st = upperStatus(joinState.status);
+
+      // ✅ NEW: bị từ chối => cho nộp lại
+      if (st === "REJECTED") {
+        return {
+          disabled: false,
+          label: "Nộp lại",
+          icon: <RotateCcw size={16} />,
+          cls:
+            "inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 px-5 py-2.5 text-[0.78rem] font-semibold text-white shadow-lg shadow-violet-500/25 hover:from-violet-400 hover:to-indigo-400 active:scale-[0.99]",
+          onClick: () => setApplyOpen(true),
+        };
+      }
+
+      const label =
+        st === "PENDING"
+          ? "Đã gửi đơn (chờ duyệt)"
+          : st === "APPROVED"
+          ? "Đã duyệt (chờ phản hồi)"
+          : "Đã gửi đơn";
+
+      const icon = st === "APPROVED" ? <CheckCircle2 size={16} /> : <Clock3 size={16} />;
+
+      return {
+        disabled: true,
+        label,
+        icon,
+        cls:
+          "inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-5 py-2.5 text-[0.78rem] font-semibold text-white/80 opacity-90 cursor-not-allowed",
+        onClick: () => {},
+      };
+    }
+
+    return {
+      disabled: false,
+      label: "Tham gia ngay",
+      icon: <Plus size={16} />,
+      cls:
+        "inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 px-5 py-2.5 text-[0.78rem] font-semibold text-white shadow-lg shadow-violet-500/25 hover:from-violet-400 hover:to-indigo-400 active:scale-[0.99]",
+      onClick: () => setApplyOpen(true),
+    };
+  }, [token, joinState, router]);
+
+  // ✅ SUBMIT APPLICATION (REJECTED => cho nộp lại)
   const handleApply = async () => {
     if (!clubId) {
       setToast({ type: "err", text: "Thiếu clubId" });
+      return;
+    }
+
+    const st = upperStatus(joinState.status);
+
+    // ✅ FE block nếu đã là member
+    if (joinState.isMember) {
+      setToast({ type: "err", text: "Bạn đã là thành viên CLB này." });
+      setApplyOpen(false);
+      return;
+    }
+
+    // ✅ chỉ chặn nếu đã có đơn và KHÔNG phải REJECTED
+    if (joinState.hasApplied && st !== "REJECTED") {
+      setToast({ type: "err", text: "Bạn đã gửi đơn cho CLB này rồi." });
+      setApplyOpen(false);
       return;
     }
 
@@ -377,11 +574,22 @@ export default function ClubDetailPage() {
       setToast({ type: "ok", text: data?.message || "Gửi đơn thành công" });
       setApplyOpen(false);
       setReason("");
+
+      // ✅ sau khi gửi đơn, cập nhật state (coi như PENDING)
+      setJoinState({ checking: false, isMember: false, hasApplied: true, status: "PENDING" });
     } catch (e: any) {
       setToast({
         type: "err",
         text: e?.message || "Gửi đơn thất bại (có thể bạn đã đăng ký hoặc đã là thành viên).",
       });
+
+      // ✅ nếu BE báo đã là member/đã đăng ký thì FE khóa lại
+      const msg = String(e?.message || "").toLowerCase();
+      if (msg.includes("thành viên") || msg.includes("member")) {
+        setJoinState((p) => ({ ...p, isMember: true, hasApplied: true, status: p.status ?? "ACCEPTED" }));
+      } else if (msg.includes("đã đăng ký") || msg.includes("đã gửi đơn")) {
+        setJoinState((p) => ({ ...p, hasApplied: true, status: p.status ?? "PENDING" }));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -434,18 +642,18 @@ export default function ClubDetailPage() {
                   </p>
 
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <Pill icon={<Users size={14} />} text={`${stats.members} thành viên`} />
-                    <Pill icon={<CalendarDays size={14} />} text={`${stats.events} sự kiện`} />
+                    <Pill icon={<Users size={14} />} text={`1247 thành viên`} />
+                    <Pill icon={<CalendarDays size={14} />} text={`24 sự kiện`} />
                     <Pill
                       icon={<Star size={14} />}
                       text={
                         <span className="inline-flex items-center gap-2">
-                          <span>{stats.rating.toFixed(1)}/5</span>
+                          <span>{Number(ui?.rating ?? 4.8).toFixed(1)}/5</span>
                           <span className="text-white/50">đánh giá</span>
                         </span>
                       }
                     />
-                    <Pill icon={<Hash size={14} />} text={stats.code} />
+                    <Pill icon={<Hash size={14} />} text={"#FCA28"} />
                   </div>
                 </div>
               </div>
@@ -453,11 +661,12 @@ export default function ClubDetailPage() {
               <div className="flex items-center gap-3 md:justify-end">
                 <button
                   type="button"
-                  onClick={() => setApplyOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 px-5 py-2.5 text-[0.78rem] font-semibold text-white shadow-lg shadow-violet-500/25 hover:from-violet-400 hover:to-indigo-400 active:scale-[0.99]"
+                  disabled={joinBtn.disabled}
+                  onClick={joinBtn.onClick}
+                  className={joinBtn.cls}
                 >
-                  <Plus size={16} />
-                  Tham gia ngay
+                  {joinBtn.icon}
+                  {joinBtn.label}
                 </button>
               </div>
             </div>
@@ -465,9 +674,24 @@ export default function ClubDetailPage() {
 
           <div className="relative border-t border-white/10 bg-black/20 px-4 py-3">
             <div className="flex flex-wrap gap-2">
-              <TabButton active={tab === "about"} icon={<Info size={16} />} label="Giới thiệu" onClick={() => setTab("about")} />
-              <TabButton active={tab === "events"} icon={<CalendarDays size={16} />} label="Sự kiện" onClick={() => setTab("events")} />
-              <TabButton active={tab === "members"} icon={<User size={16} />} label="Thành viên" onClick={() => setTab("members")} />
+              <TabButton
+                active={tab === "about"}
+                icon={<Info size={16} />}
+                label="Giới thiệu"
+                onClick={() => setTab("about")}
+              />
+              <TabButton
+                active={tab === "events"}
+                icon={<CalendarDays size={16} />}
+                label="Sự kiện"
+                onClick={() => setTab("events")}
+              />
+              <TabButton
+                active={tab === "members"}
+                icon={<User size={16} />}
+                label="Thành viên"
+                onClick={() => setTab("members")}
+              />
             </div>
           </div>
         </section>
@@ -477,7 +701,9 @@ export default function ClubDetailPage() {
             {tab === "about" ? (
               <>
                 <Card className="p-5 md:p-6">
-                  <h2 className="text-sm font-semibold text-white/90">Về {ui.fullName || "câu lạc bộ"}</h2>
+                  <h2 className="text-sm font-semibold text-white/90">
+                    Về {ui.fullName || "câu lạc bộ"}
+                  </h2>
                   <p className="mt-3 whitespace-pre-line text-[0.82rem] leading-relaxed text-white/65">
                     {ui.description || fallback.description}
                   </p>
@@ -569,7 +795,10 @@ export default function ClubDetailPage() {
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {members.map((m) => (
-                    <div key={m.name} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <div
+                      key={m.name}
+                      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                    >
                       <div className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-[0.8rem] font-semibold">
                         {m.name
                           .split(" ")
@@ -596,14 +825,16 @@ export default function ClubDetailPage() {
                 <h3 className="text-sm font-semibold text-white/90">Thống kê CLB</h3>
 
                 <div className="mt-4 space-y-2.5 text-[0.78rem]">
-                  <RowStat label="Thành viên" value={stats.members} />
-                  <RowStat label="Sự kiện đã tổ chức" value={stats.events} />
-                  <RowStat label="Dự án đã hoàn thành" value={stats.projects} />
+                  <RowStat label="Thành viên" value={1247} />
+                  <RowStat label="Sự kiện đã tổ chức" value={24} />
+                  <RowStat label="Dự án đã hoàn thành" value={18} />
                   <div className="flex items-center justify-between pt-2">
                     <div className="text-white/65">Đánh giá</div>
                     <div className="flex items-center gap-2">
-                      <span className="text-white/85 font-semibold">{stats.rating.toFixed(1)}</span>
-                      <Stars value={stats.rating} />
+                      <span className="text-white/85 font-semibold">
+                        {Number(ui?.rating ?? 4.8).toFixed(1)}
+                      </span>
+                      <Stars value={Number(ui?.rating ?? 4.8)} />
                     </div>
                   </div>
                 </div>
@@ -663,48 +894,80 @@ export default function ClubDetailPage() {
           if (!submitting) setApplyOpen(false);
         }}
       >
-        <div className="space-y-3">
-          <div className="text-[0.78rem] text-white/65">
-            Hãy viết ngắn gọn lý do bạn muốn tham gia{" "}
-            <span className="text-white/85 font-semibold">{ui.fullName}</span>.
+        {joinState.isMember ? (
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-[0.8rem] text-emerald-50">
+              Bạn đã là thành viên của <span className="font-semibold">{ui.fullName}</span>.
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setApplyOpen(false)}
+                className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[0.78rem] font-semibold text-white/80 hover:bg-white/[0.10]"
+              >
+                Đóng
+              </button>
+            </div>
           </div>
+        ) : (
+          <div className="space-y-3">
+            {upperStatus(joinState.status) === "REJECTED" ? (
+              <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4 text-[0.78rem] text-rose-100">
+                Đơn trước đó đã bị từ chối. Bạn có thể chỉnh lại lý do và <b>nộp lại</b>.
+              </div>
+            ) : null}
 
-          <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={5}
-            placeholder="VD: Em rất yêu thích công nghệ và muốn học hỏi thêm về lập trình web..."
-            className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-3 text-[0.82rem] text-white/90 outline-none placeholder:text-white/35 focus:border-white/20"
-          />
+            <div className="text-[0.78rem] text-white/65">
+              Hãy viết những lý do bạn muốn tham gia{" "}
+              <span className="text-white/85 font-semibold">{ui.fullName}</span>.
+            </div>
 
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              disabled={submitting}
-              onClick={() => setApplyOpen(false)}
-              className={cn(
-                "rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[0.78rem] font-semibold text-white/80 hover:bg-white/[0.10]",
-                submitting && "opacity-70 cursor-not-allowed"
-              )}
-            >
-              Hủy
-            </button>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={5}
+              placeholder="VD: Em rất yêu thích công nghệ và muốn học hỏi thêm về lập trình web..."
+              className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-3 text-[0.82rem] text-white/90 outline-none placeholder:text-white/35 focus:border-white/20"
+            />
 
-            <button
-              type="button"
-              disabled={submitting || !reason.trim()}
-              onClick={handleApply}
-              className={cn(
-                "rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 px-4 py-2 text-[0.78rem] font-semibold text-white shadow-lg shadow-violet-500/25 hover:from-violet-400 hover:to-indigo-400",
-                (submitting || !reason.trim()) && "opacity-70 cursor-not-allowed"
-              )}
-            >
-              {submitting ? "Đang gửi..." : "Gửi đơn"}
-            </button>
+            {(() => {
+              const st = upperStatus(joinState.status);
+              const lockApply = joinState.hasApplied && st !== "REJECTED";
+
+              return (
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => setApplyOpen(false)}
+                    className={cn(
+                      "rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[0.78rem] font-semibold text-white/80 hover:bg-white/[0.10]",
+                      submitting && "opacity-70 cursor-not-allowed"
+                    )}
+                  >
+                    Hủy
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={submitting || !reason.trim() || lockApply}
+                    onClick={handleApply}
+                    className={cn(
+                      "rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 px-4 py-2 text-[0.78rem] font-semibold text-white shadow-lg shadow-violet-500/25 hover:from-violet-400 hover:to-indigo-400",
+                      (submitting || !reason.trim() || lockApply) && "opacity-70 cursor-not-allowed"
+                    )}
+                  >
+                    {submitting ? "Đang gửi..." : lockApply ? "Đã gửi đơn" : "Gửi đơn"}
+                  </button>
+                </div>
+              );
+            })()}
+
+            {!loading && !token ? (
+              <div className="text-[0.75rem] text-amber-200/90">* Bạn đang chưa đăng nhập.</div>
+            ) : null}
           </div>
-
-          {!loading && !token ? <div className="text-[0.75rem] text-amber-200/90">* Bạn đang chưa đăng nhập.</div> : null}
-        </div>
+        )}
       </Modal>
     </div>
   );

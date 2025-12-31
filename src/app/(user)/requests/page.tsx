@@ -2,9 +2,10 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import Header from "@/app/layout/header/page";
-import Footer from "@/app/layout/footer/page";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
+
 import { useAuth } from "@/app/providers/AuthProviders/page";
 import { AUTH_BASE_URL } from "@/app/services/api/auth";
 
@@ -16,7 +17,6 @@ import {
   Users2,
   XCircle,
   CalendarDays,
-  Hash,
   Mail,
   Phone,
   MapPin,
@@ -25,6 +25,15 @@ import {
   X,
   BadgeCheck,
   BadgeX,
+
+  // ✅ sidebar icons
+  Home,
+  Users,
+  User,
+  MessageSquare,
+  Inbox,
+  Settings,
+  LogOut,
 } from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -33,6 +42,14 @@ function cn(...classes: Array<string | false | null | undefined>) {
 
 const glass =
   "border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
+
+function initials(name: string) {
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "U";
+  const a = parts[0]?.[0] ?? "";
+  const b = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return (a + b).toUpperCase();
+}
 
 type ApiStatus = "PENDING" | "APPROVED" | "REJECTED" | "ACCEPTED" | "DECLINED" | string;
 
@@ -75,10 +92,7 @@ function fmtDate(s?: string) {
 function getStatusCfg(status: ApiStatus) {
   const s = String(status || "").toUpperCase();
 
-  const map: Record<
-    string,
-    { text: string; cls: string; dot: string; icon: React.ReactNode }
-  > = {
+  const map: Record<string, { text: string; cls: string; dot: string; icon: React.ReactNode }> = {
     PENDING: {
       text: "Chờ duyệt",
       cls: "bg-amber-400/15 text-amber-200 border-amber-400/25",
@@ -249,7 +263,9 @@ function getClub(obj: any): ClubInfo {
 
 export default function MyApplicationsPage() {
   const router = useRouter();
-  const { user, token, loading } = useAuth() as any;
+  const pathname = usePathname();
+
+  const { user, token, loading, logout, updateUser } = useAuth() as any;
 
   // page này cho user/member
   const isUserRole = useMemo(() => String(user?.role || "").toLowerCase() === "user", [user?.role]);
@@ -259,6 +275,37 @@ export default function MyApplicationsPage() {
     if (!token) return router.replace("/login");
     if (!isUserRole) return router.replace("/");
   }, [loading, token, isUserRole, router]);
+
+  const shownAvatar = String(user?.avatarUrl || "");
+  const fullName = String(user?.fullName || user?.name || "User");
+
+  const handleLogout = async () => {
+    try {
+      if (typeof logout === "function") {
+        await logout();
+      } else if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("authToken");
+      }
+
+      if (typeof updateUser === "function") {
+        updateUser({
+          fullName: "",
+          email: "",
+          avatarUrl: "",
+          phoneNumber: "",
+          school: "",
+          major: "",
+          year: undefined,
+        });
+      }
+
+      router.replace("/");
+    } catch {
+      // ignore
+    }
+  };
 
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const [q, setQ] = useState("");
@@ -329,7 +376,7 @@ export default function MyApplicationsPage() {
     return apps.filter((a) => {
       const club = getClub(a.clubId);
       return (
-        String(a._id || "").toLowerCase().includes(query) ||
+        // ✅ bỏ search theo id
         String(a.reason || "").toLowerCase().includes(query) ||
         String(a.status || "").toLowerCase().includes(query) ||
         String(club.fullName || "").toLowerCase().includes(query) ||
@@ -337,6 +384,18 @@ export default function MyApplicationsPage() {
       );
     });
   }, [apps, q]);
+
+  const navItems = useMemo(
+    () => [
+      { icon: <Home size={16} />, label: "Trang chủ", href: "/homepage" },
+      { icon: <Users size={16} />, label: "Câu lạc bộ", href: "/clubs" },
+      { icon: <CalendarDays size={16} />, label: "Sự kiện", href: "/event" },
+      { icon: <User size={16} />, label: "Hồ sơ của tôi", href: "/profile" },
+      { icon: <MessageSquare size={16} />, label: "Tin nhắn", href: "/messages" },
+      { icon: <Inbox size={16} />, label: "Đơn đã gửi", href: "/requests" },
+    ],
+    []
+  );
 
   if (loading) {
     return (
@@ -346,24 +405,26 @@ export default function MyApplicationsPage() {
         <div className="pointer-events-none absolute -top-28 left-10 -z-10 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
         <div className="pointer-events-none absolute bottom-0 right-0 -z-10 h-96 w-96 rounded-full bg-indigo-400/15 blur-3xl" />
 
-        <Header />
-        <main className="mx-auto max-w-6xl px-4 pt-10">
-          <Card className="p-6 text-sm text-white/70">Đang tải...</Card>
-        </main>
-        <Footer />
+        <div className="mx-auto flex max-w-7xl gap-4 px-4 py-6">
+          <aside className={cn("hidden w-72 shrink-0 rounded-3xl p-4 md:block", glass)}>
+            <div className="h-12 rounded-2xl border border-white/10 bg-white/[0.04]" />
+          </aside>
+
+          <main className="min-w-0 flex-1">
+            <Card className="p-6 text-sm text-white/70">Đang tải...</Card>
+          </main>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden text-white">
-      {/* BG giống các trang bạn */}
+      {/* BG giống profile */}
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-indigo-950 via-purple-900 to-violet-950" />
       <div className="pointer-events-none absolute -top-44 left-1/2 -z-10 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-violet-500/25 blur-3xl" />
       <div className="pointer-events-none absolute -top-28 left-10 -z-10 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 right-0 -z-10 h-96 w-96 rounded-full bg-indigo-400/15 blur-3xl" />
-
-      <Header />
 
       {toast ? (
         <div className="fixed left-1/2 top-5 z-[70] -translate-x-1/2">
@@ -380,193 +441,243 @@ export default function MyApplicationsPage() {
         </div>
       ) : null}
 
-      <main className="mx-auto max-w-6xl px-4 pb-14 pt-10">
-        {/* Title */}
-        <div className="mb-5">
-          <div className="text-sm text-white/60">My applications</div>
-          <h1 className="mt-1 text-xl font-semibold text-white">Đơn Đã Gửi</h1>
-          <p className="mt-1 text-sm text-white/60">
-            Xem lại yêu cầu/ phản hồi từ câu lạc bộ và trạng thái đơn của bạn
-          </p>
-          {fetchErr ? <div className="mt-2 text-sm text-rose-200/90">{fetchErr}</div> : null}
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
-          <StatCard title="Chờ duyệt" value={stats.pending} tone="yellow" icon={<Clock3 className="h-5 w-5" />} />
-          <StatCard title="Đã duyệt" value={stats.approved} tone="blue" icon={<CheckCircle2 className="h-5 w-5" />} />
-          <StatCard title="CLB từ chối" value={stats.rejected} tone="red" icon={<XCircle className="h-5 w-5" />} />
-          <StatCard title="Bạn chấp nhận" value={stats.accepted} tone="green" icon={<BadgeCheck className="h-5 w-5" />} />
-          <StatCard title="Bạn từ chối" value={stats.declined} tone="gray" icon={<BadgeX className="h-5 w-5" />} />
-          <StatCard title="Tổng" value={stats.total} tone="blue" icon={<Users2 className="h-5 w-5" />} />
-        </div>
-
-        {/* List */}
-        <section className={cn("mt-6 rounded-3xl", glass)}>
-          {/* Top bar */}
-          <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="text-sm font-semibold text-white">Danh sách đơn</div>
-              <div className="mt-1 text-xs text-white/55">
-                {fetching ? "Đang tải..." : "Bạn có thể lọc trạng thái và xem chi tiết từng đơn"}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              {/* Search */}
-              <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2">
-                <Search className="h-4 w-4 text-white/60" />
-                <input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Tìm theo tên CLB, lý do, id..."
-                  className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/45 sm:w-[260px]"
-                />
-              </div>
-
-              {/* Filter */}
-              <div className="relative">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="appearance-none rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 pr-10 text-sm text-white/85 outline-none hover:bg-white/[0.10]"
-                >
-                  <option value="all" className="bg-[#0b1038]">
-                    Tất cả trạng thái
-                  </option>
-                  <option value="PENDING" className="bg-[#0b1038]">
-                    PENDING
-                  </option>
-                  <option value="APPROVED" className="bg-[#0b1038]">
-                    APPROVED
-                  </option>
-                  <option value="REJECTED" className="bg-[#0b1038]">
-                    REJECTED
-                  </option>
-                  <option value="ACCEPTED" className="bg-[#0b1038]">
-                    ACCEPTED
-                  </option>
-                  <option value="DECLINED" className="bg-[#0b1038]">
-                    DECLINED
-                  </option>
-                </select>
-                <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/55" />
+      {/* ✅ Layout giống Profile: aside + main */}
+      <div className="mx-auto flex max-w-7xl gap-4 px-4 py-6">
+        <aside className={cn("hidden w-72 shrink-0 rounded-3xl p-4 md:block", glass)}>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center">
+              <div className="relative h-14 w-[250px] overflow-hidden">
+                <Image src="/clubverse_logo_1.png" alt="Clubverse" fill priority className="object-contain object-left" />
               </div>
             </div>
           </div>
 
-          {/* Items */}
-          <div className="space-y-3 p-5">
-            {filtered.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-sm text-white/70">
-                {fetching ? "Đang tải..." : "Không có đơn nào."}
-              </div>
-            ) : null}
-
-            {filtered.map((a) => {
-              const club = getClub(a.clubId);
-              const hasInterview =
-                !!a.interviewDate || !!a.interviewLocation || !!a.interviewNote;
-
-              return (
-                <div
-                  key={a._id}
-                  className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
-                >
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    {/* Left */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-sm font-semibold text-white">
-                          {club?.fullName || "Câu lạc bộ"}
-                        </div>
-                        <StatusBadge status={a.status} />
-                      </div>
-
-                      <div className="mt-1 text-xs text-white/55">
-                        {club?.category ? `Danh mục: ${club.category}` : "—"}
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[0.72rem] text-white/80">
-                          <Hash className="h-4 w-4 text-white/60" />
-                          {a._id}
-                        </span>
-
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[0.72rem] text-white/80">
-                          <CalendarDays className="h-4 w-4 text-white/60" />
-                          {fmtDate(a.submittedAt || a.createdAt)}
-                        </span>
-                      </div>
-
-                      <p className="mt-3 text-sm text-white/70 leading-relaxed line-clamp-2">
-                        <span className="text-white/80 font-semibold">Lý do:</span>{" "}
-                        {a.reason || "—"}
-                      </p>
-
-                      {/* “Nhận lại request” = nếu CLB đã duyệt và có lịch phỏng vấn */}
-                      {hasInterview ? (
-                        <div className="mt-3 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-sky-100">
-                            <Info className="h-4 w-4" />
-                            Lịch phỏng vấn từ CLB
-                          </div>
-                          <div className="mt-2 text-sm text-white/75">
-                            <div>
-                              <span className="text-white/60">Thời gian:</span>{" "}
-                              <span className="font-semibold text-white/90">{fmtDate(a.interviewDate)}</span>
-                            </div>
-                            <div className="mt-1">
-                              <span className="text-white/60">Địa điểm:</span>{" "}
-                              <span className="font-semibold text-white/90">{a.interviewLocation || "—"}</span>
-                            </div>
-                            {a.interviewNote ? (
-                              <div className="mt-1">
-                                <span className="text-white/60">Ghi chú:</span>{" "}
-                                <span className="text-white/85">{a.interviewNote}</span>
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {/* nếu bị từ chối */}
-                      {String(a.status).toUpperCase() === "REJECTED" && a.rejectionReason ? (
-                        <div className="mt-3 rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4">
-                          <div className="flex items-center gap-2 text-sm font-semibold text-rose-100">
-                            <XCircle className="h-4 w-4" />
-                            Lý do CLB từ chối
-                          </div>
-                          <div className="mt-2 text-sm text-white/75">{a.rejectionReason}</div>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    {/* Right actions */}
-                    <div className="flex shrink-0 items-center justify-end gap-2 md:justify-start">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPicked(a);
-                          setOpen(true);
-                        }}
-                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[0.72rem] font-semibold text-white/85 hover:bg-white/[0.10]"
-                      >
-                        <FileText className="h-4 w-4" />
-                        Xem chi tiết
-                      </button>
-                    </div>
-                  </div>
+          <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+            <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-white/10 bg-white/[0.06]">
+              {shownAvatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={shownAvatar} alt="avatar" className="h-full w-full object-cover" />
+              ) : (
+                <div className="grid h-full w-full place-items-center text-xs font-semibold">
+                  {initials(fullName)}
                 </div>
+              )}
+            </div>
+
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold">{fullName || "—"}</p>
+              <p className="text-[0.68rem] text-emerald-300/80">● Sinh viên</p>
+            </div>
+          </div>
+
+          <nav className="mt-5 space-y-1.5 text-[0.78rem]">
+            {navItems.map((it) => {
+              const active = pathname === it.href || (it.href !== "/" && pathname?.startsWith(it.href));
+              return (
+                <Link
+                  key={it.label}
+                  href={it.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl px-3 py-2 transition",
+                    active
+                      ? "bg-gradient-to-r from-emerald-500/80 to-sky-500/60 text-slate-950 font-semibold"
+                      : "text-white/70 hover:bg-white/[0.06] hover:text-white"
+                  )}
+                >
+                  <span className={cn("opacity-90", active && "text-slate-950")}>{it.icon}</span>
+                  {it.label}
+                </Link>
               );
             })}
+          </nav>
+
+          <div className="mt-6 border-t border-white/10 pt-4 space-y-2">
+            <Link
+              href="/settings"
+              className="flex items-center gap-3 rounded-xl px-3 py-2 text-[0.78rem] text-white/70 hover:bg-white/[0.06] hover:text-white transition"
+            >
+              <Settings size={16} />
+              Cài đặt
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[0.78rem] text-white/70 hover:bg-white/[0.06] hover:text-white transition"
+            >
+              <LogOut size={16} />
+              Đăng xuất
+            </button>
           </div>
-        </section>
-      </main>
+        </aside>
 
-      <Footer />
+        <main className="min-w-0 flex-1">
+          <div className="mx-auto max-w-6xl pb-14 pt-2">
+            <div className="mb-5">
+              <div className="text-sm text-white/60">My applications</div>
+              <h1 className="mt-1 text-xl font-semibold text-white">Đơn Đã Gửi</h1>
+              <p className="mt-1 text-sm text-white/60">
+                Xem lại yêu cầu/ phản hồi từ câu lạc bộ và trạng thái đơn của bạn
+              </p>
+              {fetchErr ? <div className="mt-2 text-sm text-rose-200/90">{fetchErr}</div> : null}
+            </div>
 
-      {/* Detail Modal */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
+              <StatCard title="Chờ duyệt" value={stats.pending} tone="yellow" icon={<Clock3 className="h-5 w-5" />} />
+              <StatCard title="Đã duyệt" value={stats.approved} tone="blue" icon={<CheckCircle2 className="h-5 w-5" />} />
+              <StatCard title="CLB từ chối" value={stats.rejected} tone="red" icon={<XCircle className="h-5 w-5" />} />
+              <StatCard title="Bạn chấp nhận" value={stats.accepted} tone="green" icon={<BadgeCheck className="h-5 w-5" />} />
+              <StatCard title="Bạn từ chối" value={stats.declined} tone="gray" icon={<BadgeX className="h-5 w-5" />} />
+              <StatCard title="Tổng" value={stats.total} tone="blue" icon={<Users2 className="h-5 w-5" />} />
+            </div>
+
+            <section className={cn("mt-6 rounded-3xl", glass)}>
+              <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-white">Danh sách đơn</div>
+                  <div className="mt-1 text-xs text-white/55">
+                    {fetching ? "Đang tải..." : "Bạn có thể lọc trạng thái và xem chi tiết từng đơn"}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2">
+                    <Search className="h-4 w-4 text-white/60" />
+                    <input
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                      placeholder="Tìm theo tên CLB, lý do, trạng thái..."
+                      className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/45 sm:w-[260px]"
+                    />
+                  </div>
+
+                  <div className="relative">
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value as any)}
+                      className="appearance-none rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 pr-10 text-sm text-white/85 outline-none hover:bg-white/[0.10]"
+                    >
+                      <option value="all" className="bg-[#0b1038]">
+                        Tất cả trạng thái
+                      </option>
+                      <option value="PENDING" className="bg-[#0b1038]">
+                        PENDING
+                      </option>
+                      <option value="APPROVED" className="bg-[#0b1038]">
+                        APPROVED
+                      </option>
+                      <option value="REJECTED" className="bg-[#0b1038]">
+                        REJECTED
+                      </option>
+                      <option value="ACCEPTED" className="bg-[#0b1038]">
+                        ACCEPTED
+                      </option>
+                      <option value="DECLINED" className="bg-[#0b1038]">
+                        DECLINED
+                      </option>
+                    </select>
+                    <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/55" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 p-5">
+                {filtered.length === 0 ? (
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-sm text-white/70">
+                    {fetching ? "Đang tải..." : "Không có đơn nào."}
+                  </div>
+                ) : null}
+
+                {filtered.map((a) => {
+                  const club = getClub(a.clubId);
+                  const hasInterview = !!a.interviewDate || !!a.interviewLocation || !!a.interviewNote;
+
+                  return (
+                    <div
+                      key={a._id}
+                      className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-sm font-semibold text-white">{club?.fullName || "Câu lạc bộ"}</div>
+                            <StatusBadge status={a.status} />
+                          </div>
+
+                          <div className="mt-1 text-xs text-white/55">
+                            {club?.category ? `Danh mục: ${club.category}` : "—"}
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[0.72rem] text-white/80">
+                              <CalendarDays className="h-4 w-4 text-white/60" />
+                              {fmtDate(a.submittedAt || a.createdAt)}
+                            </span>
+                          </div>
+
+                          <p className="mt-3 text-sm text-white/70 leading-relaxed line-clamp-2">
+                            <span className="text-white/80 font-semibold">Lý do:</span> {a.reason || "—"}
+                          </p>
+
+                          {hasInterview ? (
+                            <div className="mt-3 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4">
+                              <div className="flex items-center gap-2 text-sm font-semibold text-sky-100">
+                                <Info className="h-4 w-4" />
+                                Lịch phỏng vấn từ CLB
+                              </div>
+                              <div className="mt-2 text-sm text-white/75">
+                                <div>
+                                  <span className="text-white/60">Thời gian:</span>{" "}
+                                  <span className="font-semibold text-white/90">{fmtDate(a.interviewDate)}</span>
+                                </div>
+                                <div className="mt-1">
+                                  <span className="text-white/60">Địa điểm:</span>{" "}
+                                  <span className="font-semibold text-white/90">{a.interviewLocation || "—"}</span>
+                                </div>
+                                {a.interviewNote ? (
+                                  <div className="mt-1">
+                                    <span className="text-white/60">Ghi chú:</span>{" "}
+                                    <span className="text-white/85">{a.interviewNote}</span>
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {String(a.status).toUpperCase() === "REJECTED" && a.rejectionReason ? (
+                            <div className="mt-3 rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4">
+                              <div className="flex items-center gap-2 text-sm font-semibold text-rose-100">
+                                <XCircle className="h-4 w-4" />
+                                Lý do CLB từ chối
+                              </div>
+                              <div className="mt-2 text-sm text-white/75">{a.rejectionReason}</div>
+                            </div>
+                          ) : null}
+                        </div>
+
+                        <div className="flex shrink-0 items-center justify-end gap-2 md:justify-start">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPicked(a);
+                              setOpen(true);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[0.72rem] font-semibold text-white/85 hover:bg-white/[0.10]"
+                          >
+                            <FileText className="h-4 w-4" />
+                            Xem chi tiết
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+
       <Modal
         open={open}
         title="Chi tiết đơn"
@@ -579,7 +690,6 @@ export default function MyApplicationsPage() {
           <div className="text-sm text-white/70">—</div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
-            {/* left: club */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
               <div className="text-sm font-semibold text-white/90">Câu lạc bộ</div>
 
@@ -589,9 +699,7 @@ export default function MyApplicationsPage() {
                   <div className="mt-3 space-y-2 text-sm text-white/75">
                     <div className="font-semibold text-white/90">{club.fullName || "—"}</div>
 
-                    <div className="text-xs text-white/55">
-                      {club.category ? `Danh mục: ${club.category}` : "—"}
-                    </div>
+                    <div className="text-xs text-white/55">{club.category ? `Danh mục: ${club.category}` : "—"}</div>
 
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-white/60" />
@@ -612,7 +720,6 @@ export default function MyApplicationsPage() {
               })()}
             </div>
 
-            {/* right: application */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
               <div className="text-sm font-semibold text-white/90">Thông tin đơn</div>
 
@@ -621,16 +728,9 @@ export default function MyApplicationsPage() {
                   <StatusBadge status={picked.status} />
                 </div>
 
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[0.72rem] text-white/80">
-                  <Hash className="h-4 w-4 text-white/60" />
-                  {picked._id}
-                </div>
-
                 <div className="pt-1">
                   <div className="text-xs text-white/60">Submitted</div>
-                  <div className="font-semibold text-white/90">
-                    {fmtDate(picked.submittedAt || picked.createdAt)}
-                  </div>
+                  <div className="font-semibold text-white/90">{fmtDate(picked.submittedAt || picked.createdAt)}</div>
                 </div>
 
                 <div className="pt-1">
@@ -640,16 +740,12 @@ export default function MyApplicationsPage() {
               </div>
             </div>
 
-            {/* reason full */}
             <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
               <div className="text-sm font-semibold text-white/90">Lý do</div>
-              <div className="mt-2 whitespace-pre-line text-sm text-white/75">
-                {picked.reason || "—"}
-              </div>
+              <div className="mt-2 whitespace-pre-line text-sm text-white/75">{picked.reason || "—"}</div>
             </div>
 
-            {/* interview request */}
-            {(picked.interviewDate || picked.interviewLocation || picked.interviewNote) ? (
+            {picked.interviewDate || picked.interviewLocation || picked.interviewNote ? (
               <div className="md:col-span-2 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-sky-100">
                   <Info className="h-4 w-4" />
@@ -674,7 +770,6 @@ export default function MyApplicationsPage() {
               </div>
             ) : null}
 
-            {/* rejection reason */}
             {String(picked.status).toUpperCase() === "REJECTED" && picked.rejectionReason ? (
               <div className="md:col-span-2 rounded-2xl border border-rose-400/20 bg-rose-500/10 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-rose-100">

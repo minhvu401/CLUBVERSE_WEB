@@ -22,7 +22,7 @@ function redirectByRole(
     case "admin":
       return "/admin/dashboard";
     case "club":
-      return "/club/home";
+      return "/club/forum";
     case "user":
       return "/homepage"; // hoặc "/"
     default:

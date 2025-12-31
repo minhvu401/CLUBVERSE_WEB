@@ -705,7 +705,7 @@ export default function ProfilePage() {
             {[
               { icon: <Home size={16} />, label: "Trang chủ", href: "/homepage" },
               { icon: <Users size={16} />, label: "Câu lạc bộ", href: "/clubs" },
-              { icon: <CalendarDays size={16} />, label: "Sự kiện", href: "/events" },
+              { icon: <CalendarDays size={16} />, label: "Sự kiện", href: "/event" },
               { icon: <User size={16} />, label: "Hồ sơ của tôi", href: "/profile", active: true },
               { icon: <MessageSquare size={16} />, label: "Tin nhắn", href: "/messages" },
               { icon: <Inbox size={16} />, label: "Đơn đã gửi", href: "/requests" },

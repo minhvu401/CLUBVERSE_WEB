@@ -1,21 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import {
-  Bell,
-  Search,
-  LogOut,
-  LayoutDashboard,
-  FileText,
-  MessageSquare,
-  Settings,
-  ShieldCheck,
-} from "lucide-react";
+import { Bell, Search, LogOut, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/app/providers/AuthProviders/page";
+import { AUTH_BASE_URL } from "@/app/services/api/auth";
 
 function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
@@ -27,6 +19,29 @@ function normalizeRole(role: unknown): Role {
   const r = String(role || "").trim().toLowerCase();
   if (r === "user" || r === "club" || r === "admin") return r;
   return "guest";
+}
+
+function initials(name: string) {
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "U";
+  const a = parts[0]?.[0] ?? "";
+  const b = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return (a + b).toUpperCase();
+}
+
+/** ✅ normalize avatarUrl: trim + prefix nếu là path relative */
+function normalizeAvatar(raw?: unknown) {
+  const s = typeof raw === "string" ? raw.trim() : "";
+  if (!s) return "";
+
+  // absolute url
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+
+  // local public file
+  if (s.startsWith("/")) return s;
+
+  // relative from backend -> prefix base url
+  return `${AUTH_BASE_URL}/${s.replace(/^\/+/, "")}`;
 }
 
 function HeaderShell({ children }: { children: React.ReactNode }) {
@@ -87,13 +102,24 @@ function NavLinks({
 
 function RightAuthed({
   avatarUrl,
+  displayName,
+  subLabel,
   onProfile,
   onLogout,
 }: {
   avatarUrl?: string;
+  displayName: string;
+  subLabel?: string;
   onProfile: () => void;
   onLogout: () => void;
 }) {
+  const [imgErr, setImgErr] = useState(false);
+
+  const safeSrc = useMemo(() => {
+    if (imgErr) return "";
+    return normalizeAvatar(avatarUrl);
+  }, [avatarUrl, imgErr]);
+
   return (
     <div className="flex items-center gap-3">
       {/* Search (desktop) */}
@@ -115,23 +141,36 @@ function RightAuthed({
         <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500" />
       </button>
 
-      {/* Avatar */}
+      {/* Avatar + name (đỡ trống header) */}
       <button
         type="button"
         onClick={onProfile}
         className="flex items-center gap-2 rounded-full px-2 py-1.5 hover:bg-white/10 transition"
         title="Hồ sơ"
       >
-        <div className="h-9 w-9 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={
-              avatarUrl ||
-              "https://api.dicebear.com/7.x/identicon/svg?seed=clubverse"
-            }
-            alt="avatar"
-            className="h-full w-full object-cover"
-          />
+        <div className="h-9 w-9 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15 grid place-items-center">
+          {safeSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={safeSrc}
+              alt="avatar"
+              className="h-full w-full object-cover"
+              onError={() => setImgErr(true)}
+            />
+          ) : (
+            <div className="text-[0.7rem] font-semibold text-white/85">
+              {initials(displayName)}
+            </div>
+          )}
+        </div>
+
+        <div className="hidden md:block text-left leading-tight">
+          <div className="max-w-[160px] truncate text-xs font-semibold text-white/90">
+            {displayName || "—"}
+          </div>
+          {subLabel ? (
+            <div className="text-[0.68rem] text-emerald-300/80">{subLabel}</div>
+          ) : null}
         </div>
       </button>
 
@@ -184,21 +223,18 @@ function MobileSearch({ show }: { show: boolean }) {
   );
 }
 
-/** ====== USER HEADER (giữ như bạn đang có) ====== */
-function UserHeader({
-  pathname,
-  isAuthed,
-  user,
-  onLogout,
-  router,
-}: any) {
+/** ====== USER HEADER ====== */
+function UserHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   const navItems = [
     { label: "Trang Chủ", href: "/homepage", match: ["/", "/homepage"] },
     { label: "Khám Phá", href: "/finding", match: ["/finding"] },
-    { label: "Sự Kiện", href: "/su-kien", match: ["/su-kien"] },
-    { label: "Câu Lạc Bộ", href: "/clb", match: ["/clb"] },
-    { label: "Diễn Đàn", href: "/dien-dan", match: ["/dien-dan"] },
+    { label: "Sự Kiện", href: "/event", match: ["/event"] },
+    { label: "Câu Lạc Bộ", href: "/club", match: ["/club"] },
+    { label: "Diễn Đàn", href: "/posts", match: ["/posts"] },
   ];
+
+  const displayName =
+    String(user?.fullName || user?.name || user?.email || "User").trim() || "User";
 
   return (
     <HeaderShell>
@@ -211,6 +247,8 @@ function UserHeader({
         ) : (
           <RightAuthed
             avatarUrl={user?.avatarUrl || user?.avatar}
+            displayName={displayName}
+            subLabel="● Sinh viên"
             onProfile={() => router.push("/profile")}
             onLogout={onLogout}
           />
@@ -222,46 +260,35 @@ function UserHeader({
   );
 }
 
-/** ====== CLUB HEADER (đổi về /homeclub) ====== */
-function ClubHeader({
-  pathname,
-  isAuthed,
-  user,
-  onLogout,
-  router,
-}: any) {
+/** ====== CLUB HEADER ====== */
+function ClubHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   const navItems = [
-    { label: "Trang CLB", href: "/club/home", match: ["/club/home"] },
     { label: "Diễn đàn", href: "/club/forum", match: ["/club/forum"] },
     { label: "Đơn đăng ký", href: "/club/applications", match: ["/club/applications"] },
-    { label: "Dashboard", href: "/club/dashboard", match: ["/club/dashboard"] },
+    { label: "Bảng điều khiển", href: "/club/dashboard", match: ["/club/dashboard"] },
+    { label: "Sự kiện", href: "/club/events", match: ["/club/events"] },
+    { label: "Hồ sơ", href: "/club/profile", match: ["/club/profile"] },
   ];
+
+  const displayName =
+    String(user?.fullName || user?.name || user?.email || "Club").trim() || "Club";
 
   return (
     <HeaderShell>
       <div className="flex h-20 items-center justify-between bg-transparent border-0">
-        <Brand href={isAuthed ? "/club/home" : "/club/home"} />
+        <Brand href="/club/forum" />
         <NavLinks items={navItems} pathname={pathname} />
 
         {!isAuthed ? (
           <RightGuest />
         ) : (
-          <div className="flex items-center gap-3">
-            <Link
-              href="/club/profile/edit"
-              className="hidden md:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white/85 hover:bg-white/14 transition"
-              title="Chỉnh sửa hồ sơ CLB"
-            >
-              <Settings className="h-4 w-4" />
-              <span>Quản lý</span>
-            </Link>
-
-            <RightAuthed
-              avatarUrl={user?.avatarUrl || user?.avatar}
-              onProfile={() => router.push("/club/profile")}
-              onLogout={onLogout}
-            />
-          </div>
+          <RightAuthed
+            avatarUrl={user?.avatarUrl || user?.avatar || user?.logoUrl}
+            displayName={displayName}
+            subLabel="● Câu lạc bộ"
+            onProfile={() => router.push("/club/profile")}
+            onLogout={onLogout}
+          />
         )}
       </div>
 
@@ -271,13 +298,7 @@ function ClubHeader({
 }
 
 /** ====== ADMIN HEADER ====== */
-function AdminHeader({
-  pathname,
-  isAuthed,
-  user,
-  onLogout,
-  router,
-}: any) {
+function AdminHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   const navItems = [
     { label: "Dashboard", href: "/admin", match: ["/admin"] },
     { label: "Users", href: "/admin/users", match: ["/admin/users"] },
@@ -285,10 +306,13 @@ function AdminHeader({
     { label: "Cài đặt", href: "/admin/settings", match: ["/admin/settings"] },
   ];
 
+  const displayName =
+    String(user?.fullName || user?.name || user?.email || "Admin").trim() || "Admin";
+
   return (
     <HeaderShell>
       <div className="flex h-20 items-center justify-between bg-transparent border-0">
-        <Brand href={isAuthed ? "/admin" : "/"} />
+        <Brand href="/admin" />
         <NavLinks items={navItems} pathname={pathname} />
 
         {!isAuthed ? (
@@ -302,6 +326,8 @@ function AdminHeader({
 
             <RightAuthed
               avatarUrl={user?.avatarUrl || user?.avatar}
+              displayName={displayName}
+              subLabel="● Admin"
               onProfile={() => router.push("/admin/profile")}
               onLogout={onLogout}
             />
@@ -327,7 +353,6 @@ export default function Header() {
     router.replace("/");
   };
 
-  // guest
   if (!isAuthed || role === "guest") {
     return (
       <UserHeader
@@ -340,7 +365,6 @@ export default function Header() {
     );
   }
 
-  // role based
   if (role === "club") {
     return (
       <ClubHeader
