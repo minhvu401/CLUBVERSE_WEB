@@ -198,7 +198,7 @@ export default function ClubProfileEditPage() {
       setToast({ type: "ok", text: "Cập nhật thông tin thành công" });
 
       setTimeout(() => {
-        router.push("/club/home");
+        router.push("/club/forum");
       }, 1000);
     } catch (e: any) {
       setToast({ type: "err", text: e?.message || "Cập nhật thất bại" });

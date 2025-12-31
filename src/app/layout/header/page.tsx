@@ -195,9 +195,9 @@ function UserHeader({
   const navItems = [
     { label: "Trang Chủ", href: "/homepage", match: ["/", "/homepage"] },
     { label: "Khám Phá", href: "/finding", match: ["/finding"] },
-    { label: "Sự Kiện", href: "/su-kien", match: ["/su-kien"] },
-    { label: "Câu Lạc Bộ", href: "/clb", match: ["/clb"] },
-    { label: "Diễn Đàn", href: "/dien-dan", match: ["/dien-dan"] },
+    { label: "Sự Kiện", href: "/event", match: ["/event"] },
+    { label: "Câu Lạc Bộ", href: "/club", match: ["/club"] },
+    { label: "Diễn Đàn", href: "/forum", match: ["/forum"] },
   ];
 
   return (
@@ -231,30 +231,23 @@ function ClubHeader({
   router,
 }: any) {
   const navItems = [
-    { label: "Trang CLB", href: "/club/home", match: ["/club/home"] },
     { label: "Diễn đàn", href: "/club/forum", match: ["/club/forum"] },
     { label: "Đơn đăng ký", href: "/club/applications", match: ["/club/applications"] },
     { label: "Dashboard", href: "/club/dashboard", match: ["/club/dashboard"] },
+    { label: "Sự kiện", href: "/club/events", match: ["/club/events"] },
+    { label: "Hồ sơ", href: "/club/profile", match: ["/club/profile"] },
   ];
 
   return (
     <HeaderShell>
       <div className="flex h-20 items-center justify-between bg-transparent border-0">
-        <Brand href={isAuthed ? "/club/home" : "/club/home"} />
+        <Brand href={isAuthed ? "/club/forum" : "/club/forum"} />
         <NavLinks items={navItems} pathname={pathname} />
 
         {!isAuthed ? (
           <RightGuest />
         ) : (
           <div className="flex items-center gap-3">
-            <Link
-              href="/club/profile/edit"
-              className="hidden md:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white/85 hover:bg-white/14 transition"
-              title="Chỉnh sửa hồ sơ CLB"
-            >
-              <Settings className="h-4 w-4" />
-              <span>Quản lý</span>
-            </Link>
 
             <RightAuthed
               avatarUrl={user?.avatarUrl || user?.avatar}

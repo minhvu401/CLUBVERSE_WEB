@@ -1,4 +1,4 @@
-import { AUTH_BASE_URL } from "./auth";
+import { AUTH_BASE_URL } from "@/app/services/api/auth";
 
 export type ApiStatus =
   | "PENDING"
