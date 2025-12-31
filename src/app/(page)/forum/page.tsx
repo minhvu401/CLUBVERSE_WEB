@@ -9,7 +9,7 @@ import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders/page";
 
 import {
-  getClubPosts,
+  getAllPosts,
   type PostItem,
   type PostSort,
 } from "@/app/services/api/post";
@@ -41,7 +41,7 @@ const glass =
 
 type Category = "all" | "announcement" | "qa" | "sharing";
 
-type Post = {
+type PostUI = {
   id: string;
   title: string;
   excerpt: string;
@@ -55,12 +55,14 @@ type Post = {
 };
 
 type ApiPost = PostItem & {
-  postId?: string; // ✅ thêm để fallback id khi API không trả _id
+  postId?: string; // ✅ list API có thể trả postId
 
+  // optional fields (tuỳ backend)
   author?: any;
   createdBy?: any;
   user?: any;
   owner?: any;
+  club?: any;
 
   commentCount?: number;
   commentsCount?: number;
@@ -78,7 +80,6 @@ type ApiPost = PostItem & {
   category?: string;
   type?: string;
 };
-
 
 function CategoryPill({
   value,
@@ -146,6 +147,7 @@ function Stat({ icon, value }: { icon: React.ReactNode; value: number }) {
 // ===== helpers =====
 function toExcerpt(content?: string, max = 160) {
   const s = (content || "").replace(/\s+/g, " ").trim();
+  if (!s) return "Chưa có nội dung.";
   return s.length > max ? s.slice(0, max) + "…" : s;
 }
 
@@ -195,6 +197,16 @@ function normalizeCategory(raw?: string, tags?: string[]) {
 }
 
 function pickAuthor(p: ApiPost) {
+  // nếu backend có club info thì ưu tiên show tên CLB
+  const club = (p as any).club;
+  if (club) {
+    return {
+      name: club.fullName || club.name || club.email || "CLB",
+      role: "CLB",
+      avatar: club.avatar || club.avatarUrl || club.image,
+    };
+  }
+
   const a =
     p.author ||
     p.createdBy ||
@@ -211,7 +223,7 @@ function pickAuthor(p: ApiPost) {
     a?.email ||
     "Ẩn danh";
 
-  const role = a?.role || a?.position || a?.title;
+  const role = a?.role || a?.position || a?.title || "Thành viên";
 
   const avatar =
     a?.avatar ||
@@ -254,30 +266,20 @@ function pickHot(p: ApiPost) {
   return Boolean((p as any).hot ?? (p as any).isHot);
 }
 
-// ✅ FIX: truyền clubName để fallback author hiển thị đúng "TEST CLUB"
-function mapApiToUi(p: ApiPost, clubName?: string): Post {
+function mapApiToUi(p: ApiPost): PostUI {
   const anyP = p as any;
 
-  // ✅ FIX: id/key fallback để không bị mất bài
+  // ✅ FIX: id fallback (_id -> postId -> id)
   const rawId = anyP?._id ?? anyP?.postId ?? anyP?.id;
   const id = rawId
     ? String(rawId)
     : `${anyP?.title || "post"}-${anyP?.createdAt || Date.now()}`;
 
-  const authorFromPost = pickAuthor(p);
-  const likes = p.likeCount ?? p.likes?.length ?? 0;
-
-  const author = {
-    name:
-      authorFromPost?.name && authorFromPost.name !== "Ẩn danh"
-        ? authorFromPost.name
-        : clubName || "CLB",
-    role: authorFromPost?.role || "Club",
-    avatar: authorFromPost?.avatar,
-  };
+  const author = pickAuthor(p);
+  const likes = anyP?.likeCount ?? anyP?.likes?.length ?? 0;
 
   return {
-    id, // ✅ dùng id mới
+    id,
     title: anyP?.title || "(Không có tiêu đề)",
     excerpt: toExcerpt(anyP?.content),
     author,
@@ -294,21 +296,14 @@ function mapApiToUi(p: ApiPost, clubName?: string): Post {
   };
 }
 
-
-export default function ForumPage() {
+export default function UserForumPage() {
   const router = useRouter();
-  const { user, token, loading } = useAuth() as any;
-
-  const isClubRole = useMemo(
-    () => String(user?.role || "").toLowerCase() === "club",
-    [user?.role]
-  );
+  const { token, loading } = useAuth() as any;
 
   useEffect(() => {
     if (loading) return;
     if (!token) return router.replace("/login");
-    // if (!isClubRole) return router.replace("/");
-  }, [loading, token, isClubRole, router]);
+  }, [loading, token, router]);
 
   const categories = [
     { key: "all" as const, label: "Tất cả" },
@@ -330,21 +325,17 @@ export default function ForumPage() {
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string>("");
 
-  // ✅ FIX: clubId đúng theo response CLB của bạn
-  const clubId = user?._id; // <-- QUAN TRỌNG
-  const clubName = user?.fullName || user?.name || "CLB";
-
+  // ✅ FETCH: getAllPosts (đúng theo api bạn đưa)
   useEffect(() => {
     if (loading) return;
     if (!token) return;
-    if (!clubId) return;
 
     (async () => {
       try {
         setError("");
         setLoadingPosts(true);
 
-        const data = (await getClubPosts(token, String(clubId), {
+        const data = (await getAllPosts(token, {
           sortBy,
           limit,
           skip,
@@ -353,7 +344,7 @@ export default function ForumPage() {
         setApiPosts(Array.isArray(data) ? data : []);
         setHasMore(Array.isArray(data) && data.length === limit);
       } catch (e: any) {
-        console.error("Fetch club posts failed:", e);
+        console.error("Fetch all posts failed:", e);
         setApiPosts([]);
         setHasMore(false);
         setError(e?.message || "Không tải được bài viết.");
@@ -361,13 +352,9 @@ export default function ForumPage() {
         setLoadingPosts(false);
       }
     })();
-  }, [loading, token, clubId, sortBy, limit, skip]);
+  }, [loading, token, sortBy, limit, skip]);
 
-  // ✅ FIX: map có clubName để author hiển thị "TEST CLUB"
-  const posts: Post[] = useMemo(
-    () => apiPosts.map((p) => mapApiToUi(p, clubName)),
-    [apiPosts, clubName]
-  );
+  const posts: PostUI[] = useMemo(() => apiPosts.map(mapApiToUi), [apiPosts]);
 
   const filtered = useMemo(() => {
     const byCat = cat === "all" ? posts : posts.filter((p) => p.category === cat);
@@ -392,24 +379,6 @@ export default function ForumPage() {
       .slice(0, 6);
   }, [posts]);
 
-  const onlineMembers = [
-    {
-      name: "Nguyễn Văn A",
-      avatar:
-        "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?auto=format&fit=crop&w=96&q=80",
-    },
-    {
-      name: "Trần Thị B",
-      avatar:
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=96&q=80",
-    },
-    {
-      name: "Phạm Thị D",
-      avatar:
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=96&q=80",
-    },
-  ];
-
   const canPrev = page > 1 && !loadingPosts;
   const canNext = hasMore && !loadingPosts;
 
@@ -420,6 +389,7 @@ export default function ForumPage() {
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden text-white">
+      {/* BG */}
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-indigo-950 via-purple-900 to-violet-950" />
       <div className="pointer-events-none absolute -top-44 left-1/2 -z-10 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-violet-500/25 blur-3xl" />
       <div className="pointer-events-none absolute -top-28 left-10 -z-10 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
@@ -437,16 +407,11 @@ export default function ForumPage() {
               <p className="mt-1 text-sm text-white/60">
                 Nơi trao đổi thông báo, hỏi đáp và chia sẻ kiến thức trong cộng đồng.
               </p>
-              {!clubId ? (
-                <p className="mt-1 text-xs text-amber-200/80">
-                  (Chưa thấy clubId trong user — CLB login phải có user._id)
-                </p>
-              ) : null}
             </div>
 
             <button
               type="button"
-              onClick={() => router.push("/club/forum/create")}
+              onClick={() => router.push("/forum/post/create")}
               className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-2.5 text-[0.78rem] font-bold text-slate-900 shadow-lg shadow-cyan-500/35 hover:shadow-cyan-500/55 hover:brightness-110 active:scale-95 transition"
             >
               <Plus className="h-4 w-4" />
@@ -635,7 +600,7 @@ export default function ForumPage() {
 
                       <button
                         type="button"
-                        onClick={() => router.push(`/club/forum/post/${p.id}`)}
+                        onClick={() => router.push(`/forum/post/${p.id}`)}
                         className="rounded-full bg-white/[0.06] hover:bg-white/[0.10] border border-white/10 px-4 py-2 text-[0.72rem] font-semibold text-white/85 transition"
                       >
                         Xem bài →
@@ -714,7 +679,7 @@ export default function ForumPage() {
 
               <button
                 type="button"
-                onClick={() => alert("Demo: tạo bài viết")}
+                onClick={() => router.push("/forum/post/create")}
                 className="mt-4 w-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-2.5 text-[0.78rem] font-bold text-slate-900 shadow-lg shadow-cyan-500/35 hover:shadow-cyan-500/55 hover:brightness-110 active:scale-95 transition"
               >
                 Tạo bài viết
@@ -722,7 +687,7 @@ export default function ForumPage() {
 
               <button
                 type="button"
-                onClick={() => alert("Demo: tạo thông báo")}
+                onClick={() => alert("Demo: tạo thông báo user")}
                 className="mt-2 w-full rounded-full border border-white/10 bg-white/[0.06] px-5 py-2.5 text-[0.78rem] font-semibold text-white/85 hover:bg-white/[0.10] transition"
               >
                 Tạo thông báo
@@ -784,47 +749,6 @@ export default function ForumPage() {
               </ul>
             </div>
 
-            {/* Online members */}
-            <div className={cn("rounded-3xl p-5", glass)}>
-              <div className="flex items-center gap-2">
-                <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06]">
-                  <Users className="h-4 w-4 text-white/80" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold">Online</div>
-                  <div className="mt-0.5 text-[0.72rem] text-white/55">
-                    Thành viên đang hoạt động
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                {onlineMembers.map((m) => (
-                  <div
-                    key={m.name}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-10 w-10 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15">
-                        <img
-                          src={m.avatar}
-                          alt="avatar"
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                      <div className="truncate text-sm font-semibold text-white">
-                        {m.name}
-                      </div>
-                    </div>
-
-                    <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-[0.72rem] font-semibold text-emerald-200">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-                      Online
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </aside>
         </div>
       </main>
