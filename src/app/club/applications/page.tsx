@@ -27,6 +27,8 @@ import {
   CalendarDays,
   MapPin,
   NotebookPen,
+  Mail,
+  Phone,
 } from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -35,6 +37,13 @@ function cn(...classes: Array<string | false | null | undefined>) {
 
 const glass =
   "border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
+
+function fmtDateTime(value?: string) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString("vi-VN", { hour12: false });
+}
 
 type AppStatus = "PENDING" | "APPROVED" | "REJECTED" | "ACCEPTED" | "DECLINED";
 
@@ -45,6 +54,10 @@ type Application = {
   reason: string;
   status: AppStatus;
   avatar?: string;
+  email?: string;
+  phone?: string;
+  interviewDate?: string;
+  interviewLocation?: string;
 };
 
 function StatCard({
@@ -144,8 +157,7 @@ function ActionButton({
   const map: Record<string, string> = {
     green:
       "bg-emerald-500/85 hover:bg-emerald-500 text-white shadow-[0_10px_25px_rgba(16,185,129,0.20)]",
-    red:
-      "bg-rose-500/85 hover:bg-rose-500 text-white shadow-[0_10px_25px_rgba(244,63,94,0.20)]",
+    red: "bg-rose-500/85 hover:bg-rose-500 text-white shadow-[0_10px_25px_rgba(244,63,94,0.20)]",
     gray: "bg-white/10 hover:bg-white/15 text-white/85 border border-white/10",
   };
 
@@ -182,7 +194,11 @@ function Modal({
 
   return (
     <div className="fixed inset-0 z-[80]">
-      <div className="absolute inset-0 bg-black/60" onClick={() => !busy && onClose()} aria-hidden />
+      <div
+        className="absolute inset-0 bg-black/60"
+        onClick={() => !busy && onClose()}
+        aria-hidden
+      />
       <div className="absolute left-1/2 top-1/2 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2">
         <div className={cn("rounded-3xl p-5", glass)}>
           <div className="flex items-center justify-between gap-3">
@@ -206,22 +222,29 @@ function Modal({
   );
 }
 
-
 /** ✅ Map response -> UI */
 function mapAppFromApi(raw: any): Application {
   const s = String(raw?.status || "").toUpperCase();
   const status: AppStatus =
-    s === "PENDING" ? "PENDING" :
-    s === "APPROVED" ? "APPROVED" :
-    s === "REJECTED" ? "REJECTED" :
-    s === "ACCEPTED" ? "ACCEPTED" :
-    s === "DECLINED" ? "DECLINED" : "PENDING";
+    s === "PENDING"
+      ? "PENDING"
+      : s === "APPROVED"
+      ? "APPROVED"
+      : s === "REJECTED"
+      ? "REJECTED"
+      : s === "ACCEPTED"
+      ? "ACCEPTED"
+      : s === "DECLINED"
+      ? "DECLINED"
+      : "PENDING";
 
   const u = raw?.userId ?? {};
   const name = u?.fullName ?? "Không rõ tên";
-  const school = u?.school ?? "FPTU";
-  const major = u?.major ?? "—";
-  const meta = `${school} • ${major}`;
+  const school = u?.school || "Chưa cập nhật";
+  const major = u?.major || "Chưa cập nhật";
+  const year = typeof u?.year === "number" ? `Năm ${u.year}` : null;
+  const meta =
+    [school, major, year].filter(Boolean).join(" • ") || "Chưa cập nhật";
 
   const avatar = u?.avatarUrl
     ? u.avatarUrl.startsWith("http")
@@ -236,6 +259,10 @@ function mapAppFromApi(raw: any): Application {
     reason: raw?.reason ?? "",
     status,
     avatar,
+    email: u?.email,
+    phone: u?.phoneNumber,
+    interviewDate: raw?.interviewDate,
+    interviewLocation: raw?.interviewLocation,
   };
 }
 
@@ -261,12 +288,21 @@ export default function ClubApplicationsPage() {
   const [fetching, setFetching] = useState(false);
   const [fetchErr, setFetchErr] = useState<string | null>(null);
 
-  const clubId = useMemo(() => String(user?._id ?? user?.id ?? ""), [user]);
+  const clubId = useMemo(() => {
+    const raw =
+      user?.clubId ||
+      user?.club?._id ||
+      user?.managedClubId ||
+      user?._id ||
+      user?.id;
+    return raw ? String(raw) : "";
+  }, [user]);
 
   // toast
-  const [toast, setToast] = useState<{ type: "ok" | "err"; text: string } | null>(
-    null
-  );
+  const [toast, setToast] = useState<{
+    type: "ok" | "err";
+    text: string;
+  } | null>(null);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 2300);
@@ -304,7 +340,6 @@ export default function ClubApplicationsPage() {
           status: statusFilter === "all" ? undefined : statusFilter,
         });
 
-
         const mapped = list.map(mapAppFromApi).filter((x: Application) => x.id);
 
         if (!cancelled) setApps(mapped);
@@ -339,7 +374,9 @@ export default function ClubApplicationsPage() {
       return (
         a.name.toLowerCase().includes(query) ||
         a.meta.toLowerCase().includes(query) ||
-        a.reason.toLowerCase().includes(query)
+        a.reason.toLowerCase().includes(query) ||
+        (a.email ?? "").toLowerCase().includes(query) ||
+        (a.phone ?? "").toLowerCase().includes(query)
       );
     });
   }, [apps, q]);
@@ -532,9 +569,13 @@ export default function ClubApplicationsPage() {
         <section className={cn("mt-6 rounded-3xl", glass)}>
           <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-sm font-semibold text-white">Đơn Đăng Ký Mới</div>
+              <div className="text-sm font-semibold text-white">
+                Đơn Đăng Ký Mới
+              </div>
               <div className="mt-1 text-xs text-white/55">
-                {fetching ? "Đang tải danh sách..." : "Danh sách đơn đăng ký cần xử lý"}
+                {fetching
+                  ? "Đang tải danh sách..."
+                  : "Danh sách đơn đăng ký cần xử lý"}
               </div>
             </div>
 
@@ -556,12 +597,24 @@ export default function ClubApplicationsPage() {
                     onChange={(e) => setStatusFilter(e.target.value as any)}
                     className="appearance-none rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 pr-10 text-sm text-white/85 outline-none hover:bg-white/[0.10]"
                   >
-                    <option value="all" className="bg-[#0b1038]">Tất cả trạng thái</option>
-                    <option value="PENDING" className="bg-[#0b1038]">Chờ duyệt</option>
-                    <option value="APPROVED" className="bg-[#0b1038]">Đã duyệt</option>
-                    <option value="REJECTED" className="bg-[#0b1038]">Từ chối</option>
-                    <option value="ACCEPTED" className="bg-[#0b1038]">Đã chấp nhận</option>
-                    <option value="DECLINED" className="bg-[#0b1038]">Đã từ chối (sau PV)</option>
+                    <option value="all" className="bg-[#0b1038]">
+                      Tất cả trạng thái
+                    </option>
+                    <option value="PENDING" className="bg-[#0b1038]">
+                      Chờ duyệt
+                    </option>
+                    <option value="APPROVED" className="bg-[#0b1038]">
+                      Đã duyệt
+                    </option>
+                    <option value="REJECTED" className="bg-[#0b1038]">
+                      Từ chối
+                    </option>
+                    <option value="ACCEPTED" className="bg-[#0b1038]">
+                      Đã chấp nhận
+                    </option>
+                    <option value="DECLINED" className="bg-[#0b1038]">
+                      Đã từ chối (sau PV)
+                    </option>
                   </select>
                   <Filter className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/55" />
                 </div>
@@ -576,100 +629,123 @@ export default function ClubApplicationsPage() {
               </div>
             ) : null}
 
-            {filtered.map((a) => (
-              <div
-                key={a.id}
-                className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
-              >
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div className="flex gap-3">
-                    <div className="h-10 w-10 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={a.avatar || "/default-avatar.png"}
-                        alt="avatar"
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-sm font-semibold text-white">{a.name}</div>
-                        <StatusBadge status={a.status} />
+            {filtered.map((a) => {
+              const interviewTime = fmtDateTime(a.interviewDate);
+              return (
+                <div
+                  key={a.id}
+                  className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+                >
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="flex gap-3">
+                      <div className="h-10 w-10 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={
+                            a.avatar ||
+                            "https://api.dicebear.com/7.x/avataaars/svg?seed=" +
+                              a.name
+                          }
+                          alt="avatar"
+                          className="h-full w-full object-cover"
+                        />
                       </div>
 
-                      <div className="mt-1 text-xs text-white/55">{a.meta}</div>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-sm font-semibold text-white">
+                            {a.name}
+                          </div>
+                          <StatusBadge status={a.status} />
+                        </div>
 
-                      <p className="mt-2 text-sm text-white/70 leading-relaxed">
-                        {a.reason}
-                      </p>
+                        <div className="mt-1 text-xs text-white/55">
+                          {a.meta}
+                        </div>
+
+                        <p className="mt-2 text-sm text-white/70 leading-relaxed">
+                          {a.reason}
+                        </p>
+
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[0.7rem] text-white/60">
+                          <span className="inline-flex items-center gap-1">
+                            <Mail className="h-3.5 w-3.5" />
+                            {a.email || "Chưa có email"}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Phone className="h-3.5 w-3.5" />
+                            {a.phone || "Chưa có số"}
+                          </span>
+                        </div>
+
+                        {(a.interviewLocation || interviewTime) && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[0.7rem] text-white/60">
+                            <CalendarDays className="h-3.5 w-3.5" />
+                            {interviewTime && <span>{interviewTime}</span>}
+                            {a.interviewLocation && (
+                              <span className="inline-flex items-center gap-1">
+                                <MapPin className="h-3.5 w-3.5" />
+                                {a.interviewLocation}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex flex-wrap items-center justify-end gap-2 md:justify-start">
-                    {a.status === "PENDING" ? (
-                      <>
-                        <ActionButton tone="green" onClick={() => openApprove(a.id)}>
-                          <CheckCircle2 className="h-4 w-4" />
-                          Duyệt
-                        </ActionButton>
+                    <div className="flex flex-wrap items-center justify-end gap-2 md:justify-start">
+                      {a.status === "PENDING" ? (
+                        <>
+                          <ActionButton
+                            tone="green"
+                            onClick={() => openApprove(a.id)}
+                          >
+                            <CheckCircle2 className="h-4 w-4" />
+                            Duyệt
+                          </ActionButton>
 
-                        <ActionButton tone="red" onClick={() => openReject(a.id)}>
-                          <XCircle className="h-4 w-4" />
-                          Từ chối
-                        </ActionButton>
+                          <ActionButton
+                            tone="red"
+                            onClick={() => openReject(a.id)}
+                          >
+                            <XCircle className="h-4 w-4" />
+                            Từ chối
+                          </ActionButton>
 
+                          <ActionButton
+                            tone="gray"
+                            onClick={() =>
+                              router.push(`/club/applications/${a.id}`)
+                            }
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                            Chi tiết
+                          </ActionButton>
+                        </>
+                      ) : (
                         <ActionButton
                           tone="gray"
-                          onClick={() => router.push(`/club/applications/${a.id}`)}
+                          onClick={() =>
+                            router.push(`/club/applications/${a.id}`)
+                          }
                         >
                           <MoreHorizontal className="h-4 w-4" />
                           Chi tiết
                         </ActionButton>
-                      </>
-                    ) : (
-                      <ActionButton
-                        tone="gray"
-                        onClick={() => router.push(`/club/applications/${a.id}`)}
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                        Chi tiết
-                      </ActionButton>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
+              );
+            })}
+
+            {filtered.length > 0 && (
+              <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="text-xs text-white/55">
+                  Hiển thị {filtered.length} đơn
+                </div>
               </div>
-            ))}
-
-            <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="text-xs text-white/55">
-                Hiển thị {filtered.length} / {filtered.length} đơn
-              </div>
-
-              <div className="flex items-center justify-end gap-2">
-                <button className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.05] text-white/80 hover:bg-white/[0.10]">
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-
-                {[1, 2, 3].map((p) => (
-                  <button
-                    key={p}
-                    className={cn(
-                      "h-8 w-8 rounded-lg border text-xs font-semibold transition",
-                      p === 1
-                        ? "border-white/15 bg-white/[0.10] text-white"
-                        : "border-white/10 bg-white/[0.05] text-white/75 hover:bg-white/[0.10]"
-                    )}
-                  >
-                    {p}
-                  </button>
-                ))}
-
-                <button className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.05] text-white/80 hover:bg-white/[0.10]">
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         </section>
       </main>
@@ -696,6 +772,7 @@ export default function ClubApplicationsPage() {
               type="datetime-local"
               value={interviewDate}
               onChange={(e) => setInterviewDate(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
               className="w-full rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2.5 text-sm text-white/90 outline-none focus:border-white/20"
             />
           </label>
