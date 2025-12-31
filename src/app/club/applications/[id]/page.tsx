@@ -38,7 +38,13 @@ function cn(...classes: Array<string | false | null | undefined>) {
 const glass =
   "border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
 
-type RawStatus = "PENDING" | "APPROVED" | "REJECTED" | "ACCEPTED" | "DECLINED" | string;
+type RawStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "ACCEPTED"
+  | "DECLINED"
+  | string;
 
 type ClubInfo = {
   _id: string;
@@ -198,7 +204,6 @@ function Modal({
   );
 }
 
-
 function fmtDate(s?: string) {
   if (!s) return "—";
   const d = new Date(s);
@@ -207,8 +212,11 @@ function fmtDate(s?: string) {
 }
 
 /** ✅ build avatar url ("/uploads/.." -> base + path) */
-function buildAvatarUrl(raw?: string) {
-  if (!raw) return "/default-avatar.png";
+function buildAvatarUrl(raw?: string, name?: string) {
+  if (!raw)
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
+      name || "user"
+    )}`;
   if (raw.startsWith("http")) return raw;
   return `${AUTH_BASE_URL}${raw}`;
 }
@@ -230,9 +238,10 @@ export default function ApplicationDetailPage() {
   const [err, setErr] = useState<string | null>(null);
 
   // ✅ toast
-  const [toast, setToast] = useState<{ type: "ok" | "err"; text: string } | null>(
-    null
-  );
+  const [toast, setToast] = useState<{
+    type: "ok" | "err";
+    text: string;
+  } | null>(null);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 2300);
@@ -297,7 +306,9 @@ export default function ApplicationDetailPage() {
 
   // ✅ final decision modal state
   const [finalOpen, setFinalOpen] = useState(false);
-  const [finalDecisionType, setFinalDecisionType] = useState<"accepted" | "declined">("accepted");
+  const [finalDecisionType, setFinalDecisionType] = useState<
+    "accepted" | "declined"
+  >("accepted");
   const [finalRejectionReason, setFinalRejectionReason] = useState("");
   const [submittingFinal, setSubmittingFinal] = useState(false);
 
@@ -402,15 +413,22 @@ export default function ApplicationDetailPage() {
         accessToken: token,
         id: applicationId,
         decision: finalDecisionType,
-        rejectionReason: finalDecisionType === "declined" ? finalRejectionReason.trim() : undefined,
+        rejectionReason:
+          finalDecisionType === "declined"
+            ? finalRejectionReason.trim()
+            : undefined,
       });
 
       setData((prev) =>
         prev
           ? ({
               ...prev,
-              status: finalDecisionType === "accepted" ? "ACCEPTED" : "DECLINED",
-              rejectionReason: finalDecisionType === "declined" ? finalRejectionReason.trim() : prev.rejectionReason,
+              status:
+                finalDecisionType === "accepted" ? "ACCEPTED" : "DECLINED",
+              rejectionReason:
+                finalDecisionType === "declined"
+                  ? finalRejectionReason.trim()
+                  : prev.rejectionReason,
               updatedAt: new Date().toISOString(),
             } as any)
           : prev
@@ -490,7 +508,10 @@ export default function ApplicationDetailPage() {
                     <div className="h-14 w-14 overflow-hidden rounded-2xl border border-white/10 bg-white/10">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={buildAvatarUrl(applicant?.avatarUrl)}
+                        src={buildAvatarUrl(
+                          applicant?.avatarUrl,
+                          applicant?.fullName
+                        )}
                         alt="avatar"
                         className="h-full w-full object-cover"
                       />
@@ -530,7 +551,9 @@ export default function ApplicationDetailPage() {
                     <div className="text-xs text-white/60">Email</div>
                     <div className="mt-2 flex items-center gap-2 text-sm text-white/85">
                       <Mail className="h-4 w-4 text-white/60" />
-                      <span className="truncate">{applicant?.email || "—"}</span>
+                      <span className="truncate">
+                        {applicant?.email || "—"}
+                      </span>
                     </div>
                   </div>
 
@@ -549,11 +572,12 @@ export default function ApplicationDetailPage() {
                   <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
                     <div className="text-xs text-white/60">Kỹ năng</div>
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {(applicant?.skills?.length ? applicant.skills : ["—"]).map(
-                        (s) => (
-                          <Chip key={s}>{s}</Chip>
-                        )
-                      )}
+                      {(applicant?.skills?.length
+                        ? applicant.skills
+                        : ["—"]
+                      ).map((s) => (
+                        <Chip key={s}>{s}</Chip>
+                      ))}
                     </div>
                   </div>
 
@@ -569,15 +593,78 @@ export default function ApplicationDetailPage() {
                     </div>
                   </div>
                 </div>
+
+                <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                  <div className="text-xs text-white/60">Lý do đăng ký</div>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-white/85">
+                    {data.reason || "—"}
+                  </p>
+                </div>
               </Card>
 
               {/* REASON */}
               <Card className="p-6">
-                <h3 className="text-sm font-semibold text-white">Lý do đăng ký</h3>
+                <h3 className="text-sm font-semibold text-white">
+                  Lý do đăng ký
+                </h3>
                 <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-white/70">
                   {data.reason || "—"}
                 </p>
               </Card>
+
+              {/* INTERVIEW DETAILS (if approved) */}
+              {data.interviewDate && (
+                <Card className="p-6">
+                  <h3 className="text-sm font-semibold text-white">
+                    Thông tin phỏng vấn
+                  </h3>
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <CalendarDays className="mt-0.5 h-4 w-4 text-white/60" />
+                      <div>
+                        <div className="text-xs text-white/60">Thời gian</div>
+                        <div className="mt-1 text-sm text-white/85">
+                          {fmtDate(data.interviewDate)}
+                        </div>
+                      </div>
+                    </div>
+                    {data.interviewLocation && (
+                      <div className="flex items-start gap-3">
+                        <MapPin className="mt-0.5 h-4 w-4 text-white/60" />
+                        <div>
+                          <div className="text-xs text-white/60">Địa điểm</div>
+                          <div className="mt-1 text-sm text-white/85">
+                            {data.interviewLocation}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {data.interviewNote && (
+                      <div className="flex items-start gap-3">
+                        <NotebookPen className="mt-0.5 h-4 w-4 text-white/60" />
+                        <div>
+                          <div className="text-xs text-white/60">Ghi chú</div>
+                          <div className="mt-1 text-sm text-white/85 whitespace-pre-line">
+                            {data.interviewNote}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
+
+              {/* REJECTION REASON (if rejected) */}
+              {data.rejectionReason && (
+                <Card className="p-6">
+                  <h3 className="text-sm font-semibold text-white">
+                    Lý do từ chối
+                  </h3>
+                  <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-white/70">
+                    {data.rejectionReason}
+                  </p>
+                </Card>
+              )}
             </div>
 
             {/* RIGHT */}
@@ -608,7 +695,9 @@ export default function ApplicationDetailPage() {
 
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-white/60" />
-                      <span className="truncate">{club?.phoneNumber || "—"}</span>
+                      <span className="truncate">
+                        {club?.phoneNumber || "—"}
+                      </span>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -619,7 +708,9 @@ export default function ApplicationDetailPage() {
                 </Card>
 
                 <Card className="p-6">
-                  <h3 className="text-sm font-semibold text-white">Thời gian</h3>
+                  <h3 className="text-sm font-semibold text-white">
+                    Thời gian
+                  </h3>
 
                   <div className="mt-4 space-y-2 text-sm text-white/70">
                     <div className="flex items-center justify-between">
@@ -645,7 +736,9 @@ export default function ApplicationDetailPage() {
 
                 {/* ACTIONS (✅ gắn API approve/reject) */}
                 <Card className="p-6">
-                  <h3 className="text-sm font-semibold text-white">Hành động</h3>
+                  <h3 className="text-sm font-semibold text-white">
+                    Hành động
+                  </h3>
 
                   {!canAction && !canFinalDecision ? (
                     <div className="mt-3 text-sm text-white/60">
@@ -685,7 +778,8 @@ export default function ApplicationDetailPage() {
                     ) : canFinalDecision ? (
                       <>
                         <div className="mb-2 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-3 text-xs text-sky-100">
-                          Đơn đã được duyệt. Bạn có thể đưa ra quyết định cuối cùng sau phỏng vấn.
+                          Đơn đã được duyệt. Bạn có thể đưa ra quyết định cuối
+                          cùng sau phỏng vấn.
                         </div>
                         <button
                           type="button"
@@ -753,6 +847,7 @@ export default function ApplicationDetailPage() {
               type="datetime-local"
               value={interviewDate}
               onChange={(e) => setInterviewDate(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
               className="w-full rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2.5 text-sm text-white/90 outline-none focus:border-white/20"
             />
           </label>
@@ -861,7 +956,11 @@ export default function ApplicationDetailPage() {
       {/* ✅ MODAL FINAL DECISION */}
       <Modal
         open={finalOpen}
-        title={finalDecisionType === "accepted" ? "Chấp nhận ứng viên" : "Từ chối ứng viên sau phỏng vấn"}
+        title={
+          finalDecisionType === "accepted"
+            ? "Chấp nhận ứng viên"
+            : "Từ chối ứng viên sau phỏng vấn"
+        }
         onClose={() => setFinalOpen(false)}
         busy={submittingFinal}
       >
