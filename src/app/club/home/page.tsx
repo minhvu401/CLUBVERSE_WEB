@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
-import Image from "next/image";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProviders/page";
+import { getCurrentProfile } from "@/app/services/api/users";
+import { getClubPosts, type PostItem } from "@/app/services/api/post";
+import type { ProfileResponse } from "@/app/services/api/auth";
 
 import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
@@ -50,13 +52,7 @@ function Stars({ value }: { value: number }) {
   );
 }
 
-function InfoLine({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
+function InfoLine({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex gap-4">
       <div className="min-w-[120px] text-xs text-white/55">{label}</div>
@@ -70,6 +66,10 @@ export default function HomeClubPage() {
 
   // ✅ CHỈ SỬA PHẦN NÀY: lấy loading/token để tránh redirect sớm khi refresh
   const { user, token, loading } = useAuth() as any;
+  const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  const [clubPosts, setClubPosts] = useState<PostItem[]>([]);
+  const [fetchingClub, setFetchingClub] = useState(false);
+  const [fetchErr, setFetchErr] = useState<string | null>(null);
 
   const isClubRole = useMemo(
     () => String(user?.role || "").toLowerCase() === "club",
@@ -92,51 +92,112 @@ export default function HomeClubPage() {
     }
   }, [loading, token, isClubRole, router]);
 
-  // ===== Mock data (bạn map API sau) =====
-  const club = {
-    name: "Câu lạc bộ Công nghệ Sáng tạo",
-    tagline:
-      "Nơi kết nối những tài năng đam mê công nghệ và sáng tạo, cùng nhau\nxây dựng tương lai số",
-    avatarUrl:
-      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=240&q=80",
-    info: {
-      tenClb: "Câu lạc bộ Công nghệ Sáng tạo",
-      thanhLap: "15/08/2020",
-      soThanhVien: "1200",
-      diaChi: "KCN Linh Trung, Việt Nam",
-      chuTich: "Nguyễn Văn A",
-      email: "contact@clubverse.vn",
-      hotline: "0123 456 789",
-    },
-    quickStats: {
-      totalPosts: 42,
-      activeMembers: 28,
-      events: 15,
-    },
-    rating: {
-      score: 4.8,
-      count: 156,
-    },
-    description:
-      "Câu lạc bộ Công nghệ Sáng tạo là nơi dành cho những bạn trẻ yêu thích công nghệ, lập trình và đổi mới sáng tạo. Chúng tôi cam kết tạo ra môi trường học tập – chia sẻ – trải nghiệm thực tế thông qua các workshop, dự án và hoạt động networking.\n\nVới sứ mệnh “Kết nối – Học hỏi – Sáng tạo”, chúng tôi tổ chức các buổi workshop, hackathon, và thảo luận chuyên đề về các xu hướng công nghệ mới.\n\nTham gia cùng chúng tôi để khám phá tiềm năng của bản thân, mở rộng mạng lưới quan hệ và đóng góp những sản phẩm ý nghĩa cho cộng đồng.",
-    features: [
-      {
-        title: "Workshop Công nghệ",
-        desc: "Chuỗi workshop thực chiến về Web, AI, UI/UX, DevOps…",
-        icon: GraduationCap,
+  useEffect(() => {
+    if (loading || !token) return;
+
+    let cancelled = false;
+
+    const fetchClubData = async () => {
+      try {
+        setFetchingClub(true);
+        setFetchErr(null);
+        const profileData = await getCurrentProfile(token);
+        if (cancelled) return;
+        setProfile(profileData);
+
+        const clubId = profileData?._id || user?._id;
+        if (clubId) {
+          const posts = await getClubPosts(token, clubId, {
+            sortBy: "newest",
+            limit: 8,
+          });
+          if (!cancelled) setClubPosts(posts);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setFetchErr(
+            error instanceof Error
+              ? error.message
+              : "Không tải được dữ liệu câu lạc bộ"
+          );
+        }
+      } finally {
+        if (!cancelled) setFetchingClub(false);
+      }
+    };
+
+    void fetchClubData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, token, user?._id]);
+
+  const club = useMemo(() => {
+    const memberCount = profile?.clubJoined?.length ?? 0;
+    const postsCount = clubPosts.length;
+    const ratingScore =
+      typeof profile?.rating === "number" ? profile.rating : 0;
+    const createdDate = profile?.createdAt
+      ? new Date(profile.createdAt).toLocaleDateString("vi-VN")
+      : "Chưa cập nhật";
+    const fallbackDesc =
+      "Câu lạc bộ của bạn hiện chưa có mô tả chi tiết. Cập nhật thông tin để thành viên hiểu hơn về sứ mệnh và hoạt động của CLB.";
+    const categoryLabel = profile?.category ?? "Công nghệ";
+
+    const buildAvatarUrl = (raw?: string) => {
+      if (!raw)
+        return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
+          profile?.fullName || "club"
+        )}`;
+      if (raw.startsWith("http")) return raw;
+      return `https://clubverse.onrender.com${raw}`;
+    };
+
+    return {
+      name: profile?.fullName ?? user?.fullName ?? "Câu lạc bộ Clubverse",
+      tagline:
+        profile?.description?.split("\n")[0] ??
+        "Chia sẻ hành trình, lan tỏa đam mê và kết nối cộng đồng sinh viên.",
+      avatarUrl: buildAvatarUrl(profile?.avatarUrl),
+      info: {
+        tenClb: profile?.fullName ?? "Chưa cập nhật",
+        thanhLap: createdDate,
+        soThanhVien: memberCount.toLocaleString("vi-VN"),
+        diaChi: profile?.school ?? "Chưa có thông tin",
+        chuTich: user?.fullName ?? "Chưa cập nhật",
+        email: profile?.email ?? user?.email ?? "Chưa có email",
+        hotline: profile?.phoneNumber ?? "Chưa có số liên hệ",
       },
-      {
-        title: "Dự án Sáng tạo",
-        desc: "Thực hiện dự án theo nhóm, có mentor hỗ trợ và demo định kỳ.",
-        icon: Rocket,
+      quickStats: {
+        totalPosts: postsCount,
+        activeMembers: memberCount,
+        events: clubPosts.length,
       },
-      {
-        title: "Networking",
-        desc: "Kết nối với diễn giả, doanh nghiệp, alumni và cộng đồng công nghệ.",
-        icon: Network,
+      rating: {
+        score: Number.isFinite(ratingScore) ? ratingScore : 0,
+        count: memberCount,
       },
-    ],
-  };
+      description: profile?.description ?? fallbackDesc,
+      features: [
+        {
+          title: `Workshop ${categoryLabel}`,
+          desc: `Các buổi workshop chuyên sâu xoay quanh chủ đề ${categoryLabel.toLowerCase()}.`,
+          icon: GraduationCap,
+        },
+        {
+          title: "Dự án cộng đồng",
+          desc: "Thực hiện dự án thật với mentor hướng dẫn và demo định kỳ.",
+          icon: Rocket,
+        },
+        {
+          title: "Networking",
+          desc: "Kết nối doanh nghiệp, diễn giả và các CLB khác trên Clubverse.",
+          icon: Network,
+        },
+      ],
+    };
+  }, [profile, clubPosts, user?.email, user?.fullName]);
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden text-white">
@@ -149,17 +210,27 @@ export default function HomeClubPage() {
       <Header />
 
       <main className="mx-auto max-w-6xl px-4 pb-14 pt-10">
+        {fetchErr ? (
+          <div className="mb-4 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+            {fetchErr}
+          </div>
+        ) : null}
+
         {/* HERO */}
-        <section className={cn("relative overflow-hidden rounded-3xl p-6 md:p-8", glass)}>
+        <section
+          className={cn(
+            "relative overflow-hidden rounded-3xl p-6 md:p-8",
+            glass
+          )}
+        >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.10),transparent_60%)]" />
           <div className="relative flex flex-col items-center text-center">
             {/* ✅ GIỮ Y NGUYÊN NHƯ BAN ĐẦU */}
             <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-white/15 bg-white/10 shadow-[0_20px_55px_rgba(0,0,0,0.35)]">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={club.avatarUrl}
                 alt="Club avatar"
-                width={96}
-                height={96}
                 className="h-full w-full object-cover"
               />
             </div>
@@ -171,13 +242,20 @@ export default function HomeClubPage() {
             <p className="mt-2 max-w-2xl whitespace-pre-line text-sm text-white/65 leading-relaxed">
               {club.tagline}
             </p>
+            {fetchingClub ? (
+              <div className="mt-3 text-xs text-white/60">
+                Đang đồng bộ dữ liệu từ máy chủ...
+              </div>
+            ) : null}
           </div>
         </section>
 
         {/* Row cards */}
         <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
           {/* Thông tin cơ bản */}
-          <section className={cn("rounded-3xl p-5 md:p-6 lg:col-span-2", glass)}>
+          <section
+            className={cn("rounded-3xl p-5 md:p-6 lg:col-span-2", glass)}
+          >
             <div className="flex items-center gap-2">
               <div className="h-9 w-9 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center">
                 <Users className="h-4 w-4 text-white/80" />
@@ -248,11 +326,19 @@ export default function HomeClubPage() {
                 {[
                   { label: "Tổng bài viết", value: club.quickStats.totalPosts },
                   { label: "Sự kiện", value: club.quickStats.events },
-                  { label: "Club members", value: club.quickStats.activeMembers },
+                  {
+                    label: "Club members",
+                    value: club.quickStats.activeMembers,
+                  },
                 ].map((s) => (
-                  <div key={s.label} className="flex items-center justify-between text-sm">
+                  <div
+                    key={s.label}
+                    className="flex items-center justify-between text-sm"
+                  >
                     <span className="text-white/65">{s.label}</span>
-                    <span className="font-semibold text-violet-200">{s.value}</span>
+                    <span className="font-semibold text-violet-200">
+                      {s.value}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -298,7 +384,10 @@ export default function HomeClubPage() {
           {club.features.map((f) => {
             const Icon = f.icon;
             return (
-              <section key={f.title} className={cn("rounded-3xl p-5 md:p-6", glass)}>
+              <section
+                key={f.title}
+                className={cn("rounded-3xl p-5 md:p-6", glass)}
+              >
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-2xl bg-white/[0.06] border border-white/10 flex items-center justify-center">
                     <Icon className="h-5 w-5 text-white/80" />
