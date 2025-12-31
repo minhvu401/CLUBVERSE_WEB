@@ -167,7 +167,7 @@ function TagIcon({ tag }: { tag: string }) {
   }
 }
 
-function ToneBadge({ tone }: { tone: Club["tone"] }) {
+function ToneBadge({ tone }: { tone: ClubCard["tone"] }) {
   const c =
     tone === "sky"
       ? "bg-sky-500/20 text-sky-100 border-sky-400/20"
