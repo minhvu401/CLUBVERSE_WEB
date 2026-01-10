@@ -2,11 +2,14 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
 import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders/page";
+
+// ✅ APIs
+import { getClubPosts, createPost } from "@/app/services/api/post";
 
 import {
   getClubPosts,
@@ -30,6 +33,7 @@ import {
   Hash,
   Users,
   ShieldCheck,
+  X,
 } from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -54,6 +58,69 @@ type Post = {
   stats: { likes: number; comments: number; views: number };
 };
 
+<<<<<<< HEAD
+/* =========================
+   ✅ SIMPLE TOAST SYSTEM
+========================= */
+type ToastType = "success" | "error" | "info";
+type ToastItem = { id: string; type: ToastType; message: string };
+
+function ToastHost({
+  toasts,
+  removeToast,
+}: {
+  toasts: ToastItem[];
+  removeToast: (id: string) => void;
+}) {
+  return (
+    <div className="fixed right-4 top-4 z-[999] flex w-[min(92vw,380px)] flex-col gap-2">
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className={cn(
+            "rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur-xl",
+            t.type === "success"
+              ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100"
+              : t.type === "error"
+              ? "border-red-400/25 bg-red-400/10 text-red-100"
+              : "border-white/10 bg-white/[0.08] text-white"
+          )}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="text-sm leading-relaxed">{t.message}</div>
+            <button
+              type="button"
+              onClick={() => removeToast(t.id)}
+              className="grid h-7 w-7 place-items-center rounded-lg border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10]"
+              title="Đóng"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function useToasts() {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((x) => x.id !== id));
+  };
+
+  const pushToast = (type: ToastType, message: string) => {
+    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    setToasts((prev) => [{ id, type, message }, ...prev].slice(0, 4));
+    window.setTimeout(() => removeToast(id), 2800);
+  };
+
+  return { toasts, pushToast, removeToast };
+}
+
+/* ========================= */
+=======
 type ApiPost = PostItem & {
   postId?: string; // ✅ thêm để fallback id khi API không trả _id
 
@@ -79,6 +146,7 @@ type ApiPost = PostItem & {
   type?: string;
 };
 
+>>>>>>> origin/develop
 
 function CategoryPill({
   value,
@@ -143,6 +211,47 @@ function Stat({ icon, value }: { icon: React.ReactNode; value: number }) {
   );
 }
 
+<<<<<<< HEAD
+// ✅ mapper: PostItem (backend) -> Post (UI)
+function toForumPost(item: any): Post {
+  const created =
+    item?.createdAt || item?.created_at || item?.createdDate || item?.time;
+
+  const categoryRaw = String(item?.category || item?.type || "sharing").toLowerCase();
+  const category: Exclude<Category, "all"> =
+    categoryRaw === "announcement"
+      ? "announcement"
+      : categoryRaw === "qa"
+      ? "qa"
+      : "sharing";
+
+  return {
+    id: String(item?.id ?? item?._id ?? item?.postId ?? ""),
+    title: item?.title ?? item?.name ?? "(No title)",
+    excerpt: item?.excerpt ?? item?.content ?? item?.description ?? "",
+    author: {
+      name: item?.author?.name ?? item?.user?.name ?? item?.createdBy?.name ?? "Unknown",
+      role: item?.author?.role ?? item?.user?.role ?? item?.createdBy?.role,
+      avatar:
+        item?.author?.avatar ??
+        item?.user?.avatar ??
+        item?.createdBy?.avatar ??
+        "/default-avatar.png",
+    },
+    createdAt: created ? new Date(created).toLocaleString("vi-VN") : "",
+    category,
+    tags: Array.isArray(item?.tags)
+      ? item.tags
+      : typeof item?.tags === "string"
+      ? item.tags.split(",").map((s: string) => s.trim()).filter(Boolean)
+      : [],
+    pinned: Boolean(item?.pinned ?? item?.isPinned ?? false),
+    hot: Boolean(item?.hot ?? item?.isHot ?? false),
+    stats: {
+      likes: Number(item?.stats?.likes ?? item?.likeCount ?? item?.likes ?? 0),
+      comments: Number(item?.stats?.comments ?? item?.commentCount ?? item?.comments ?? 0),
+      views: Number(item?.stats?.views ?? item?.viewCount ?? item?.views ?? 0),
+=======
 // ===== helpers =====
 function toExcerpt(content?: string, max = 160) {
   const s = (content || "").replace(/\s+/g, " ").trim();
@@ -290,15 +399,226 @@ function mapApiToUi(p: ApiPost, clubName?: string): Post {
       likes,
       comments: pickCommentCount(p),
       views: pickViewCount(p),
+>>>>>>> origin/develop
     },
   };
 }
 
+<<<<<<< HEAD
+/* =========================
+   ✅ CREATE POST MODAL
+   - validate title >= 5
+   - validate content >= 20
+   - DO NOT send category (backend reject)
+   - toast + inline errors
+========================= */
+function CreatePostModal({
+  open,
+  onClose,
+  onCreated,
+  toast,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+  toast: (type: ToastType, msg: string) => void;
+}) {
+  const { token } = useAuth() as any;
+
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [tags, setTags] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const titleRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setTitle("");
+    setContent("");
+    setTags("");
+    setError(null);
+    setLoading(false);
+    window.setTimeout(() => titleRef.current?.focus(), 50);
+  }, [open]);
+
+  if (!open) return null;
+
+  const validate = (): string | null => {
+    const t = title.trim();
+    const c = content.trim();
+
+    if (t.length < 5) return "Tiêu đề phải có ít nhất 5 ký tự";
+    if (c.length < 20) return "Nội dung phải có ít nhất 20 ký tự";
+    return null;
+  };
+
+  const submit = async () => {
+    const v = validate();
+    if (v) {
+      setError(v);
+      toast("error", v);
+      return;
+    }
+
+    if (!token) {
+      const msg = "Bạn chưa đăng nhập.";
+      setError(msg);
+      toast("error", msg);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // ✅ DO NOT send category (backend reject)
+      await createPost(token, {
+        title: title.trim(),
+        content: content.trim(),
+        tags: tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+      } as any);
+
+      toast("success", "Tạo bài viết thành công!");
+      onClose();
+      onCreated();
+    } catch (e: any) {
+      // backend hay trả message dạng string (đúng cái bạn paste)
+      const msg =
+        e?.message ||
+        e?.response?.data?.message ||
+        "Tạo bài viết thất bại.";
+      setError(String(msg));
+      toast("error", String(msg));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-950/80 p-6 text-white shadow-2xl">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Tạo bài viết mới</h2>
+            <div className="mt-1 text-xs text-white/55">
+              Tiêu đề ≥ 5 ký tự · Nội dung ≥ 20 ký tự
+            </div>
+          </div>
+          <button
+            className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10]"
+            onClick={onClose}
+            title="Đóng"
+            type="button"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          <div>
+            <div className="mb-1 text-xs font-semibold text-white/70">Tiêu đề</div>
+            <input
+              ref={titleRef}
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder="Nhập tiêu đề bài viết..."
+              className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2 text-sm outline-none placeholder:text-white/45"
+            />
+            <div className="mt-1 text-[0.72rem] text-white/45">
+              {title.trim().length}/5
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-1 text-xs font-semibold text-white/70">Tags</div>
+            <input
+              value={tags}
+              onChange={(e) => {
+                setTags(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder="vd: nextjs, auth, ui"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2 text-sm outline-none placeholder:text-white/45"
+            />
+          </div>
+
+          <div>
+            <div className="mb-1 text-xs font-semibold text-white/70">Nội dung</div>
+            <textarea
+              value={content}
+              onChange={(e) => {
+                setContent(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder="Viết nội dung bài viết..."
+              rows={6}
+              className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2 text-sm outline-none placeholder:text-white/45"
+            />
+            <div className="mt-1 text-[0.72rem] text-white/45">
+              {content.trim().length}/20
+            </div>
+          </div>
+
+          {error ? (
+            <div className="rounded-2xl border border-red-400/25 bg-red-400/10 px-4 py-3 text-sm text-red-100">
+              {error}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            type="button"
+            className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-white/85 hover:bg-white/[0.10]"
+          >
+            Huỷ
+          </button>
+
+          <button
+            onClick={submit}
+            type="button"
+            disabled={loading}
+            className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 disabled:opacity-60"
+          >
+            {loading ? "Đang đăng..." : "Đăng bài"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ========================= */
+=======
+>>>>>>> origin/develop
 
 export default function ForumPage() {
   const router = useRouter();
+  const params = useParams() as { clubId?: string };
+  const clubId = params?.clubId || "";
+
   const { user, token, loading } = useAuth() as any;
 
+<<<<<<< HEAD
+  const { toasts, pushToast, removeToast } = useToasts();
+
+=======
+>>>>>>> origin/develop
   const isClubRole = useMemo(
     () => String(user?.role || "").toLowerCase() === "club",
     [user?.role]
@@ -320,6 +640,45 @@ export default function ForumPage() {
   const [cat, setCat] = useState<Category>("all");
   const [q, setQ] = useState("");
 
+<<<<<<< HEAD
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [errorPosts, setErrorPosts] = useState<string | null>(null);
+
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  const [openCreate, setOpenCreate] = useState(false);
+
+  const fetchPosts = async () => {
+    if (!token || !clubId) return;
+    try {
+      setLoadingPosts(true);
+      setErrorPosts(null);
+
+      const apiPosts = await getClubPosts(token, clubId, {
+        page,
+        limit,
+      } as any);
+
+      setPosts((apiPosts || []).map(toForumPost));
+    } catch (e: any) {
+      setErrorPosts(e?.message ?? "Không tải được bài viết.");
+      pushToast("error", e?.message ?? "Không tải được bài viết.");
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, clubId, page]);
+
+  const filtered = useMemo(() => {
+    const byCat = cat === "all" ? posts : posts.filter((p) => p.category === cat);
+
+=======
   const [sortBy, setSortBy] = useState<PostSort>("newest");
   const [page, setPage] = useState(1);
   const limit = 10;
@@ -371,6 +730,7 @@ export default function ForumPage() {
 
   const filtered = useMemo(() => {
     const byCat = cat === "all" ? posts : posts.filter((p) => p.category === cat);
+>>>>>>> origin/develop
     const query = q.trim().toLowerCase();
     if (!query) return byCat;
 
@@ -420,6 +780,11 @@ export default function ForumPage() {
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden text-white">
+<<<<<<< HEAD
+      <ToastHost toasts={toasts} removeToast={removeToast} />
+
+=======
+>>>>>>> origin/develop
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-indigo-950 via-purple-900 to-violet-950" />
       <div className="pointer-events-none absolute -top-44 left-1/2 -z-10 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-violet-500/25 blur-3xl" />
       <div className="pointer-events-none absolute -top-28 left-10 -z-10 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
@@ -446,7 +811,11 @@ export default function ForumPage() {
 
             <button
               type="button"
+<<<<<<< HEAD
+              onClick={() => setOpenCreate(true)}
+=======
               onClick={() => router.push("/club/forum/create")}
+>>>>>>> origin/develop
               className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-2.5 text-[0.78rem] font-bold text-slate-900 shadow-lg shadow-cyan-500/35 hover:shadow-cyan-500/55 hover:brightness-110 active:scale-95 transition"
             >
               <Plus className="h-4 w-4" />
@@ -458,7 +827,6 @@ export default function ForumPage() {
         {/* Top controls */}
         <div className={cn("rounded-3xl p-4 md:p-5", glass)}>
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            {/* Categories */}
             <div className="flex flex-wrap gap-2">
               {categories.map((c) => (
                 <CategoryPill
@@ -470,7 +838,10 @@ export default function ForumPage() {
               ))}
             </div>
 
+<<<<<<< HEAD
+=======
             {/* Search + sort */}
+>>>>>>> origin/develop
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2">
                 <Search className="h-4 w-4 text-white/60" />
@@ -522,6 +893,18 @@ export default function ForumPage() {
           {/* Posts list */}
           <section className="lg:col-span-2 space-y-3">
             {loadingPosts ? (
+<<<<<<< HEAD
+              <div className={cn("rounded-3xl p-5", glass)}>Đang tải bài viết...</div>
+            ) : errorPosts ? (
+              <div className={cn("rounded-3xl p-5", glass)}>
+                <div className="text-sm text-red-200">{errorPosts}</div>
+              </div>
+            ) : null}
+
+            {!loadingPosts && !errorPosts && filtered.length === 0 ? (
+              <div className={cn("rounded-3xl p-5", glass)}>
+                <div className="text-sm text-white/70">Chưa có bài viết nào.</div>
+=======
               <div className={cn("rounded-3xl p-5", glass)}>
                 <div className="text-sm text-white/70">Đang tải bài viết…</div>
               </div>
@@ -530,6 +913,7 @@ export default function ForumPage() {
             {!loadingPosts && filtered.length === 0 ? (
               <div className={cn("rounded-3xl p-5", glass)}>
                 <div className="text-sm text-white/70">Không có bài viết nào.</div>
+>>>>>>> origin/develop
               </div>
             ) : null}
 
@@ -580,7 +964,7 @@ export default function ForumPage() {
                       <div className="mt-3 flex flex-wrap gap-2">
                         {p.tags.slice(0, 3).map((t, i) => (
                           <Tag
-                            key={t}
+                            key={`${p.id}-${t}`}
                             text={t}
                             tone={i === 0 ? "violet" : i === 1 ? "sky" : "fuchsia"}
                           />
@@ -646,9 +1030,17 @@ export default function ForumPage() {
               </article>
             ))}
 
-            {/* Pagination */}
+            {/* Pagination (basic) */}
             <div className={cn("rounded-3xl p-4", glass)}>
               <div className="flex items-center justify-between">
+<<<<<<< HEAD
+                <div className="text-xs text-white/55">Trang {page}</div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10]"
+                    title="Trang trước"
+=======
                 <div className="text-xs text-white/55">
                   Trang {page}
                   {loadingPosts ? " • đang tải…" : ""}
@@ -662,13 +1054,20 @@ export default function ForumPage() {
                       "grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10]",
                       !canPrev && "opacity-40 cursor-not-allowed"
                     )}
+>>>>>>> origin/develop
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
 
+<<<<<<< HEAD
+                  {[page, page + 1, page + 2].map((pnum, idx) => (
+                    <button
+                      key={`${pnum}-${idx}`}
+=======
                   {pageButtons.map((pnum) => (
                     <button
                       key={pnum}
+>>>>>>> origin/develop
                       onClick={() => setPage(pnum)}
                       className={cn(
                         "h-9 w-9 rounded-xl border text-xs font-semibold transition",
@@ -682,12 +1081,18 @@ export default function ForumPage() {
                   ))}
 
                   <button
+<<<<<<< HEAD
+                    onClick={() => setPage((p) => p + 1)}
+                    className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10]"
+                    title="Trang sau"
+=======
                     disabled={!canNext}
                     onClick={() => setPage((p) => p + 1)}
                     className={cn(
                       "grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10]",
                       !canNext && "opacity-40 cursor-not-allowed"
                     )}
+>>>>>>> origin/develop
                   >
                     <ChevronRight className="h-4 w-4" />
                   </button>
@@ -698,7 +1103,6 @@ export default function ForumPage() {
 
           {/* Sidebar */}
           <aside className="space-y-5">
-            {/* Quick actions */}
             <div className={cn("rounded-3xl p-5", glass)}>
               <div className="flex items-center gap-2">
                 <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06]">
@@ -714,7 +1118,7 @@ export default function ForumPage() {
 
               <button
                 type="button"
-                onClick={() => alert("Demo: tạo bài viết")}
+                onClick={() => setOpenCreate(true)}
                 className="mt-4 w-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-2.5 text-[0.78rem] font-bold text-slate-900 shadow-lg shadow-cyan-500/35 hover:shadow-cyan-500/55 hover:brightness-110 active:scale-95 transition"
               >
                 Tạo bài viết
@@ -722,14 +1126,13 @@ export default function ForumPage() {
 
               <button
                 type="button"
-                onClick={() => alert("Demo: tạo thông báo")}
+                onClick={() => setOpenCreate(true)}
                 className="mt-2 w-full rounded-full border border-white/10 bg-white/[0.06] px-5 py-2.5 text-[0.78rem] font-semibold text-white/85 hover:bg-white/[0.10] transition"
               >
                 Tạo thông báo
               </button>
             </div>
 
-            {/* Top tags */}
             <div className={cn("rounded-3xl p-5", glass)}>
               <div className="flex items-center gap-2">
                 <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06]">
@@ -744,26 +1147,29 @@ export default function ForumPage() {
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                {tagStats.map(([t, count], i) => (
-                  <span
-                    key={t}
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[0.72rem] font-semibold",
-                      i % 3 === 0
-                        ? "border-violet-400/25 bg-violet-400/12 text-violet-200"
-                        : i % 3 === 1
-                        ? "border-sky-400/25 bg-sky-400/12 text-sky-200"
-                        : "border-fuchsia-400/25 bg-fuchsia-400/12 text-fuchsia-200"
-                    )}
-                  >
-                    #{t}
-                    <span className="text-white/55 font-semibold">({count})</span>
-                  </span>
-                ))}
+                {tagStats.length === 0 ? (
+                  <div className="text-sm text-white/60">Chưa có tag</div>
+                ) : (
+                  tagStats.map(([t, count], i) => (
+                    <span
+                      key={t}
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[0.72rem] font-semibold",
+                        i % 3 === 0
+                          ? "border-violet-400/25 bg-violet-400/12 text-violet-200"
+                          : i % 3 === 1
+                          ? "border-sky-400/25 bg-sky-400/12 text-sky-200"
+                          : "border-fuchsia-400/25 bg-fuchsia-400/12 text-fuchsia-200"
+                      )}
+                    >
+                      #{t}
+                      <span className="text-white/55 font-semibold">({count})</span>
+                    </span>
+                  ))
+                )}
               </div>
             </div>
 
-            {/* Rules */}
             <div className={cn("rounded-3xl p-5", glass)}>
               <div className="flex items-center gap-2">
                 <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06]">
@@ -784,7 +1190,6 @@ export default function ForumPage() {
               </ul>
             </div>
 
-            {/* Online members */}
             <div className={cn("rounded-3xl p-5", glass)}>
               <div className="flex items-center gap-2">
                 <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06]">
@@ -830,6 +1235,18 @@ export default function ForumPage() {
       </main>
 
       <Footer />
+
+      <CreatePostModal
+        open={openCreate}
+        onClose={() => setOpenCreate(false)}
+        toast={pushToast}
+        onCreated={async () => {
+          setOpenCreate(false);
+          setPage(1);
+          await fetchPosts();
+          router.refresh?.();
+        }}
+      />
     </div>
   );
 }
