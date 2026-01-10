@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProviders/page";
 import { toast } from "sonner";
+import AppSidebar from "@/components/AppSidebar";
+
 import Image from "next/image";
 import {
   getProfile,
@@ -717,120 +719,7 @@ export default function ProfilePage() {
       <div className="pointer-events-none absolute bottom-0 right-0 -z-10 h-96 w-96 rounded-full bg-indigo-400/15 blur-3xl" />
 
       <div className="mx-auto flex max-w-7xl gap-4 px-4 py-6">
-        <aside
-          className={cn("hidden w-72 shrink-0 rounded-3xl p-4 md:block", glass)}
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex items-center">
-              <div className="relative h-14 w-[250px] overflow-hidden">
-                <Image
-                  src="/clubverse_logo_1.png"
-                  alt="Clubverse"
-                  fill
-                  priority
-                  className="object-contain object-left"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/4 p-3">
-            <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-white/10 bg-white/6">
-              {shownAvatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={shownAvatar}
-                  alt="avatar"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="grid h-full w-full place-items-center text-xs font-semibold">
-                  {initials(fullName || "User")}
-                </div>
-              )}
-            </div>
-
-            <div className="min-w-0">
-              <p className="truncate text-xs font-semibold">
-                {fullName || "—"}
-              </p>
-              <p className="text-[0.68rem] text-emerald-300/80">● Sinh viên</p>
-            </div>
-          </div>
-
-          <nav className="mt-5 space-y-1.5 text-[0.78rem]">
-            {[
-              {
-                icon: <Home size={16} />,
-                label: "Trang chủ",
-                href: "/homepage",
-              },
-              {
-                icon: <Users size={16} />,
-                label: "Câu lạc bộ",
-                href: "/clubs",
-              },
-              {
-                icon: <CalendarDays size={16} />,
-                label: "Sự kiện",
-                href: "/events",
-              },
-              {
-                icon: <User size={16} />,
-                label: "Hồ sơ của tôi",
-                href: "/profile",
-                active: true,
-              },
-              {
-                icon: <MessageSquare size={16} />,
-                label: "Tin nhắn",
-                href: "/messages",
-              },
-              {
-                icon: <Inbox size={16} />,
-                label: "Đơn đã gửi",
-                href: "/requests",
-              },
-            ].map((it) => (
-              <Link
-                key={it.label}
-                href={it.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2 transition",
-                  it.active
-                    ? "bg-linear-to-r from-emerald-500/80 to-sky-500/60 text-slate-950 font-semibold"
-                    : "text-white/70 hover:bg-white/6 hover:text-white"
-                )}
-              >
-                <span
-                  className={cn("opacity-90", it.active && "text-slate-950")}
-                >
-                  {it.icon}
-                </span>
-                {it.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="mt-6 border-t border-white/10 pt-4 space-y-2">
-            <Link
-              href="/settings"
-              className="flex items-center gap-3 rounded-xl px-3 py-2 text-[0.78rem] text-white/70 hover:bg-white/6 hover:text-white transition"
-            >
-              <Settings size={16} />
-              Cài đặt
-            </Link>
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[0.78rem] text-white/70 hover:bg-white/6 hover:text-white transition"
-            >
-              <LogOut size={16} />
-              Đăng xuất
-            </button>
-          </div>
-        </aside>
+        <AppSidebar activeKey="profile" />
 
         <main className="min-w-0 flex-1">
           <div className={cn("rounded-3xl p-5 md:p-6", glass)}>

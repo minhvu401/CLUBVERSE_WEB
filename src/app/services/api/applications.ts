@@ -43,6 +43,7 @@ export type MyApplication = {
   submittedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  respondedAt?: string;
 
   // approve có thể trả thêm
   interviewDate?: string;

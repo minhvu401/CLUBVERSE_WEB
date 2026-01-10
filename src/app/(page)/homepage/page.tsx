@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders/page";
+import { getEvents } from "@/app/services/api/events";
+
 
 import { motion } from "framer-motion";
 import {
@@ -92,6 +94,21 @@ function SectionHeader({
   );
 }
 
+type HomeEvent = {
+  id: string;
+  day: string;
+  month: string;
+  title: string;
+  desc: string;
+  time: string;
+  place: string;
+  attendees: string;
+  tone: "violet" | "emerald" | "fuchsia" | "amber";
+  cta: string;
+  ctaTone: "violet" | "emerald" | "fuchsia" | "amber";
+};
+
+
 export default function HomeDashboardPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
@@ -99,6 +116,9 @@ export default function HomeDashboardPage() {
   const [clubs, setClubs] = useState<ClubItem[]>([]);
   const [clubsLoading, setClubsLoading] = useState(false);
   const [clubsError, setClubsError] = useState<string | null>(null);
+  const [events, setEvents] = useState<HomeEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+
 
   useEffect(() => {
     if (!loading && !token) router.push("/login");
@@ -135,6 +155,64 @@ export default function HomeDashboardPage() {
     };
   }, [token]);
 
+  useEffect(() => {
+  if (!token) return;
+
+  let cancelled = false;
+
+  (async () => {
+    try {
+      setEventsLoading(true);
+
+      const res = await getEvents(token, {
+        filter: "upcoming",
+        limit: 4,
+        skip: 0,
+      });
+
+      if (cancelled) return;
+
+      const tones = ["violet", "emerald", "fuchsia", "amber"] as const;
+
+      const mapped: HomeEvent[] = (res || []).slice(0, 4).map((e, idx) => {
+        const start = e.startDate ? new Date(e.startDate) : null;
+
+        return {
+          id: String(e._id),
+          day: start ? start.getDate().toString().padStart(2, "0") : "--",
+          month: start
+            ? `THG ${start.getMonth() + 1}`
+            : "THG --",
+          title: e.title ?? "Sự kiện",
+          desc: e.description ?? e.content ?? "Chưa có mô tả",
+          time: start
+            ? start.toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "Chưa rõ",
+          place: e.location ?? "Chưa cập nhật",
+          attendees: `+${e.joinedCount ?? 0} khác`,
+          tone: tones[idx % tones.length],
+          cta: "Tham Gia",
+          ctaTone: tones[idx % tones.length],
+        };
+      });
+
+      setEvents(mapped);
+    } catch (err) {
+      console.error("Fetch homepage events failed", err);
+    } finally {
+      if (!cancelled) setEventsLoading(false);
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [token]);
+
+
   const displayName = user?.fullName || "Minh";
 
   const clubCards = useMemo(() => {
@@ -158,61 +236,6 @@ export default function HomeDashboardPage() {
   const goClubDetail = (id: string) => {
     router.push(`/clubs/${id}`);
   };
-
-  const events = [
-    {
-      id: 1,
-      day: "15",
-      month: "THG 11",
-      title: "Workshop React.js Nâng Cao",
-      desc: "Học cách kỹ thuật React.js nâng cao từ các chuyên gia hàng đầu.",
-      time: "19:00 - 21:00",
-      place: "Online",
-      attendees: "+24 khác",
-      tone: "violet" as const,
-      cta: "Tham Gia",
-      ctaTone: "violet" as const,
-    },
-    {
-      id: 2,
-      day: "18",
-      month: "THG 11",
-      title: "Cuộc Thi Thiết Kế Logo",
-      desc: "Thể hiện tài năng thiết kế của bạn với giải thưởng hấp dẫn.",
-      time: "Cả ngày",
-      place: "Giải thưởng: 5M VND",
-      attendees: "+67 khác",
-      tone: "fuchsia" as const,
-      cta: "Đăng Ký",
-      ctaTone: "fuchsia" as const,
-    },
-    {
-      id: 3,
-      day: "22",
-      month: "THG 11",
-      title: "Meetup Nhiếp Ảnh Hà Nội",
-      desc: "Gặp gỡ và chụp ảnh cùng các nhiếp ảnh gia tại Hà Nội.",
-      time: "14:00 - 18:00",
-      place: "Hồ Gươm, Hà Nội",
-      attendees: "+15 khác",
-      tone: "emerald" as const,
-      cta: "Tham Gia",
-      ctaTone: "emerald" as const,
-    },
-    {
-      id: 4,
-      day: "25",
-      month: "THG 11",
-      title: "Hội Thảo Khởi Nghiệp Công Nghệ",
-      desc: "Chia sẻ kinh nghiệm khởi nghiệp từ các founder thành công.",
-      time: "09:00 - 17:00",
-      place: "TPHCM",
-      attendees: "+89 khác",
-      tone: "amber" as const,
-      cta: "Đăng Ký",
-      ctaTone: "amber" as const,
-    },
-  ];
 
   const stats = [
     { label: "Câu Lạc Bộ Tham Gia", value: "12" },
@@ -400,7 +423,10 @@ export default function HomeDashboardPage() {
             />
 
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              {events.map((ev) => (
+              { eventsLoading ? (
+  <div className="text-sm text-white/60">Đang tải sự kiện...</div>
+) : (
+              events.map((ev) => (
                 <motion.article
                   key={ev.id}
                   whileHover={{ y: -4 }}
@@ -476,7 +502,7 @@ export default function HomeDashboardPage() {
                     </div>
                   </div>
                 </motion.article>
-              ))}
+              )))}
             </div>
           </section>
 

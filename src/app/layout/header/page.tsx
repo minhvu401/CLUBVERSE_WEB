@@ -195,9 +195,9 @@ function UserHeader({
   const navItems = [
     { label: "Trang Chủ", href: "/homepage", match: ["/", "/homepage"] },
     { label: "Khám Phá", href: "/finding", match: ["/finding"] },
-    { label: "Sự Kiện", href: "/su-kien", match: ["/su-kien"] },
-    { label: "Câu Lạc Bộ", href: "/clb", match: ["/clb"] },
-    { label: "Diễn Đàn", href: "/dien-dan", match: ["/dien-dan"] },
+    { label: "Sự Kiện", href: "/events", match: ["/events"] },
+    { label: "Câu Lạc Bộ", href: "/clubs", match: ["/clubs"] },
+    { label: "Diễn Đàn", href: "/forum", match: ["/forum"] },
   ];
 
   return (
@@ -317,9 +317,8 @@ function AdminHeader({
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, token, logout } = useAuth() as any;
-
-  const isAuthed = !!token;
+  const { user,  logout } = useAuth() as any;
+  const isAuthed = !!user;
   const role = normalizeRole(user?.role);
 
   const onLogout = () => {

@@ -10,8 +10,9 @@ import {
   useMemo,
 } from "react";
 
-// ✅ thêm import này (sửa path cho đúng dự án của bạn)
 import { getProfile } from "@/app/services/api/auth";
+
+/* ================== TYPES ================== */
 
 export type User = {
   id?: string;
@@ -42,25 +43,35 @@ type AuthContextType = {
   ) => void;
 };
 
+/* ================== CONSTANT KEYS ================== */
+
+const TOKEN_KEY = "accessToken";
+const USER_KEY = "user";
+
+/* ================== CONTEXT ================== */
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+/* ================== PROVIDER ================== */
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  /* ---------- INIT FROM LOCALSTORAGE ---------- */
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const storedToken = localStorage.getItem("accessToken");
-    const storedUser = localStorage.getItem("user");
+    const storedToken = localStorage.getItem(TOKEN_KEY);
+    const storedUser = localStorage.getItem(USER_KEY);
 
     let parsedUser: User | null = null;
     if (storedUser) {
       try {
         parsedUser = JSON.parse(storedUser);
       } catch {
-        localStorage.removeItem("user");
+        localStorage.removeItem(USER_KEY);
       }
     }
 
@@ -71,26 +82,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /* ---------- LOGIN ---------- */
   const login = useCallback((newToken: string, newUser: User) => {
     setToken(newToken);
     setUser(newUser);
 
     if (typeof window !== "undefined") {
-      localStorage.setItem("accessToken", newToken);
-      localStorage.setItem("user", JSON.stringify(newUser));
+      localStorage.setItem(TOKEN_KEY, newToken);
+      localStorage.setItem(USER_KEY, JSON.stringify(newUser));
     }
   }, []);
 
+  /* ---------- LOGOUT (🔥 FIXED) ---------- */
   const logout = useCallback(() => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+    }
+
     setToken(null);
     setUser(null);
-
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("user");
-    }
   }, []);
 
+  /* ---------- UPDATE USER ---------- */
   const updateUser = useCallback<AuthContextType["updateUser"]>((patch) => {
     setUser((prev) => {
       const next =
@@ -99,49 +113,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : { ...(prev ?? ({} as User)), ...patch };
 
       if (typeof window !== "undefined") {
-        if (next) localStorage.setItem("user", JSON.stringify(next));
-        else localStorage.removeItem("user");
+        if (next) localStorage.setItem(USER_KEY, JSON.stringify(next));
+        else localStorage.removeItem(USER_KEY);
       }
 
       return next;
     });
   }, []);
 
-  // ✅ NEW: có token là tự fetch full profile để lấy avatarUrl (và các field khác)
+  /* ---------- FETCH FULL PROFILE WHEN TOKEN EXISTS ---------- */
   useEffect(() => {
-  if (!token) return;
+    if (!token) return;
 
-  let cancelled = false;
+    let cancelled = false;
 
-  (async () => {
-    try {
-      const profile = await getProfile(token);
-      if (cancelled) return;
+    (async () => {
+      try {
+        const profile = await getProfile(token);
+        if (cancelled) return;
 
-      // ✅ map ProfileResponse -> Partial<User>
-      const patch: Partial<User> = {
-        _id: profile._id,
-        email: profile.email,
-        fullName: profile.fullName,
-        role: profile.role,
-        avatarUrl: profile.avatarUrl,
-        phoneNumber: profile.phoneNumber,
-        school: profile.school,
-        major: profile.major,
-        year: profile.year,
-      };
+        updateUser({
+          _id: profile._id,
+          email: profile.email,
+          fullName: profile.fullName,
+          role: profile.role,
+          avatarUrl: profile.avatarUrl,
+          phoneNumber: profile.phoneNumber,
+          school: profile.school,
+          major: profile.major,
+          year: profile.year,
+        });
+      } catch {
+        // optional: handle 401 -> logout()
+      }
+    })();
 
-      updateUser(patch);
-    } catch (e) {
-      // optional log
-    }
-  })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, updateUser]);
 
-  return () => {
-    cancelled = true;
-  };
-}, [token, updateUser]);
-
+  /* ---------- MEMO ---------- */
   const value = useMemo(
     () => ({ user, token, loading, login, logout, updateUser }),
     [user, token, loading, login, logout, updateUser]
@@ -150,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export default AuthProvider;
+/* ================== HOOK ================== */
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
