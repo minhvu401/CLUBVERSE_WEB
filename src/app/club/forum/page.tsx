@@ -12,6 +12,12 @@ import { useAuth } from "@/app/providers/AuthProviders/page";
 import { getClubPosts, createPost } from "@/app/services/api/post";
 
 import {
+  getClubPosts,
+  type PostItem,
+  type PostSort,
+} from "@/app/services/api/post";
+
+import {
   Search,
   Plus,
   Flame,
@@ -52,6 +58,7 @@ type Post = {
   stats: { likes: number; comments: number; views: number };
 };
 
+<<<<<<< HEAD
 /* =========================
    ✅ SIMPLE TOAST SYSTEM
 ========================= */
@@ -113,6 +120,33 @@ function useToasts() {
 }
 
 /* ========================= */
+=======
+type ApiPost = PostItem & {
+  postId?: string; // ✅ thêm để fallback id khi API không trả _id
+
+  author?: any;
+  createdBy?: any;
+  user?: any;
+  owner?: any;
+
+  commentCount?: number;
+  commentsCount?: number;
+  totalComments?: number;
+  comments?: any[];
+
+  viewCount?: number;
+  views?: number;
+
+  pinned?: boolean;
+  isPinned?: boolean;
+  hot?: boolean;
+  isHot?: boolean;
+
+  category?: string;
+  type?: string;
+};
+
+>>>>>>> origin/develop
 
 function CategoryPill({
   value,
@@ -177,6 +211,7 @@ function Stat({ icon, value }: { icon: React.ReactNode; value: number }) {
   );
 }
 
+<<<<<<< HEAD
 // ✅ mapper: PostItem (backend) -> Post (UI)
 function toForumPost(item: any): Post {
   const created =
@@ -216,10 +251,160 @@ function toForumPost(item: any): Post {
       likes: Number(item?.stats?.likes ?? item?.likeCount ?? item?.likes ?? 0),
       comments: Number(item?.stats?.comments ?? item?.commentCount ?? item?.comments ?? 0),
       views: Number(item?.stats?.views ?? item?.viewCount ?? item?.views ?? 0),
+=======
+// ===== helpers =====
+function toExcerpt(content?: string, max = 160) {
+  const s = (content || "").replace(/\s+/g, " ").trim();
+  return s.length > max ? s.slice(0, max) + "…" : s;
+}
+
+function timeAgo(iso?: string) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const t = d.getTime();
+  if (Number.isNaN(t)) return iso;
+
+  const diff = Date.now() - t;
+  const sec = Math.floor(diff / 1000);
+  if (sec < 10) return "vừa xong";
+  if (sec < 60) return `${sec} giây trước`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} phút trước`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} giờ trước`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day} ngày trước`;
+  return d.toLocaleDateString("vi-VN");
+}
+
+function normalizeCategory(raw?: string, tags?: string[]) {
+  const r = String(raw || "").toLowerCase();
+  const set = new Set((tags || []).map((t) => String(t).toLowerCase()));
+
+  const isAnnouncement =
+    r.includes("announcement") ||
+    r.includes("thongbao") ||
+    r.includes("thông báo") ||
+    set.has("announcement") ||
+    set.has("thongbao") ||
+    set.has("thông báo");
+
+  const isQa =
+    r.includes("qa") ||
+    r.includes("question") ||
+    r.includes("hoidap") ||
+    r.includes("hỏi đáp") ||
+    set.has("qa") ||
+    set.has("hoidap") ||
+    set.has("hỏi đáp");
+
+  if (isAnnouncement) return "announcement";
+  if (isQa) return "qa";
+  return "sharing";
+}
+
+function pickAuthor(p: ApiPost) {
+  const a =
+    p.author ||
+    p.createdBy ||
+    p.user ||
+    (p as any).postedBy ||
+    (p as any).createdUser ||
+    p.owner;
+
+  const name =
+    a?.name ||
+    a?.fullName ||
+    a?.fullname ||
+    a?.username ||
+    a?.email ||
+    "Ẩn danh";
+
+  const role = a?.role || a?.position || a?.title;
+
+  const avatar =
+    a?.avatar ||
+    a?.avatarUrl ||
+    a?.photo ||
+    a?.image ||
+    a?.profilePicture ||
+    a?.picture;
+
+  return { name, role, avatar };
+}
+
+function pickCommentCount(p: ApiPost) {
+  const direct =
+    (p as any).commentCount ??
+    (p as any).commentsCount ??
+    (p as any).totalComments ??
+    (p as any).totalComment ??
+    (p as any).comments_total;
+
+  if (typeof direct === "number") return direct;
+
+  const arr = (p as any).comments;
+  if (Array.isArray(arr)) return arr.length;
+
+  return 0;
+}
+
+function pickViewCount(p: ApiPost) {
+  const direct =
+    (p as any).viewCount ?? (p as any).views ?? (p as any).totalViews;
+  return typeof direct === "number" ? direct : 0;
+}
+
+function pickPinned(p: ApiPost) {
+  return Boolean((p as any).pinned ?? (p as any).isPinned ?? (p as any).pin);
+}
+
+function pickHot(p: ApiPost) {
+  return Boolean((p as any).hot ?? (p as any).isHot);
+}
+
+// ✅ FIX: truyền clubName để fallback author hiển thị đúng "TEST CLUB"
+function mapApiToUi(p: ApiPost, clubName?: string): Post {
+  const anyP = p as any;
+
+  // ✅ FIX: id/key fallback để không bị mất bài
+  const rawId = anyP?._id ?? anyP?.postId ?? anyP?.id;
+  const id = rawId
+    ? String(rawId)
+    : `${anyP?.title || "post"}-${anyP?.createdAt || Date.now()}`;
+
+  const authorFromPost = pickAuthor(p);
+  const likes = p.likeCount ?? p.likes?.length ?? 0;
+
+  const author = {
+    name:
+      authorFromPost?.name && authorFromPost.name !== "Ẩn danh"
+        ? authorFromPost.name
+        : clubName || "CLB",
+    role: authorFromPost?.role || "Club",
+    avatar: authorFromPost?.avatar,
+  };
+
+  return {
+    id, // ✅ dùng id mới
+    title: anyP?.title || "(Không có tiêu đề)",
+    excerpt: toExcerpt(anyP?.content),
+    author,
+    createdAt: timeAgo(anyP?.createdAt),
+    category: normalizeCategory(anyP?.category ?? anyP?.type, anyP?.tags),
+    tags: anyP?.tags || [],
+    pinned: pickPinned(p),
+    hot: pickHot(p),
+    stats: {
+      likes,
+      comments: pickCommentCount(p),
+      views: pickViewCount(p),
+>>>>>>> origin/develop
     },
   };
 }
 
+<<<<<<< HEAD
 /* =========================
    ✅ CREATE POST MODAL
    - validate title >= 5
@@ -419,6 +604,8 @@ function CreatePostModal({
 }
 
 /* ========================= */
+=======
+>>>>>>> origin/develop
 
 export default function ForumPage() {
   const router = useRouter();
@@ -427,8 +614,11 @@ export default function ForumPage() {
 
   const { user, token, loading } = useAuth() as any;
 
+<<<<<<< HEAD
   const { toasts, pushToast, removeToast } = useToasts();
 
+=======
+>>>>>>> origin/develop
   const isClubRole = useMemo(
     () => String(user?.role || "").toLowerCase() === "club",
     [user?.role]
@@ -450,6 +640,7 @@ export default function ForumPage() {
   const [cat, setCat] = useState<Category>("all");
   const [q, setQ] = useState("");
 
+<<<<<<< HEAD
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [errorPosts, setErrorPosts] = useState<string | null>(null);
@@ -487,6 +678,59 @@ export default function ForumPage() {
   const filtered = useMemo(() => {
     const byCat = cat === "all" ? posts : posts.filter((p) => p.category === cat);
 
+=======
+  const [sortBy, setSortBy] = useState<PostSort>("newest");
+  const [page, setPage] = useState(1);
+  const limit = 10;
+  const skip = (page - 1) * limit;
+
+  const [apiPosts, setApiPosts] = useState<ApiPost[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [error, setError] = useState<string>("");
+
+  // ✅ FIX: clubId đúng theo response CLB của bạn
+  const clubId = user?._id; // <-- QUAN TRỌNG
+  const clubName = user?.fullName || user?.name || "CLB";
+
+  useEffect(() => {
+    if (loading) return;
+    if (!token) return;
+    if (!clubId) return;
+
+    (async () => {
+      try {
+        setError("");
+        setLoadingPosts(true);
+
+        const data = (await getClubPosts(token, String(clubId), {
+          sortBy,
+          limit,
+          skip,
+        })) as unknown as ApiPost[];
+
+        setApiPosts(Array.isArray(data) ? data : []);
+        setHasMore(Array.isArray(data) && data.length === limit);
+      } catch (e: any) {
+        console.error("Fetch club posts failed:", e);
+        setApiPosts([]);
+        setHasMore(false);
+        setError(e?.message || "Không tải được bài viết.");
+      } finally {
+        setLoadingPosts(false);
+      }
+    })();
+  }, [loading, token, clubId, sortBy, limit, skip]);
+
+  // ✅ FIX: map có clubName để author hiển thị "TEST CLUB"
+  const posts: Post[] = useMemo(
+    () => apiPosts.map((p) => mapApiToUi(p, clubName)),
+    [apiPosts, clubName]
+  );
+
+  const filtered = useMemo(() => {
+    const byCat = cat === "all" ? posts : posts.filter((p) => p.category === cat);
+>>>>>>> origin/develop
     const query = q.trim().toLowerCase();
     if (!query) return byCat;
 
@@ -526,10 +770,21 @@ export default function ForumPage() {
     },
   ];
 
+  const canPrev = page > 1 && !loadingPosts;
+  const canNext = hasMore && !loadingPosts;
+
+  const pageButtons = useMemo(() => {
+    const arr = [page - 1, page, page + 1].filter((n) => n >= 1);
+    return Array.from(new Set(arr));
+  }, [page]);
+
   return (
     <div className="relative isolate min-h-screen overflow-hidden text-white">
+<<<<<<< HEAD
       <ToastHost toasts={toasts} removeToast={removeToast} />
 
+=======
+>>>>>>> origin/develop
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-indigo-950 via-purple-900 to-violet-950" />
       <div className="pointer-events-none absolute -top-44 left-1/2 -z-10 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-violet-500/25 blur-3xl" />
       <div className="pointer-events-none absolute -top-28 left-10 -z-10 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
@@ -547,11 +802,20 @@ export default function ForumPage() {
               <p className="mt-1 text-sm text-white/60">
                 Nơi trao đổi thông báo, hỏi đáp và chia sẻ kiến thức trong cộng đồng.
               </p>
+              {!clubId ? (
+                <p className="mt-1 text-xs text-amber-200/80">
+                  (Chưa thấy clubId trong user — CLB login phải có user._id)
+                </p>
+              ) : null}
             </div>
 
             <button
               type="button"
+<<<<<<< HEAD
               onClick={() => setOpenCreate(true)}
+=======
+              onClick={() => router.push("/club/forum/create")}
+>>>>>>> origin/develop
               className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-2.5 text-[0.78rem] font-bold text-slate-900 shadow-lg shadow-cyan-500/35 hover:shadow-cyan-500/55 hover:brightness-110 active:scale-95 transition"
             >
               <Plus className="h-4 w-4" />
@@ -574,6 +838,10 @@ export default function ForumPage() {
               ))}
             </div>
 
+<<<<<<< HEAD
+=======
+            {/* Search + sort */}
+>>>>>>> origin/develop
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2">
                 <Search className="h-4 w-4 text-white/60" />
@@ -581,20 +849,43 @@ export default function ForumPage() {
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   placeholder="Tìm kiếm bài viết, tag, tác giả..."
-                  className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/45 sm:w-[280px]"
+                  className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/45 sm:w-[260px]"
                 />
               </div>
 
-              <button
-                type="button"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-white/80 hover:bg-white/[0.10]"
-                title="Bộ lọc"
-              >
-                <Filter className="h-4 w-4" />
-                Lọc
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-white/80 hover:bg-white/[0.10]"
+                  title="Bộ lọc"
+                >
+                  <Filter className="h-4 w-4" />
+                  Lọc
+                </button>
+
+                <select
+                  value={sortBy}
+                  onChange={(e) => {
+                    setPage(1);
+                    setSortBy(e.target.value as PostSort);
+                  }}
+                  className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-white/85 outline-none"
+                >
+                  <option className="text-black" value="newest">
+                    Mới nhất
+                  </option>
+                  <option className="text-black" value="oldest">
+                    Cũ nhất
+                  </option>
+                  <option className="text-black" value="popular">
+                    Phổ biến
+                  </option>
+                </select>
+              </div>
             </div>
           </div>
+
+          {error ? <div className="mt-3 text-sm text-rose-200/90">{error}</div> : null}
         </div>
 
         {/* Content grid */}
@@ -602,6 +893,7 @@ export default function ForumPage() {
           {/* Posts list */}
           <section className="lg:col-span-2 space-y-3">
             {loadingPosts ? (
+<<<<<<< HEAD
               <div className={cn("rounded-3xl p-5", glass)}>Đang tải bài viết...</div>
             ) : errorPosts ? (
               <div className={cn("rounded-3xl p-5", glass)}>
@@ -612,6 +904,16 @@ export default function ForumPage() {
             {!loadingPosts && !errorPosts && filtered.length === 0 ? (
               <div className={cn("rounded-3xl p-5", glass)}>
                 <div className="text-sm text-white/70">Chưa có bài viết nào.</div>
+=======
+              <div className={cn("rounded-3xl p-5", glass)}>
+                <div className="text-sm text-white/70">Đang tải bài viết…</div>
+              </div>
+            ) : null}
+
+            {!loadingPosts && filtered.length === 0 ? (
+              <div className={cn("rounded-3xl p-5", glass)}>
+                <div className="text-sm text-white/70">Không có bài viết nào.</div>
+>>>>>>> origin/develop
               </div>
             ) : null}
 
@@ -717,7 +1019,7 @@ export default function ForumPage() {
 
                       <button
                         type="button"
-                        onClick={() => alert(`Demo: mở bài viết ${p.id}`)}
+                        onClick={() => router.push(`/club/forum/post/${p.id}`)}
                         className="rounded-full bg-white/[0.06] hover:bg-white/[0.10] border border-white/10 px-4 py-2 text-[0.72rem] font-semibold text-white/85 transition"
                       >
                         Xem bài →
@@ -731,19 +1033,41 @@ export default function ForumPage() {
             {/* Pagination (basic) */}
             <div className={cn("rounded-3xl p-4", glass)}>
               <div className="flex items-center justify-between">
+<<<<<<< HEAD
                 <div className="text-xs text-white/55">Trang {page}</div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10]"
                     title="Trang trước"
+=======
+                <div className="text-xs text-white/55">
+                  Trang {page}
+                  {loadingPosts ? " • đang tải…" : ""}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={!canPrev}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className={cn(
+                      "grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10]",
+                      !canPrev && "opacity-40 cursor-not-allowed"
+                    )}
+>>>>>>> origin/develop
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
 
+<<<<<<< HEAD
                   {[page, page + 1, page + 2].map((pnum, idx) => (
                     <button
                       key={`${pnum}-${idx}`}
+=======
+                  {pageButtons.map((pnum) => (
+                    <button
+                      key={pnum}
+>>>>>>> origin/develop
                       onClick={() => setPage(pnum)}
                       className={cn(
                         "h-9 w-9 rounded-xl border text-xs font-semibold transition",
@@ -757,9 +1081,18 @@ export default function ForumPage() {
                   ))}
 
                   <button
+<<<<<<< HEAD
                     onClick={() => setPage((p) => p + 1)}
                     className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10]"
                     title="Trang sau"
+=======
+                    disabled={!canNext}
+                    onClick={() => setPage((p) => p + 1)}
+                    className={cn(
+                      "grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10]",
+                      !canNext && "opacity-40 cursor-not-allowed"
+                    )}
+>>>>>>> origin/develop
                   >
                     <ChevronRight className="h-4 w-4" />
                   </button>
