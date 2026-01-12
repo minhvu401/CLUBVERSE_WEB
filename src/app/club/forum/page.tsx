@@ -7,6 +7,15 @@ import { useRouter } from "next/navigation";
 import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders/page";
+import {
+  getAllPosts,
+  likePost,
+  unlikePost,
+  deletePost,
+  type PostItem,
+  type PostSort,
+} from "@/app/services/api/post";
+import CreatePostModal from "./components/CreatePostModal";
 
 import {
   Search,
@@ -24,6 +33,7 @@ import {
   Hash,
   Users,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -34,19 +44,6 @@ const glass =
   "border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
 
 type Category = "all" | "announcement" | "qa" | "sharing";
-
-type Post = {
-  id: string;
-  title: string;
-  excerpt: string;
-  author: { name: string; role?: string; avatar?: string };
-  createdAt: string;
-  category: Exclude<Category, "all">;
-  tags: string[];
-  pinned?: boolean;
-  hot?: boolean;
-  stats: { likes: number; comments: number; views: number };
-};
 
 function CategoryPill({
   value,
@@ -102,13 +99,7 @@ function Tag({
   );
 }
 
-function Stat({
-  icon,
-  value,
-}: {
-  icon: React.ReactNode;
-  value: number;
-}) {
+function Stat({ icon, value }: { icon: React.ReactNode; value: number }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-[0.72rem] text-white/55">
       {icon}
@@ -144,101 +135,127 @@ export default function ForumPage() {
 
   const [cat, setCat] = useState<Category>("all");
   const [q, setQ] = useState("");
+  const [posts, setPosts] = useState<PostItem[]>([]);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+  const [sortBy, setSortBy] = useState<PostSort>("newest");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // ===== Mock posts =====
-  const posts: Post[] = [
-    {
-      id: "p1",
-      title: "📌 Lịch sinh hoạt tuần này + nội dung workshop",
-      excerpt:
-        "Tổng hợp lịch sinh hoạt CLB, link tài liệu workshop và checklist chuẩn bị. Mọi người nhớ điểm danh đúng giờ nhé!",
-      author: {
-        name: "Nguyễn Văn A",
-        role: "Admin CLB",
-        avatar:
-          "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?auto=format&fit=crop&w=96&q=80",
-      },
-      createdAt: "1 giờ trước",
-      category: "announcement",
-      tags: ["schedule", "workshop", "club"],
-      pinned: true,
-      stats: { likes: 44, comments: 12, views: 820 },
-    },
-    {
-      id: "p2",
-      title: "Hỏi đáp: Setup Next.js + AuthContext chuẩn nhất?",
-      excerpt:
-        "Mình đang bị lỗi khi refresh trang bị đá về /, mọi người có cách nào persist token/user tốt nhất không?",
-      author: {
-        name: "Trần Thị B",
-        role: "Member",
-        avatar:
-          "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=96&q=80",
-      },
-      createdAt: "Hôm nay",
-      category: "qa",
-      tags: ["nextjs", "auth", "context"],
-      hot: true,
-      stats: { likes: 31, comments: 25, views: 1100 },
-    },
-    {
-      id: "p3",
-      title: "Chia sẻ: UI glassmorphism + token màu theo Figma",
-      excerpt:
-        "Mình tổng hợp bộ màu gradient + glow theo Figma và cách set background giống /club/home để đồng bộ toàn bộ pages.",
-      author: {
-        name: "Lê Văn C",
-        role: "Member",
-        avatar:
-          "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=96&q=80",
-      },
-      createdAt: "Hôm qua",
-      category: "sharing",
-      tags: ["ui", "tailwind", "figma"],
-      stats: { likes: 58, comments: 19, views: 1450 },
-    },
-    {
-      id: "p4",
-      title: "Thông báo: Mở đơn tuyển thành viên mới đợt 2",
-      excerpt:
-        "CLB mở đơn tuyển thành viên mới, ưu tiên bạn có đam mê công nghệ và muốn tham gia dự án thực tế.",
-      author: {
-        name: "Phạm Thị D",
-        role: "Moderator",
-        avatar:
-          "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=96&q=80",
-      },
-      createdAt: "2 ngày trước",
-      category: "announcement",
-      tags: ["recruit", "club"],
-      stats: { likes: 22, comments: 6, views: 640 },
-    },
-  ];
+  // Fetch posts from API
+  useEffect(() => {
+    if (!token) return;
+
+    const fetchPosts = async () => {
+      setIsLoadingPosts(true);
+      try {
+        const data = await getAllPosts(token, { sortBy });
+        setPosts(data);
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+      } finally {
+        setIsLoadingPosts(false);
+      }
+    };
+
+    fetchPosts();
+  }, [token, sortBy]);
+
+  // Handler để like/unlike post
+  const handleLike = async (postId: string, isLiked: boolean) => {
+    if (!token) return;
+
+    try {
+      if (isLiked) {
+        await unlikePost(token, postId);
+      } else {
+        await likePost(token, postId);
+      }
+
+      // Cập nhật state local
+      setPosts((prev) =>
+        prev.map((p) =>
+          p._id === postId
+            ? {
+                ...p,
+                likes: isLiked
+                  ? p.likes?.filter((id) => id !== user?._id)
+                  : [...(p.likes || []), user?._id],
+                likeCount: (p.likeCount || 0) + (isLiked ? -1 : 1),
+              }
+            : p
+        )
+      );
+    } catch (error) {
+      console.error("Error toggling like:", error);
+    }
+  };
+
+  // Handler để xóa post
+  const handleDelete = async (postId: string) => {
+    if (!token) return;
+
+    const confirm = window.confirm(
+      "Bạn có chắc chắn muốn xóa bài viết này không?"
+    );
+    if (!confirm) return;
+
+    try {
+      await deletePost(token, postId);
+      setPosts((prev) => prev.filter((p) => p._id !== postId));
+    } catch (error: any) {
+      alert(error.message || "Không thể xóa bài viết");
+    }
+  };
+
+  // Handler khi tạo post thành công
+  const handlePostCreated = () => {
+    // Refresh posts list
+    if (token) {
+      getAllPosts(token, { sortBy }).then(setPosts).catch(console.error);
+    }
+  };
+
+  // Mock posts removed - using API data
+  const mockPosts: PostItem[] = [];
 
   const filtered = useMemo(() => {
-    const byCat =
-      cat === "all" ? posts : posts.filter((p) => p.category === cat);
-
     const query = q.trim().toLowerCase();
-    if (!query) return byCat;
 
-    return byCat.filter((p) => {
+    return posts.filter((p) => {
+      // Filter by search query
+      if (!query) return true;
+
       return (
         p.title.toLowerCase().includes(query) ||
-        p.excerpt.toLowerCase().includes(query) ||
-        p.author.name.toLowerCase().includes(query) ||
-        p.tags.join(" ").toLowerCase().includes(query)
+        p.content.toLowerCase().includes(query) ||
+        (p.tags || []).join(" ").toLowerCase().includes(query)
       );
     });
-  }, [cat, q]);
+  }, [posts, cat, q]);
 
   const tagStats = useMemo(() => {
     const map = new Map<string, number>();
-    posts.forEach((p) => p.tags.forEach((t) => map.set(t, (map.get(t) || 0) + 1)));
+    posts.forEach((p) =>
+      (p.tags || []).forEach((t) => map.set(t, (map.get(t) || 0) + 1))
+    );
     return Array.from(map.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6);
   }, [posts]);
+
+  // Format date helper
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "Không rõ";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+
+    if (hours < 1) return "Vừa xong";
+    if (hours < 24) return `${hours} giờ trước`;
+    if (days < 7) return `${days} ngày trước`;
+    return date.toLocaleDateString("vi-VN");
+  };
 
   const onlineMembers = [
     {
@@ -276,13 +293,14 @@ export default function ForumPage() {
             <div>
               <h1 className="text-xl font-semibold text-white">Diễn đàn</h1>
               <p className="mt-1 text-sm text-white/60">
-                Nơi trao đổi thông báo, hỏi đáp và chia sẻ kiến thức trong cộng đồng.
+                Nơi trao đổi thông báo, hỏi đáp và chia sẻ kiến thức trong cộng
+                đồng.
               </p>
             </div>
 
             <button
               type="button"
-              onClick={() => alert("Demo: mở modal tạo bài viết")}
+              onClick={() => setIsCreateModalOpen(true)}
               className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-2.5 text-[0.78rem] font-bold text-slate-900 shadow-lg shadow-cyan-500/35 hover:shadow-cyan-500/55 hover:brightness-110 active:scale-95 transition"
             >
               <Plus className="h-4 w-4" />
@@ -334,120 +352,144 @@ export default function ForumPage() {
         <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
           {/* Posts list */}
           <section className="lg:col-span-2 space-y-3">
-            {filtered.map((p) => (
-              <article
-                key={p.id}
-                className={cn("relative overflow-hidden rounded-3xl p-5", glass)}
-              >
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(168,85,247,0.12),transparent_60%)]" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_95%_10%,rgba(59,130,246,0.10),transparent_60%)]" />
+            {isLoadingPosts && (
+              <div className={cn("rounded-3xl p-8 text-center", glass)}>
+                <div className="text-white/60">Đang tải bài viết...</div>
+              </div>
+            )}
 
-                <div className="relative">
-                  {/* header row */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {p.pinned ? (
-                          <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/25 bg-violet-400/12 px-3 py-1 text-[0.7rem] font-semibold text-violet-200">
-                            <Pin className="h-3.5 w-3.5" />
-                            Pinned
-                          </span>
-                        ) : null}
+            {!isLoadingPosts && filtered.length === 0 && (
+              <div className={cn("rounded-3xl p-8 text-center", glass)}>
+                <div className="text-white/60">Không có bài viết nào</div>
+              </div>
+            )}
 
-                        {p.hot ? (
-                          <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/25 bg-amber-400/12 px-3 py-1 text-[0.7rem] font-semibold text-amber-200">
-                            <Flame className="h-3.5 w-3.5" />
-                            Hot
-                          </span>
-                        ) : null}
+            {!isLoadingPosts &&
+              filtered.map((p) => {
+                const isLiked = p.likes?.includes(user?._id);
 
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[0.7rem] font-semibold text-white/75">
-                          <Sparkles className="h-3.5 w-3.5 text-white/70" />
-                          {p.category === "announcement"
-                            ? "Thông báo"
-                            : p.category === "qa"
-                            ? "Hỏi đáp"
-                            : "Chia sẻ"}
-                        </span>
+                return (
+                  <article
+                    key={p._id}
+                    className={cn(
+                      "relative overflow-hidden rounded-3xl p-5",
+                      glass
+                    )}
+                  >
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(168,85,247,0.12),transparent_60%)]" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_95%_10%,rgba(59,130,246,0.10),transparent_60%)]" />
+
+                    <div className="relative">
+                      {/* header row */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {(p.likeCount || 0) > 50 && (
+                              <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/25 bg-amber-400/12 px-3 py-1 text-[0.7rem] font-semibold text-amber-200">
+                                <Flame className="h-3.5 w-3.5" />
+                                Hot
+                              </span>
+                            )}
+
+                            {(p.tags || []).length > 0 && (
+                              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[0.7rem] font-semibold text-white/75">
+                                <Sparkles className="h-3.5 w-3.5 text-white/70" />
+                                {p.tags?.[0]}
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 className="mt-3 truncate text-base font-semibold text-white">
+                            {p.title}
+                          </h3>
+
+                          <p className="mt-2 text-sm text-white/65 leading-relaxed line-clamp-2">
+                            {p.content}
+                          </p>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {(p.tags || []).slice(0, 3).map((t, i) => (
+                              <Tag
+                                key={t}
+                                text={t}
+                                tone={
+                                  i === 0
+                                    ? "violet"
+                                    : i === 1
+                                    ? "sky"
+                                    : "fuchsia"
+                                }
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(p._id)}
+                          className="grid h-9 w-9 place-items-center rounded-xl border border-red-400/20 bg-red-500/10 text-red-200 hover:bg-red-500/20 transition"
+                          title="Xóa"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
 
-                      <h3 className="mt-3 truncate text-base font-semibold text-white">
-                        {p.title}
-                      </h3>
+                      {/* footer row */}
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="h-10 w-10 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15">
+                            <img
+                              src="https://images.unsplash.com/photo-1502685104226-ee32379fefbe?auto=format&fit=crop&w=96&q=80"
+                              alt="avatar"
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
 
-                      <p className="mt-2 text-sm text-white/65 leading-relaxed line-clamp-2">
-                        {p.excerpt}
-                      </p>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate text-sm font-semibold text-white">
+                                Club Member
+                              </span>
+                            </div>
+                            <div className="mt-0.5 text-[0.72rem] text-white/55">
+                              {formatDate(p.createdAt)}
+                            </div>
+                          </div>
+                        </div>
 
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {p.tags.slice(0, 3).map((t, i) => (
-                          <Tag
-                            key={t}
-                            text={t}
-                            tone={i === 0 ? "violet" : i === 1 ? "sky" : "fuchsia"}
+                        <div className="flex items-center gap-4">
+                          <button
+                            onClick={() => handleLike(p._id, isLiked || false)}
+                            className="inline-flex items-center gap-1.5 text-[0.72rem] text-white/55 hover:text-white transition cursor-pointer"
+                          >
+                            <Heart
+                              className={cn(
+                                "h-4 w-4",
+                                isLiked && "fill-red-500 text-red-500"
+                              )}
+                            />
+                            {p.likeCount || 0}
+                          </button>
+
+                          <Stat
+                            icon={<MessageSquare className="h-4 w-4" />}
+                            value={0}
                           />
-                        ))}
-                      </div>
-                    </div>
+                          <Stat icon={<Eye className="h-4 w-4" />} value={0} />
 
-                    <button
-                      type="button"
-                      className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10]"
-                      title="Khác"
-                    >
-                      <span className="text-lg leading-none">⋯</span>
-                    </button>
-                  </div>
-
-                  {/* footer row */}
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-10 w-10 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15">
-                        <img
-                          src={p.author.avatar || "/default-avatar.png"}
-                          alt="avatar"
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="truncate text-sm font-semibold text-white">
-                            {p.author.name}
-                          </span>
-                          {p.author.role ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2 py-0.5 text-[0.65rem] font-semibold text-emerald-200">
-                              <BadgeCheck className="h-3.5 w-3.5" />
-                              {p.author.role}
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="mt-0.5 text-[0.72rem] text-white/55">
-                          {p.createdAt}
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/club/forum/${p._id}`)}
+                            className="rounded-full bg-white/[0.06] hover:bg-white/[0.10] border border-white/10 px-4 py-2 text-[0.72rem] font-semibold text-white/85 transition"
+                          >
+                            Xem bài →
+                          </button>
                         </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-4">
-                      <Stat icon={<Heart className="h-4 w-4" />} value={p.stats.likes} />
-                      <Stat
-                        icon={<MessageSquare className="h-4 w-4" />}
-                        value={p.stats.comments}
-                      />
-                      <Stat icon={<Eye className="h-4 w-4" />} value={p.stats.views} />
-
-                      <button
-                        type="button"
-                        onClick={() => alert(`Demo: mở bài viết ${p.id}`)}
-                        className="rounded-full bg-white/[0.06] hover:bg-white/[0.10] border border-white/10 px-4 py-2 text-[0.72rem] font-semibold text-white/85 transition"
-                      >
-                        Xem bài →
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </article>
-            ))}
+                  </article>
+                );
+              })}
 
             {/* Pagination */}
             <div className={cn("rounded-3xl p-4", glass)}>
@@ -539,7 +581,9 @@ export default function ForumPage() {
                     )}
                   >
                     #{t}
-                    <span className="text-white/55 font-semibold">({count})</span>
+                    <span className="text-white/55 font-semibold">
+                      ({count})
+                    </span>
                   </span>
                 ))}
               </div>
@@ -612,6 +656,14 @@ export default function ForumPage() {
       </main>
 
       <Footer />
+
+      {/* Create Post Modal */}
+      <CreatePostModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={handlePostCreated}
+        token={token || ""}
+      />
     </div>
   );
 }
