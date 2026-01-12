@@ -24,7 +24,9 @@ function cn(...classes: (string | false | null | undefined)[]) {
 type Role = "user" | "club" | "admin" | "guest";
 
 function normalizeRole(role: unknown): Role {
-  const r = String(role || "").trim().toLowerCase();
+  const r = String(role || "")
+    .trim()
+    .toLowerCase();
   if (r === "user" || r === "club" || r === "admin") return r;
   return "guest";
 }
@@ -185,13 +187,7 @@ function MobileSearch({ show }: { show: boolean }) {
 }
 
 /** ====== USER HEADER (giữ như bạn đang có) ====== */
-function UserHeader({
-  pathname,
-  isAuthed,
-  user,
-  onLogout,
-  router,
-}: any) {
+function UserHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   const navItems = [
     { label: "Trang Chủ", href: "/homepage", match: ["/", "/homepage"] },
     { label: "Khám Phá", href: "/finding", match: ["/finding"] },
@@ -223,17 +219,16 @@ function UserHeader({
 }
 
 /** ====== CLUB HEADER (đổi về /homeclub) ====== */
-function ClubHeader({
-  pathname,
-  isAuthed,
-  user,
-  onLogout,
-  router,
-}: any) {
+function ClubHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   const navItems = [
     { label: "Trang CLB", href: "/club/home", match: ["/club/home"] },
     { label: "Diễn đàn", href: "/club/forum", match: ["/club/forum"] },
-    { label: "Đơn đăng ký", href: "/club/applications", match: ["/club/applications"] },
+    { label: "Sự kiện", href: "/club/events", match: ["/club/events"] },
+    {
+      label: "Đơn đăng ký",
+      href: "/club/applications",
+      match: ["/club/applications"],
+    },
     { label: "Dashboard", href: "/club/dashboard", match: ["/club/dashboard"] },
   ];
 
@@ -271,13 +266,7 @@ function ClubHeader({
 }
 
 /** ====== ADMIN HEADER ====== */
-function AdminHeader({
-  pathname,
-  isAuthed,
-  user,
-  onLogout,
-  router,
-}: any) {
+function AdminHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   const navItems = [
     { label: "Dashboard", href: "/admin", match: ["/admin"] },
     { label: "Users", href: "/admin/users", match: ["/admin/users"] },
