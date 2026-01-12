@@ -15,7 +15,7 @@ import {
   Settings,
   ShieldCheck,
 } from "lucide-react";
-import { useAuth } from "@/app/providers/AuthProviders";
+import { useAuth } from "@/app/providers/AuthProviders/page";
 
 function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
@@ -24,7 +24,9 @@ function cn(...classes: (string | false | null | undefined)[]) {
 type Role = "user" | "club" | "admin" | "guest";
 
 function normalizeRole(role: unknown): Role {
-  const r = String(role || "").trim().toLowerCase();
+  const r = String(role || "")
+    .trim()
+    .toLowerCase();
   if (r === "user" || r === "club" || r === "admin") return r;
   return "guest";
 }
@@ -185,19 +187,13 @@ function MobileSearch({ show }: { show: boolean }) {
 }
 
 /** ====== USER HEADER (giữ như bạn đang có) ====== */
-function UserHeader({
-  pathname,
-  isAuthed,
-  user,
-  onLogout,
-  router,
-}: any) {
+function UserHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   const navItems = [
     { label: "Trang Chủ", href: "/homepage", match: ["/", "/homepage"] },
     { label: "Khám Phá", href: "/finding", match: ["/finding"] },
-    { label: "Sự Kiện", href: "/events", match: ["/events"] },
-    { label: "Câu Lạc Bộ", href: "/clubs", match: ["/clubs"] },
-    { label: "Diễn Đàn", href: "/forum", match: ["/forum"] },
+    { label: "Sự Kiện", href: "/su-kien", match: ["/su-kien"] },
+    { label: "Câu Lạc Bộ", href: "/clb", match: ["/clb"] },
+    { label: "Diễn Đàn", href: "/dien-dan", match: ["/dien-dan"] },
   ];
 
   return (
@@ -223,31 +219,37 @@ function UserHeader({
 }
 
 /** ====== CLUB HEADER (đổi về /homeclub) ====== */
-function ClubHeader({
-  pathname,
-  isAuthed,
-  user,
-  onLogout,
-  router,
-}: any) {
+function ClubHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   const navItems = [
-    { label: "Diễn đàn", href: "/club/post", match: ["/club/post"] },
-    { label: "Đơn đăng ký", href: "/club/applications", match: ["/club/applications"] },
-    { label: "Dashboard", href: "/club/dashboard", match: ["/club/dashboard"] },
+    { label: "Trang CLB", href: "/club/home", match: ["/club/home"] },
+    { label: "Diễn đàn", href: "/club/forum", match: ["/club/forum"] },
     { label: "Sự kiện", href: "/club/events", match: ["/club/events"] },
-    { label: "Hồ sơ", href: "/club/profile", match: ["/club/profile"] },
+    {
+      label: "Đơn đăng ký",
+      href: "/club/applications",
+      match: ["/club/applications"],
+    },
+    { label: "Dashboard", href: "/club/dashboard", match: ["/club/dashboard"] },
   ];
 
   return (
     <HeaderShell>
       <div className="flex h-20 items-center justify-between bg-transparent border-0">
-        <Brand href={isAuthed ? "/club/forum" : "/club/forum"} />
+        <Brand href={isAuthed ? "/club/home" : "/club/home"} />
         <NavLinks items={navItems} pathname={pathname} />
 
         {!isAuthed ? (
           <RightGuest />
         ) : (
           <div className="flex items-center gap-3">
+            <Link
+              href="/club/profile/edit"
+              className="hidden md:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white/85 hover:bg-white/14 transition"
+              title="Chỉnh sửa hồ sơ CLB"
+            >
+              <Settings className="h-4 w-4" />
+              <span>Quản lý</span>
+            </Link>
 
             <RightAuthed
               avatarUrl={user?.avatarUrl || user?.avatar}
@@ -264,13 +266,7 @@ function ClubHeader({
 }
 
 /** ====== ADMIN HEADER ====== */
-function AdminHeader({
-  pathname,
-  isAuthed,
-  user,
-  onLogout,
-  router,
-}: any) {
+function AdminHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   const navItems = [
     { label: "Dashboard", href: "/admin", match: ["/admin"] },
     { label: "Users", href: "/admin/users", match: ["/admin/users"] },
@@ -310,8 +306,9 @@ function AdminHeader({
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user,  logout } = useAuth() as any;
-  const isAuthed = !!user;
+  const { user, token, logout } = useAuth() as any;
+
+  const isAuthed = !!token;
   const role = normalizeRole(user?.role);
 
   const onLogout = () => {
