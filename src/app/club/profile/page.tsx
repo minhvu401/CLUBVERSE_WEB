@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/providers/AuthProviders/page";
+import { useAuth } from "@/app/providers/AuthProviders";
 import { getCurrentProfile } from "@/app/services/api/users";
 import { getClubPosts, type PostItem } from "@/app/services/api/post";
 import type { ProfileResponse } from "@/app/services/api/auth";

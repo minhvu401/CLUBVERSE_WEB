@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
-import { useAuth } from "@/app/providers/AuthProviders/page";
+import { useAuth } from "@/app/providers/AuthProviders";
 import { getAllClubs, type ClubItem } from "@/app/services/api/auth";
 
 import { motion } from "framer-motion";

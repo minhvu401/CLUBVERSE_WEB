@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/providers/AuthProviders/page";
+import { useAuth } from "@/app/providers/AuthProviders";
 import { toast } from "sonner";
 import AppSidebar from "@/components/AppSidebar";
 

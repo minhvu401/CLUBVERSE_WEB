@@ -4,7 +4,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppSidebar from "@/components/AppSidebar";
-import { useAuth } from "@/app/providers/AuthProviders/page";
+import { useAuth } from "@/app/providers/AuthProviders";
 import { toast } from "sonner";
 
 import {

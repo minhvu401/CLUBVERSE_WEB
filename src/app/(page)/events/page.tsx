@@ -6,7 +6,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
-import { useAuth } from "@/app/providers/AuthProviders/page";
+import { useAuth } from "@/app/providers/AuthProviders";
 
 import { getEvents, EventFilter } from "@/app/services/api/events";
 

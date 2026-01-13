@@ -6,7 +6,7 @@ import Image from "next/image";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "@/app/services/api/auth";
-import { useAuth } from "@/app/providers/AuthProviders/page";
+import { useAuth } from "@/app/providers/AuthProviders";
 
 function normalizeRole(role: unknown): "user" | "club" | "admin" | "unknown" {
   const r = String(role || "").trim().toLowerCase();

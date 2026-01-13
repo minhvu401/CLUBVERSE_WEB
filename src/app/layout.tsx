@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AuthProvider } from "@/app/providers/AuthProviders/page";
+import { AuthProvider } from "@/app/providers/AuthProviders";
 import { Toaster } from "sonner";
 export const metadata: Metadata = {
   title: "Clubverse",
