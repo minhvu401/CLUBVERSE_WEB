@@ -7,12 +7,7 @@ import { useRouter, useParams } from "next/navigation";
 import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders/page";
-import {
-  getEventById,
-  registerEvent,
-  cancelEventRegistration,
-  type EventItem,
-} from "@/app/services/api/events";
+import { getEventById, type EventItem } from "@/app/services/api/events";
 import {
   Calendar,
   MapPin,
@@ -22,6 +17,8 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  Edit,
+  Trash2,
   UserCheck,
 } from "lucide-react";
 
@@ -32,7 +29,7 @@ function cn(...classes: Array<string | false | null | undefined>) {
 const glass =
   "border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
 
-export default function EventDetailPage() {
+export default function ClubEventDetailPage() {
   const router = useRouter();
   const params = useParams();
   const eventId = params?.id as string;
@@ -40,7 +37,6 @@ export default function EventDetailPage() {
 
   const [event, setEvent] = useState<EventItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isActioning, setIsActioning] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -49,7 +45,11 @@ export default function EventDetailPage() {
       router.replace("/login");
       return;
     }
-  }, [loading, token, router]);
+    if (user?.role !== "club") {
+      router.replace("/");
+      return;
+    }
+  }, [loading, token, user, router]);
 
   useEffect(() => {
     if (!token || !eventId) return;
@@ -91,39 +91,6 @@ export default function EventDetailPage() {
     return "ongoing";
   };
 
-  const handleRegister = async () => {
-    if (!token || !event) return;
-    setIsActioning(true);
-    try {
-      await registerEvent(token, event._id);
-      // Refresh event data
-      const data = await getEventById(token, event._id);
-      setEvent(data);
-    } catch (err: any) {
-      alert(err.message || "Không thể đăng ký sự kiện");
-    } finally {
-      setIsActioning(false);
-    }
-  };
-
-  const handleCancel = async () => {
-    if (!token || !event) return;
-    const reason = prompt("Lý do hủy đăng ký (tùy chọn):");
-    if (reason === null) return;
-
-    setIsActioning(true);
-    try {
-      await cancelEventRegistration(token, event._id, reason);
-      // Refresh event data
-      const data = await getEventById(token, event._id);
-      setEvent(data);
-    } catch (err: any) {
-      alert(err.message || "Không thể hủy đăng ký");
-    } finally {
-      setIsActioning(false);
-    }
-  };
-
   if (loading || isLoading) {
     return (
       <div className="relative isolate min-h-screen overflow-hidden text-white">
@@ -151,7 +118,7 @@ export default function EventDetailPage() {
               {error || "Không tìm thấy sự kiện"}
             </div>
             <button
-              onClick={() => router.push("/events")}
+              onClick={() => router.push("/club/events")}
               className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white/85 hover:bg-white/10 transition"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -168,7 +135,6 @@ export default function EventDetailPage() {
   const isFull =
     event.maxParticipants &&
     (event.participantCount || 0) >= event.maxParticipants;
-  const isRegistered = event.participants?.some((p) => p.userId === user?._id);
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden text-white">
@@ -183,7 +149,7 @@ export default function EventDetailPage() {
       <main className="mx-auto max-w-5xl px-4 py-10 pb-20">
         {/* Back button */}
         <button
-          onClick={() => router.push("/events")}
+          onClick={() => router.push("/club/events")}
           className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 hover:bg-white/10 transition mb-6"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -229,10 +195,10 @@ export default function EventDetailPage() {
                   Đã đủ người
                 </span>
               )}
-              {isRegistered && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-sm font-semibold text-emerald-200">
-                  <UserCheck className="h-4 w-4" />
-                  Đã đăng ký
+              {event.isDeleted && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/20 border border-orange-400/30 px-3 py-1 text-sm font-semibold text-orange-200">
+                  <Trash2 className="h-4 w-4" />
+                  Đã xóa
                 </span>
               )}
             </div>
@@ -291,50 +257,69 @@ export default function EventDetailPage() {
               </div>
             </div>
 
-            {/* Action buttons */}
-            <div className="flex flex-wrap gap-3 pt-6 border-t border-white/10">
-              {status === "upcoming" && !isRegistered && !isFull && (
+            {/* Management actions */}
+            {!event.isDeleted && (
+              <div className="flex flex-wrap gap-3 pt-6 border-t border-white/10">
                 <button
-                  onClick={handleRegister}
-                  disabled={isActioning}
-                  className="flex-1 md:flex-none rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-8 py-3 text-sm font-bold text-slate-900 hover:brightness-110 transition disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                  onClick={() => router.push(`/club/events/${event._id}/edit`)}
+                  className="flex-1 md:flex-none rounded-full border border-blue-400/30 bg-blue-500/10 px-6 py-3 text-sm font-semibold text-blue-200 hover:bg-blue-500/20 transition inline-flex items-center justify-center gap-2"
                 >
-                  {isActioning ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Đang xử lý...
-                    </>
-                  ) : (
-                    "Đăng ký tham gia"
-                  )}
+                  <Edit className="h-4 w-4" />
+                  Chỉnh sửa
                 </button>
-              )}
 
-              {isRegistered && status === "upcoming" && (
                 <button
-                  onClick={handleCancel}
-                  disabled={isActioning}
-                  className="flex-1 md:flex-none rounded-full border border-red-400/30 bg-red-500/10 px-8 py-3 text-sm font-semibold text-red-200 hover:bg-red-500/20 transition disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                  onClick={() =>
+                    router.push(`/club/events/${event._id}/participants`)
+                  }
+                  className="flex-1 md:flex-none rounded-full border border-emerald-400/30 bg-emerald-500/10 px-6 py-3 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/20 transition inline-flex items-center justify-center gap-2"
                 >
-                  {isActioning ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Đang xử lý...
-                    </>
-                  ) : (
-                    "Hủy đăng ký"
-                  )}
+                  <UserCheck className="h-4 w-4" />
+                  Quản lý người tham gia
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </article>
 
-        {/* Club info (if available) */}
-        {event.clubName && (
+        {/* Statistics */}
+        {!event.isDeleted && (
           <div className={cn("rounded-3xl p-6 mt-6", glass)}>
-            <h3 className="text-lg font-bold text-white mb-2">Tổ chức bởi</h3>
-            <p className="text-white/70">{event.clubName}</p>
+            <h3 className="text-lg font-bold text-white mb-4">Thống kê</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
+                <div className="text-2xl font-bold text-cyan-400 mb-1">
+                  {event.participantCount || 0}
+                </div>
+                <div className="text-xs text-white/60">Tổng đăng ký</div>
+              </div>
+
+              <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
+                <div className="text-2xl font-bold text-emerald-400 mb-1">
+                  {event.participants?.filter((p) => p.checkedIn).length || 0}
+                </div>
+                <div className="text-xs text-white/60">Đã check-in</div>
+              </div>
+
+              <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
+                <div className="text-2xl font-bold text-orange-400 mb-1">
+                  {event.participants?.filter((p) => p.cancelledAt).length || 0}
+                </div>
+                <div className="text-xs text-white/60">Đã hủy</div>
+              </div>
+
+              <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
+                <div className="text-2xl font-bold text-violet-400 mb-1">
+                  {event.maxParticipants
+                    ? Math.max(
+                        0,
+                        event.maxParticipants - (event.participantCount || 0)
+                      )
+                    : "∞"}
+                </div>
+                <div className="text-xs text-white/60">Chỗ còn lại</div>
+              </div>
+            </div>
           </div>
         )}
       </main>
