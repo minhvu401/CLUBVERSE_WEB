@@ -191,9 +191,9 @@ function UserHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   const navItems = [
     { label: "Trang Chủ", href: "/homepage", match: ["/", "/homepage"] },
     { label: "Khám Phá", href: "/finding", match: ["/finding"] },
-    { label: "Sự Kiện", href: "/su-kien", match: ["/su-kien"] },
+    { label: "Sự Kiện", href: "/events", match: ["/events"] },
     { label: "Câu Lạc Bộ", href: "/clb", match: ["/clb"] },
-    { label: "Diễn Đàn", href: "/dien-dan", match: ["/dien-dan"] },
+    { label: "Diễn Đàn", href: "/forum", match: ["/forum"] },
   ];
 
   return (
