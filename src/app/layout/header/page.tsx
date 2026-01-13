@@ -15,7 +15,7 @@ import {
   Settings,
   ShieldCheck,
 } from "lucide-react";
-import { useAuth } from "@/app/providers/AuthProviders/page";
+import { useAuth } from "@/app/providers/AuthProviders";
 
 function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
