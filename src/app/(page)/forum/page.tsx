@@ -9,7 +9,7 @@ import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders";
 
 // ✅ USER API
-import { getAllPosts } from "@/app/services/api/post";
+import { getAllPosts, likePost, unlikePost } from "@/app/services/api/post";
 
 import {
   Search,
@@ -26,6 +26,7 @@ import {
   Hash,
   Users,
   ShieldCheck,
+  X,
 } from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -48,6 +49,8 @@ type Post = {
   pinned?: boolean;
   hot?: boolean;
   stats: { likes: number; comments: number; views: number };
+  likes?: string[];
+  likedBy?: Array<{ userId: string; likedAt: string; _id: string }>;
 };
 
 function toForumPost(item: any): Post {
@@ -77,20 +80,26 @@ function toForumPost(item: any): Post {
     pinned: Boolean(item?.pinned),
     hot: Boolean(item?.hot),
     stats: {
-      likes: Number(item?.likes ?? 0),
+      likes: Number(item?.likeCount ?? item?.like ?? 0),
       comments: Number(item?.comments ?? 0),
       views: Number(item?.views ?? 0),
     },
+    likes: Array.isArray(item?.likes) ? item.likes : [],
+    likedBy: Array.isArray(item?.likedBy) ? item.likedBy : [],
   };
 }
 
 export default function ForumUserPage() {
   const router = useRouter();
-  const { token, loading } = useAuth() as any;
+  const { user, token, loading } = useAuth() as any;
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showLikesModal, setShowLikesModal] = useState(false);
+  const [selectedPostLikes, setSelectedPostLikes] = useState<Post["likedBy"]>(
+    []
+  );
 
   const [cat, setCat] = useState<Category>("all");
   const [q, setQ] = useState("");
@@ -109,12 +118,46 @@ export default function ForumUserPage() {
       setLoadingPosts(true);
       setError(null);
 
-      const res = await getAllPosts(token, {limit });
+      const res = await getAllPosts(token, { limit });
       setPosts((res || []).map(toForumPost));
     } catch (e: any) {
       setError(e?.message || "Không tải được bài viết");
     } finally {
       setLoadingPosts(false);
+    }
+  };
+
+  // Handler để like/unlike post
+  const handleLike = async (postId: string, isLiked: boolean) => {
+    if (!token || !user) return;
+
+    try {
+      if (isLiked) {
+        await unlikePost(token, postId);
+      } else {
+        await likePost(token, postId);
+      }
+
+      const userId = user._id || user.id;
+      // Cập nhật state local
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                likes: isLiked
+                  ? p.likes?.filter((id) => id !== userId)
+                  : [...(p.likes || []), userId],
+                stats: {
+                  ...p.stats,
+                  likes: (p.stats.likes || 0) + (isLiked ? -1 : 1),
+                },
+              }
+            : p
+        )
+      );
+    } catch (error) {
+      console.error("Error toggling like:", error);
     }
   };
 
@@ -131,7 +174,8 @@ export default function ForumUserPage() {
   ];
 
   const filtered = useMemo(() => {
-    const byCat = cat === "all" ? posts : posts.filter((p) => p.category === cat);
+    const byCat =
+      cat === "all" ? posts : posts.filter((p) => p.category === cat);
     const query = q.trim().toLowerCase();
     if (!query) return byCat;
 
@@ -213,10 +257,7 @@ export default function ForumUserPage() {
           {!loadingPosts &&
             !error &&
             filtered.map((p) => (
-              <article
-                key={p.id}
-                className={cn("rounded-3xl p-5", glass)}
-              >
+              <article key={p.id} className={cn("rounded-3xl p-5", glass)}>
                 <div className="flex justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex gap-2 flex-wrap">
@@ -245,12 +286,47 @@ export default function ForumUserPage() {
                     </p>
 
                     <div className="mt-3 flex gap-4 text-xs text-white/55">
+                      {(() => {
+                        const userId = user?._id || user?.id;
+                        const isLiked = p.likes?.includes(userId) || false;
+                        return (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleLike(p.id, isLiked);
+                              }}
+                              className={cn(
+                                "flex items-center gap-1 transition",
+                                isLiked
+                                  ? "text-rose-400 hover:text-rose-300"
+                                  : "hover:text-rose-400"
+                              )}
+                              title="Click để like/unlike"
+                            >
+                              <Heart
+                                className={cn(
+                                  "h-4 w-4",
+                                  isLiked && "fill-current"
+                                )}
+                              />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedPostLikes(p.likedBy || []);
+                                setShowLikesModal(true);
+                              }}
+                              className="hover:text-white hover:underline transition"
+                              title="Xem ai đã thích"
+                            >
+                              {p.stats.likes}
+                            </button>
+                          </div>
+                        );
+                      })()}
                       <span className="flex items-center gap-1">
-                        <Heart className="h-4 w-4" /> {p.stats.likes}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <MessageSquare className="h-4 w-4" />{" "}
-                        {p.stats.comments}
+                        <MessageSquare className="h-4 w-4" /> {p.stats.comments}
                       </span>
                       <span className="flex items-center gap-1">
                         <Eye className="h-4 w-4" /> {p.stats.views}
@@ -259,7 +335,7 @@ export default function ForumUserPage() {
                   </div>
 
                   <button
-                    onClick={() => router.push(`/forum/${p.id}`)}
+                    onClick={() => router.push(`/forum/post/${p.id}`)}
                     className="h-fit rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-semibold hover:bg-white/[0.10]"
                   >
                     Xem →
@@ -292,6 +368,59 @@ export default function ForumUserPage() {
       </main>
 
       <Footer />
+
+      {/* Modal hiển thị danh sách người đã like */}
+      {showLikesModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowLikesModal(false)}
+        >
+          <div
+            className={cn("w-full max-w-md rounded-3xl p-6", glass)}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Heart className="h-5 w-5 text-rose-400" />
+                Người đã thích ({selectedPostLikes?.length || 0})
+              </h3>
+              <button
+                onClick={() => setShowLikesModal(false)}
+                className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/10 transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {selectedPostLikes && selectedPostLikes.length > 0 ? (
+                selectedPostLikes.map((like) => (
+                  <div
+                    key={like._id}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/5"
+                  >
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-400 to-indigo-400 grid place-items-center text-sm font-bold">
+                      {like.userId.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold truncate">
+                        User ID: {like.userId}
+                      </div>
+                      <div className="text-xs text-white/60">
+                        {new Date(like.likedAt).toLocaleString("vi-VN")}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-white/60 py-8">
+                  Chưa có ai thích bài viết này
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
