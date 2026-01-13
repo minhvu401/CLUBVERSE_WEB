@@ -7,8 +7,8 @@ import { useAuth } from "@/app/providers/AuthProviders";
 import { toast } from "sonner";
 import {
   getMyEvents,
-  type MyEvent,
-  type EventFilter,
+  type EventItem,
+  type MyEventFilter,
 } from "@/app/services/api/events";
 import { CalendarDays, MapPin, FileText, X } from "lucide-react";
 
@@ -69,12 +69,12 @@ function Modal({
 export default function MyEventsPage() {
   const { token, loading } = useAuth();
 
-  const [filter, setFilter] = useState<EventFilter>("all");
-  const [events, setEvents] = useState<MyEvent[]>([]);
+  const [filter, setFilter] = useState<MyEventFilter>("all");
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [fetching, setFetching] = useState(false);
 
   const [open, setOpen] = useState(false);
-  const [picked, setPicked] = useState<MyEvent | null>(null);
+  const [picked, setPicked] = useState<EventItem | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -82,8 +82,7 @@ export default function MyEventsPage() {
     (async () => {
       try {
         setFetching(true);
-        const data = await getMyEvents({
-          accessToken: token,
+        const data = await getMyEvents(token, {
           filter,
         });
 
@@ -124,7 +123,7 @@ export default function MyEventsPage() {
                 { key: "all", label: "Tất cả" },
                 { key: "upcoming", label: "Sắp diễn ra" },
                 { key: "past", label: "Đã diễn ra" },
-              ] as { key:EventFilter; label: string }[]
+              ] as { key: MyEventFilter; label: string }[]
             ).map((f) => (
               <button
                 key={f.key}
@@ -164,7 +163,7 @@ export default function MyEventsPage() {
                   <div className="mt-1 flex flex-wrap gap-3 text-xs text-white/70">
                     <span className="flex items-center gap-1">
                       <CalendarDays size={14} />
-                      {fmtDate(e.startTime)}
+                      {fmtDate(e.time)}
                     </span>
 
                     {e.location && (
@@ -203,7 +202,7 @@ export default function MyEventsPage() {
         {!picked ? null : (
           <div className="space-y-2 text-sm text-white/80">
             <div className="font-semibold text-white">{picked.title}</div>
-            <div>⏰ {fmtDate(picked.startTime)}</div>
+            <div>⏰ {fmtDate(picked.time)}</div>
             {picked.location && <div>📍 {picked.location}</div>}
             {picked.description && (
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
