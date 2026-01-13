@@ -8,9 +8,19 @@ import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders";
 
-import { getPostById, type PostItem } from "@/app/services/api/post";
+import {
+  getPostById,
+  likePost,
+  unlikePost,
+  type PostItem,
+} from "@/app/services/api/post";
 
-import { ChevronLeft, Heart, CalendarClock, Image as ImageIcon } from "lucide-react";
+import {
+  ChevronLeft,
+  Heart,
+  CalendarClock,
+  Image as ImageIcon,
+} from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -51,8 +61,55 @@ export default function PostDetailPage() {
   const [post, setPost] = useState<PostItem | null>(null);
   const [loadingPost, setLoadingPost] = useState(false);
   const [error, setError] = useState<string>("");
+  const [isLiking, setIsLiking] = useState(false);
 
   const clubName = user?.fullName || user?.name || "CLB";
+
+  // Check if current user has liked the post
+  const hasLiked = useMemo(() => {
+    if (!user?._id && !user?.id) return false;
+    const userId = user._id || user.id;
+    return post?.likes?.includes(userId) || false;
+  }, [post?.likes, user]);
+
+  const handleLikeToggle = async () => {
+    if (!token || !id || isLiking) return;
+
+    try {
+      setIsLiking(true);
+
+      if (hasLiked) {
+        await unlikePost(token, id);
+        // Update local state
+        setPost((prev) => {
+          if (!prev) return prev;
+          const userId = user._id || user.id;
+          return {
+            ...prev,
+            likes: prev.likes?.filter((uid) => uid !== userId) || [],
+            likeCount: Math.max(0, (prev.likeCount || 0) - 1),
+          };
+        });
+      } else {
+        await likePost(token, id);
+        // Update local state
+        setPost((prev) => {
+          if (!prev) return prev;
+          const userId = user._id || user.id;
+          return {
+            ...prev,
+            likes: [...(prev.likes || []), userId],
+            likeCount: (prev.likeCount || 0) + 1,
+          };
+        });
+      }
+    } catch (e: any) {
+      console.error("Like/unlike failed:", e);
+      setError(e?.message || "Không thể thực hiện hành động này.");
+    } finally {
+      setIsLiking(false);
+    }
+  };
 
   useEffect(() => {
     if (loading) return;
@@ -87,7 +144,6 @@ export default function PostDetailPage() {
       <div className="pointer-events-none absolute -top-28 left-10 -z-10 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 right-0 -z-10 h-96 w-96 rounded-full bg-indigo-400/15 blur-3xl" />
 
-
       <main className="mx-auto max-w-4xl px-4 pb-14 pt-10">
         {/* Top bar */}
         <div className={cn("rounded-3xl p-4 md:p-5", glass)}>
@@ -106,7 +162,9 @@ export default function PostDetailPage() {
             </div>
           </div>
 
-          {error ? <div className="mt-3 text-sm text-rose-200/90">{error}</div> : null}
+          {error ? (
+            <div className="mt-3 text-sm text-rose-200/90">{error}</div>
+          ) : null}
         </div>
 
         {/* Content */}
@@ -118,7 +176,9 @@ export default function PostDetailPage() {
           ) : null}
 
           {!loadingPost && post ? (
-            <article className={cn("relative overflow-hidden rounded-3xl p-6", glass)}>
+            <article
+              className={cn("relative overflow-hidden rounded-3xl p-6", glass)}
+            >
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(168,85,247,0.12),transparent_60%)]" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_95%_10%,rgba(59,130,246,0.10),transparent_60%)]" />
 
@@ -134,13 +194,27 @@ export default function PostDetailPage() {
                       {fmtDate(post.createdAt)}
                     </span>
 
-                    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1">
-                      <Heart className="h-4 w-4" />
+                    <button
+                      onClick={handleLikeToggle}
+                      disabled={isLiking}
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-full border px-3 py-1 transition-all",
+                        hasLiked
+                          ? "border-rose-500/50 bg-rose-500/20 text-rose-200 hover:bg-rose-500/30"
+                          : "border-white/10 bg-white/[0.06] hover:bg-white/[0.10]",
+                        isLiking && "opacity-50 cursor-not-allowed"
+                      )}
+                    >
+                      <Heart
+                        className={cn("h-4 w-4", hasLiked && "fill-current")}
+                      />
                       {post.likeCount ?? post.likes?.length ?? 0} like
-                    </span>
+                    </button>
 
                     <span className="text-white/60">•</span>
-                    <span className="font-semibold text-white/85">{clubName}</span>
+                    <span className="font-semibold text-white/85">
+                      {clubName}
+                    </span>
                   </div>
 
                   {Array.isArray(post.tags) && post.tags.length > 0 ? (
@@ -179,7 +253,9 @@ export default function PostDetailPage() {
 
                 {/* Content */}
                 <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-                  <div className="text-sm font-semibold text-white/85">Nội dung</div>
+                  <div className="text-sm font-semibold text-white/85">
+                    Nội dung
+                  </div>
                   <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-white/75">
                     {post.content || "Chưa có nội dung."}
                   </div>
@@ -190,12 +266,13 @@ export default function PostDetailPage() {
 
           {!loadingPost && !post && !error ? (
             <div className={cn("rounded-3xl p-6", glass)}>
-              <div className="text-sm text-white/70">Không tìm thấy bài viết.</div>
+              <div className="text-sm text-white/70">
+                Không tìm thấy bài viết.
+              </div>
             </div>
           ) : null}
         </div>
       </main>
-
     </div>
   );
 }
