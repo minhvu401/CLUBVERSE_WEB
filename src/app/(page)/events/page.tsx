@@ -6,11 +6,10 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
-import { useAuth } from "@/app/providers/AuthProviders/page";
+import { useAuth } from "@/app/providers/AuthProviders";
 import {
   getAllEvents,
   registerEvent,
-  cancelEventRegistration,
   type EventItem,
   type EventFilter,
 } from "@/app/services/api/events";
@@ -20,8 +19,6 @@ import {
   Users,
   Clock,
   Search,
-  Filter,
-  ChevronRight,
   Loader2,
   CheckCircle2,
   XCircle,
@@ -60,7 +57,7 @@ function FilterButton({
 
 export default function EventsPage() {
   const router = useRouter();
-  const { user, token, loading } = useAuth() as any;
+  const { token, loading } = useAuth() as any;
 
   const [events, setEvents] = useState<EventItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);

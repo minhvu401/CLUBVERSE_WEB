@@ -6,8 +6,7 @@ import { useRouter } from "next/navigation";
 import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders";
-import { getEvents } from "@/app/services/api/events";
-
+import { getAllEvents } from "@/app/services/api/events";
 
 import { motion } from "framer-motion";
 import {
@@ -108,7 +107,6 @@ type HomeEvent = {
   ctaTone: "violet" | "emerald" | "fuchsia" | "amber";
 };
 
-
 export default function HomeDashboardPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
@@ -118,7 +116,6 @@ export default function HomeDashboardPage() {
   const [clubsError, setClubsError] = useState<string | null>(null);
   const [events, setEvents] = useState<HomeEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
-
 
   useEffect(() => {
     if (!loading && !token) router.push("/login");
@@ -156,62 +153,59 @@ export default function HomeDashboardPage() {
   }, [token]);
 
   useEffect(() => {
-  if (!token) return;
+    if (!token) return;
 
-  let cancelled = false;
+    let cancelled = false;
 
-  (async () => {
-    try {
-      setEventsLoading(true);
+    (async () => {
+      try {
+        setEventsLoading(true);
 
-      const res = await getEvents(token, {
-        filter: "upcoming",
-        limit: 4,
-        skip: 0,
-      });
+        const res = await getAllEvents(token, {
+          filter: "upcoming",
+          limit: 4,
+          skip: 0,
+        });
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      const tones = ["violet", "emerald", "fuchsia", "amber"] as const;
+        const tones = ["violet", "emerald", "fuchsia", "amber"] as const;
 
-      const mapped: HomeEvent[] = (res || []).slice(0, 4).map((e, idx) => {
-        const start = e.startDate ? new Date(e.startDate) : null;
+        const mapped: HomeEvent[] = (res || []).slice(0, 4).map((e, idx) => {
+          const start = e.time ? new Date(e.time) : null;
 
-        return {
-          id: String(e._id),
-          day: start ? start.getDate().toString().padStart(2, "0") : "--",
-          month: start
-            ? `THG ${start.getMonth() + 1}`
-            : "THG --",
-          title: e.title ?? "Sự kiện",
-          desc: e.description ?? e.content ?? "Chưa có mô tả",
-          time: start
-            ? start.toLocaleTimeString("vi-VN", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "Chưa rõ",
-          place: e.location ?? "Chưa cập nhật",
-          attendees: `+${e.joinedCount ?? 0} khác`,
-          tone: tones[idx % tones.length],
-          cta: "Tham Gia",
-          ctaTone: tones[idx % tones.length],
-        };
-      });
+          return {
+            id: String(e._id),
+            day: start ? start.getDate().toString().padStart(2, "0") : "--",
+            month: start ? `THG ${start.getMonth() + 1}` : "THG --",
+            title: e.title ?? "Sự kiện",
+            desc: e.description ?? "Chưa có mô tả",
+            time: start
+              ? start.toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "Chưa rõ",
+            place: e.location ?? "Chưa cập nhật",
+            attendees: `+${e.participantCount ?? 0} khác`,
+            tone: tones[idx % tones.length],
+            cta: "Tham Gia",
+            ctaTone: tones[idx % tones.length],
+          };
+        });
 
-      setEvents(mapped);
-    } catch (err) {
-      console.error("Fetch homepage events failed", err);
-    } finally {
-      if (!cancelled) setEventsLoading(false);
-    }
-  })();
+        setEvents(mapped);
+      } catch (err) {
+        console.error("Fetch homepage events failed", err);
+      } finally {
+        if (!cancelled) setEventsLoading(false);
+      }
+    })();
 
-  return () => {
-    cancelled = true;
-  };
-}, [token]);
-
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   const displayName = user?.fullName || "Minh";
 
@@ -423,86 +417,87 @@ export default function HomeDashboardPage() {
             />
 
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              { eventsLoading ? (
-  <div className="text-sm text-white/60">Đang tải sự kiện...</div>
-) : (
-              events.map((ev) => (
-                <motion.article
-                  key={ev.id}
-                  whileHover={{ y: -4 }}
-                  transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                  className={cn(
-                    "relative overflow-hidden rounded-2xl p-4",
-                    "border border-white/10 bg-white/[0.05]"
-                  )}
-                >
-                  <CornerGlow tone={ev.tone} />
-                  <div className="relative flex gap-4">
-                    <div className="w-14 shrink-0 rounded-2xl border border-white/10 bg-black/20 px-2 py-2 text-center">
-                      <div className="text-lg font-semibold">{ev.day}</div>
-                      <div className="text-[0.6rem] text-white/55">
-                        {ev.month}
-                      </div>
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="truncate text-sm font-semibold">
-                          {ev.title}
-                        </h3>
+              {eventsLoading ? (
+                <div className="text-sm text-white/60">Đang tải sự kiện...</div>
+              ) : (
+                events.map((ev) => (
+                  <motion.article
+                    key={ev.id}
+                    whileHover={{ y: -4 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                    className={cn(
+                      "relative overflow-hidden rounded-2xl p-4",
+                      "border border-white/10 bg-white/[0.05]"
+                    )}
+                  >
+                    <CornerGlow tone={ev.tone} />
+                    <div className="relative flex gap-4">
+                      <div className="w-14 shrink-0 rounded-2xl border border-white/10 bg-black/20 px-2 py-2 text-center">
+                        <div className="text-lg font-semibold">{ev.day}</div>
+                        <div className="text-[0.6rem] text-white/55">
+                          {ev.month}
+                        </div>
                       </div>
 
-                      <p className="mt-1.5 line-clamp-2 text-[0.72rem] text-white/60">
-                        {ev.desc}
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="truncate text-sm font-semibold">
+                            {ev.title}
+                          </h3>
+                        </div>
 
-                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[0.68rem] text-white/55">
-                        <span className="inline-flex items-center gap-1.5">
-                          <Clock size={14} />
-                          {ev.time}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5">
-                          <MapPin size={14} />
-                          {ev.place}
-                        </span>
-                      </div>
+                        <p className="mt-1.5 line-clamp-2 text-[0.72rem] text-white/60">
+                          {ev.desc}
+                        </p>
 
-                      <div className="mt-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="flex -space-x-2">
-                            {[1, 2, 3].map((i) => (
-                              <div
-                                key={i}
-                                className="h-6 w-6 rounded-full border border-white/10 bg-white/10"
-                                aria-hidden="true"
-                              />
-                            ))}
-                          </div>
-                          <span className="text-[0.68rem] text-white/55">
-                            {ev.attendees}
+                        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[0.68rem] text-white/55">
+                          <span className="inline-flex items-center gap-1.5">
+                            <Clock size={14} />
+                            {ev.time}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <MapPin size={14} />
+                            {ev.place}
                           </span>
                         </div>
 
-                        <button
-                          className={cn(
-                            "rounded-full px-4 py-1.5 text-[0.72rem] font-semibold text-white",
-                            ev.ctaTone === "emerald" &&
-                              "bg-emerald-500/80 hover:bg-emerald-500",
-                            ev.ctaTone === "amber" &&
-                              "bg-amber-400/80 hover:bg-amber-400 text-black",
-                            ev.ctaTone === "fuchsia" &&
-                              "bg-fuchsia-500/80 hover:bg-fuchsia-500",
-                            ev.ctaTone === "violet" &&
-                              "bg-violet-500/80 hover:bg-violet-500"
-                          )}
-                        >
-                          {ev.cta}
-                        </button>
+                        <div className="mt-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="flex -space-x-2">
+                              {[1, 2, 3].map((i) => (
+                                <div
+                                  key={i}
+                                  className="h-6 w-6 rounded-full border border-white/10 bg-white/10"
+                                  aria-hidden="true"
+                                />
+                              ))}
+                            </div>
+                            <span className="text-[0.68rem] text-white/55">
+                              {ev.attendees}
+                            </span>
+                          </div>
+
+                          <button
+                            className={cn(
+                              "rounded-full px-4 py-1.5 text-[0.72rem] font-semibold text-white",
+                              ev.ctaTone === "emerald" &&
+                                "bg-emerald-500/80 hover:bg-emerald-500",
+                              ev.ctaTone === "amber" &&
+                                "bg-amber-400/80 hover:bg-amber-400 text-black",
+                              ev.ctaTone === "fuchsia" &&
+                                "bg-fuchsia-500/80 hover:bg-fuchsia-500",
+                              ev.ctaTone === "violet" &&
+                                "bg-violet-500/80 hover:bg-violet-500"
+                            )}
+                          >
+                            {ev.cta}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </motion.article>
-              )))}
+                  </motion.article>
+                ))
+              )}
             </div>
           </section>
 
