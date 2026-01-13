@@ -6,7 +6,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
-import { useAuth } from "@/app/providers/AuthProviders/page";
+import { useAuth } from "@/app/providers/AuthProviders";
 
 // ✅ USER API
 import { getAllPosts } from "@/app/services/api/post";
@@ -50,9 +50,6 @@ type Post = {
   stats: { likes: number; comments: number; views: number };
 };
 
-/* =========================
-   MAP BACKEND → UI
-========================= */
 function toForumPost(item: any): Post {
   const created =
     item?.createdAt || item?.created_at || item?.createdDate || item?.time;

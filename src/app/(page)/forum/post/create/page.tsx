@@ -3,7 +3,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/providers/AuthProviders/page";
+import { useAuth } from "@/app/providers/AuthProviders";
 
 // ✅ chỉnh path import đúng với nơi bạn đặt posts.ts
 import { createPost } from "@/app/services/api/post";

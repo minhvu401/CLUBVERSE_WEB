@@ -3,7 +3,7 @@
 
 import React, { useMemo, useState } from "react";
 import AppSidebar from "@/components/AppSidebar";
-import { useAuth } from "@/app/providers/AuthProviders/page";
+import { useAuth } from "@/app/providers/AuthProviders";
 import {
   MessageCircle,
   Users,

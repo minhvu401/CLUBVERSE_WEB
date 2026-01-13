@@ -15,7 +15,7 @@ import {
   Settings,
   ShieldCheck,
 } from "lucide-react";
-import { useAuth } from "@/app/providers/AuthProviders/page";
+import { useAuth } from "@/app/providers/AuthProviders";
 
 function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
@@ -231,7 +231,7 @@ function ClubHeader({
   router,
 }: any) {
   const navItems = [
-    { label: "Diễn đàn", href: "/club/forum", match: ["/club/forum"] },
+    { label: "Diễn đàn", href: "/club/post", match: ["/club/post"] },
     { label: "Đơn đăng ký", href: "/club/applications", match: ["/club/applications"] },
     { label: "Dashboard", href: "/club/dashboard", match: ["/club/dashboard"] },
     { label: "Sự kiện", href: "/club/events", match: ["/club/events"] },
