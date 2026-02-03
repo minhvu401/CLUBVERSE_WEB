@@ -15,8 +15,6 @@ import {
   Search,
   Flame,
   Pin,
-  MessageSquare,
-  Eye,
   Heart,
   Filter,
   ChevronLeft,
@@ -62,8 +60,8 @@ function toForumPost(item: any): Post {
     categoryRaw === "announcement"
       ? "announcement"
       : categoryRaw === "qa"
-      ? "qa"
-      : "sharing";
+        ? "qa"
+        : "sharing";
 
   return {
     id: String(item?.id ?? item?._id ?? ""),
@@ -98,7 +96,7 @@ export default function ForumUserPage() {
   const [error, setError] = useState<string | null>(null);
   const [showLikesModal, setShowLikesModal] = useState(false);
   const [selectedPostLikes, setSelectedPostLikes] = useState<Post["likedBy"]>(
-    []
+    [],
   );
 
   const [cat, setCat] = useState<Category>("all");
@@ -112,10 +110,10 @@ export default function ForumUserPage() {
     if (!token) router.replace("/login");
   }, [loading, token, router]);
 
-  const fetchPosts = async () => {
+  const fetchPosts = async (silent = false) => {
     if (!token) return;
     try {
-      setLoadingPosts(true);
+      if (!silent) setLoadingPosts(true);
       setError(null);
 
       const res = await getAllPosts(token, { limit });
@@ -123,13 +121,40 @@ export default function ForumUserPage() {
     } catch (e: any) {
       setError(e?.message || "Không tải được bài viết");
     } finally {
-      setLoadingPosts(false);
+      if (!silent) setLoadingPosts(false);
     }
   };
 
   // Handler để like/unlike post
   const handleLike = async (postId: string, isLiked: boolean) => {
     if (!token || !user) return;
+
+    const userId = user._id || user.id;
+
+    // Optimistic update
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? {
+              ...p,
+              likedBy: isLiked
+                ? p.likedBy?.filter((like) => like.userId !== userId) || []
+                : [
+                    ...(p.likedBy || []),
+                    {
+                      userId,
+                      likedAt: new Date().toISOString(),
+                      _id: `temp-${Date.now()}`,
+                    },
+                  ],
+              stats: {
+                ...p.stats,
+                likes: (p.stats.likes || 0) + (isLiked ? -1 : 1),
+              },
+            }
+          : p,
+      ),
+    );
 
     try {
       if (isLiked) {
@@ -138,26 +163,34 @@ export default function ForumUserPage() {
         await likePost(token, postId);
       }
 
-      const userId = user._id || user.id;
-      // Cập nhật state local
+      // Silent refetch to sync with server
+      await fetchPosts(true);
+    } catch (error) {
+      console.error("Error toggling like:", error);
+      // Revert optimistic update on error
       setPosts((prev) =>
         prev.map((p) =>
           p.id === postId
             ? {
                 ...p,
-                likes: isLiked
-                  ? p.likes?.filter((id) => id !== userId)
-                  : [...(p.likes || []), userId],
+                likedBy: isLiked
+                  ? [
+                      ...(p.likedBy || []),
+                      {
+                        userId,
+                        likedAt: new Date().toISOString(),
+                        _id: `temp-${Date.now()}`,
+                      },
+                    ]
+                  : p.likedBy?.filter((like) => like.userId !== userId) || [],
                 stats: {
                   ...p.stats,
-                  likes: (p.stats.likes || 0) + (isLiked ? -1 : 1),
+                  likes: (p.stats.likes || 0) + (isLiked ? 1 : -1),
                 },
               }
-            : p
-        )
+            : p,
+        ),
       );
-    } catch (error) {
-      console.error("Error toggling like:", error);
     }
   };
 
@@ -184,7 +217,7 @@ export default function ForumUserPage() {
         p.title.toLowerCase().includes(query) ||
         p.excerpt.toLowerCase().includes(query) ||
         p.author.name.toLowerCase().includes(query) ||
-        p.tags.join(" ").toLowerCase().includes(query)
+        p.tags.join(" ").toLowerCase().includes(query),
     );
   }, [cat, q, posts]);
 
@@ -219,7 +252,7 @@ export default function ForumUserPage() {
                     "rounded-full px-4 py-2 text-[0.78rem] font-semibold transition border border-white/10",
                     cat === c.key
                       ? "bg-white/[0.10] text-white"
-                      : "bg-white/[0.05] text-white/70 hover:bg-white/[0.08]"
+                      : "bg-white/[0.05] text-white/70 hover:bg-white/[0.08]",
                   )}
                 >
                   {c.label}
@@ -288,7 +321,9 @@ export default function ForumUserPage() {
                     <div className="mt-3 flex gap-4 text-xs text-white/55">
                       {(() => {
                         const userId = user?._id || user?.id;
-                        const isLiked = p.likes?.includes(userId) || false;
+                        const isLiked =
+                          p.likedBy?.some((like) => like.userId === userId) ||
+                          false;
                         return (
                           <div className="flex items-center gap-1">
                             <button
@@ -300,14 +335,14 @@ export default function ForumUserPage() {
                                 "flex items-center gap-1 transition",
                                 isLiked
                                   ? "text-rose-400 hover:text-rose-300"
-                                  : "hover:text-rose-400"
+                                  : "hover:text-rose-400",
                               )}
                               title="Click để like/unlike"
                             >
                               <Heart
                                 className={cn(
                                   "h-4 w-4",
-                                  isLiked && "fill-current"
+                                  isLiked && "fill-current",
                                 )}
                               />
                             </button>
@@ -325,12 +360,6 @@ export default function ForumUserPage() {
                           </div>
                         );
                       })()}
-                      <span className="flex items-center gap-1">
-                        <MessageSquare className="h-4 w-4" /> {p.stats.comments}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Eye className="h-4 w-4" /> {p.stats.views}
-                      </span>
                     </div>
                   </div>
 
