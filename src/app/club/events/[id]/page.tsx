@@ -134,7 +134,7 @@ export default function ClubEventDetailPage() {
   const status = getEventStatus();
   const isFull =
     event.maxParticipants &&
-    (event.participantCount || 0) >= event.maxParticipants;
+    (event.joinedUsers?.length || 0) >= event.maxParticipants;
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden text-white">
@@ -235,7 +235,7 @@ export default function ClubEventDetailPage() {
                     Người tham gia
                   </div>
                   <div className="text-sm text-white/90">
-                    {event.participantCount || 0}
+                    {event.joinedUsers?.length || 0}
                     {event.maxParticipants
                       ? ` / ${event.maxParticipants}`
                       : ""}{" "}
@@ -289,21 +289,21 @@ export default function ClubEventDetailPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
                 <div className="text-2xl font-bold text-cyan-400 mb-1">
-                  {event.participantCount || 0}
+                  {event.joinedUsers?.length || 0}
                 </div>
                 <div className="text-xs text-white/60">Tổng đăng ký</div>
               </div>
 
               <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
                 <div className="text-2xl font-bold text-emerald-400 mb-1">
-                  {event.participants?.filter((p) => p.checkedIn).length || 0}
+                  {event.joinedUsers?.filter((p) => p.checkedIn).length || 0}
                 </div>
                 <div className="text-xs text-white/60">Đã check-in</div>
               </div>
 
               <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
                 <div className="text-2xl font-bold text-orange-400 mb-1">
-                  {event.participants?.filter((p) => p.cancelledAt).length || 0}
+                  {event.cancelledUsers?.length || 0}
                 </div>
                 <div className="text-xs text-white/60">Đã hủy</div>
               </div>
@@ -313,7 +313,8 @@ export default function ClubEventDetailPage() {
                   {event.maxParticipants
                     ? Math.max(
                         0,
-                        event.maxParticipants - (event.participantCount || 0)
+                        event.maxParticipants -
+                          (event.joinedUsers?.length || 0),
                       )
                     : "∞"}
                 </div>

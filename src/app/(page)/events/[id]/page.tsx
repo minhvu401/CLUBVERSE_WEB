@@ -105,6 +105,7 @@ export default function EventDetailPage() {
               joinedUsers: [
                 ...(prev.joinedUsers || []),
                 {
+                  _id: `temp-${Date.now()}`,
                   userId: user._id,
                   email: user.email || "",
                   fullName: user.fullName || user.name || "Ẩn danh",

@@ -13,7 +13,7 @@ import {
   checkInParticipant,
   undoCheckIn,
   type EventItem,
-  type Participant,
+  type JoinedUser,
 } from "@/app/services/api/events";
 import {
   ArrowLeft,
@@ -41,7 +41,7 @@ export default function EventParticipantsPage() {
   const { token, loading } = useAuth() as any;
 
   const [event, setEvent] = useState<EventItem | null>(null);
-  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [participants, setParticipants] = useState<JoinedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [actioningId, setActioningId] = useState<string | null>(null);
@@ -83,7 +83,7 @@ export default function EventParticipantsPage() {
     return participants.filter(
       (p) =>
         p.fullName?.toLowerCase().includes(query) ||
-        p.userEmail?.toLowerCase().includes(query) ||
+        p.email?.toLowerCase().includes(query) ||
         p.userId.toLowerCase().includes(query),
     );
   }, [participants, searchQuery]);
@@ -91,11 +91,11 @@ export default function EventParticipantsPage() {
   const stats = useMemo(() => {
     const total = participants.length;
     const checkedIn = participants.filter((p) => p.checkedIn).length;
-    const cancelled = participants.filter((p) => p.cancelledAt).length;
+    const cancelled = 0;
     return { total, checkedIn, cancelled };
   }, [participants]);
 
-  const handleCheckIn = async (participant: Participant) => {
+  const handleCheckIn = async (participant: JoinedUser) => {
     if (!token) return;
     setActioningId(participant._id);
     try {
@@ -267,7 +267,7 @@ export default function EventParticipantsPage() {
                 className={cn(
                   "rounded-3xl p-5 transition",
                   glass,
-                  participant.cancelledAt && "opacity-60",
+                  participant.checkedIn && "opacity-60",
                 )}
               >
                 <div className="flex flex-col md:flex-row md:items-center gap-4">
@@ -288,17 +288,17 @@ export default function EventParticipantsPage() {
                               Đã check-in
                             </span>
                           )}
-                          {participant.cancelledAt && (
+                          {false && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-red-500/20 border border-red-400/30 px-2 py-0.5 text-xs font-semibold text-red-200">
                               <XCircle className="h-3 w-3" />
                               Đã hủy
                             </span>
                           )}
                         </div>
-                        {participant.userEmail && (
+                        {participant.email && (
                           <div className="flex items-center gap-1.5 text-sm text-white/60 mt-1">
                             <Mail className="h-3.5 w-3.5" />
-                            {participant.userEmail}
+                            {participant.email}
                           </div>
                         )}
                       </div>
@@ -315,51 +315,37 @@ export default function EventParticipantsPage() {
                           Check-in: {formatDate(participant.checkedInAt)}
                         </div>
                       )}
-                      {participant.cancelledAt && (
-                        <div className="flex items-center gap-1.5">
-                          <XCircle className="h-3.5 w-3.5 text-red-400" />
-                          Hủy: {formatDate(participant.cancelledAt)}
-                        </div>
-                      )}
                     </div>
-
-                    {participant.cancelReason && (
-                      <div className="mt-2 text-sm text-white/60 italic">
-                        Lý do hủy: {participant.cancelReason}
-                      </div>
-                    )}
                   </div>
 
                   {/* Actions */}
-                  {!participant.cancelledAt && (
-                    <button
-                      onClick={() => handleCheckIn(participant)}
-                      disabled={actioningId === participant._id}
-                      className={cn(
-                        "rounded-full px-5 py-2.5 text-sm font-semibold transition inline-flex items-center justify-center gap-2 min-w-[140px]",
-                        participant.checkedIn
-                          ? "border border-white/10 bg-white/5 text-white/85 hover:bg-white/10"
-                          : "bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-900 hover:brightness-110",
-                      )}
-                    >
-                      {actioningId === participant._id ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Đang xử lý
-                        </>
-                      ) : participant.checkedIn ? (
-                        <>
-                          <XCircle className="h-4 w-4" />
-                          Hủy check-in
-                        </>
-                      ) : (
-                        <>
-                          <UserCheck className="h-4 w-4" />
-                          Check-in
-                        </>
-                      )}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleCheckIn(participant)}
+                    disabled={actioningId === participant._id}
+                    className={cn(
+                      "rounded-full px-5 py-2.5 text-sm font-semibold transition inline-flex items-center justify-center gap-2 min-w-[140px]",
+                      participant.checkedIn
+                        ? "border border-white/10 bg-white/5 text-white/85 hover:bg-white/10"
+                        : "bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-900 hover:brightness-110",
+                    )}
+                  >
+                    {actioningId === participant._id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Đang xử lý
+                      </>
+                    ) : participant.checkedIn ? (
+                      <>
+                        <XCircle className="h-4 w-4" />
+                        Hủy check-in
+                      </>
+                    ) : (
+                      <>
+                        <UserCheck className="h-4 w-4" />
+                        Check-in
+                      </>
+                    )}
+                  </button>
                 </div>
               </article>
             ))}

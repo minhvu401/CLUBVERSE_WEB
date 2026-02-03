@@ -48,7 +48,7 @@ function CornerGlow({
         "pointer-events-none absolute -right-10 -top-10 h-28 w-28 rotate-45",
         "bg-gradient-to-br",
         toneMap[tone] ?? toneMap.violet,
-        "blur-[0.3px]"
+        "blur-[0.3px]",
       )}
     />
   );
@@ -187,7 +187,7 @@ export default function HomeDashboardPage() {
                 })
               : "Chưa rõ",
             place: e.location ?? "Chưa cập nhật",
-            attendees: `+${e.participantCount ?? 0} khác`,
+            attendees: `+${e.joinedUsers?.length || 0} khác`,
             tone: tones[idx % tones.length],
             cta: "Tham Gia",
             ctaTone: tones[idx % tones.length],
@@ -218,7 +218,7 @@ export default function HomeDashboardPage() {
       tag: c.category ?? "Khác",
       desc: c.description ?? "Chưa có mô tả.",
       members: `${(c.clubJoined?.length ?? 0).toLocaleString(
-        "vi-VN"
+        "vi-VN",
       )} thành viên`,
       tone: tones[idx % tones.length],
       icon: "🏷️",
@@ -270,7 +270,7 @@ export default function HomeDashboardPage() {
           <section
             className={cn(
               "relative overflow-hidden rounded-3xl p-6 md:p-8",
-              glass
+              glass,
             )}
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.10),transparent_60%)]" />
@@ -319,7 +319,7 @@ export default function HomeDashboardPage() {
                     key={i}
                     className={cn(
                       "relative overflow-hidden rounded-2xl p-4",
-                      "border border-white/10 bg-white/[0.05]"
+                      "border border-white/10 bg-white/[0.05]",
                     )}
                   >
                     <div className="h-9 w-9 rounded-xl bg-white/10" />
@@ -333,7 +333,7 @@ export default function HomeDashboardPage() {
                 <div
                   className={cn(
                     "rounded-2xl p-4 text-sm text-white/70",
-                    "border border-white/10 bg-white/[0.05]"
+                    "border border-white/10 bg-white/[0.05]",
                   )}
                 >
                   {clubsError}
@@ -342,7 +342,7 @@ export default function HomeDashboardPage() {
                 <div
                   className={cn(
                     "rounded-2xl p-4 text-sm text-white/70",
-                    "border border-white/10 bg-white/[0.05]"
+                    "border border-white/10 bg-white/[0.05]",
                   )}
                 >
                   Chưa có câu lạc bộ nào.
@@ -355,7 +355,7 @@ export default function HomeDashboardPage() {
                     transition={{ type: "spring", stiffness: 260, damping: 20 }}
                     className={cn(
                       "relative cursor-pointer overflow-hidden rounded-2xl p-4",
-                      "border border-white/10 bg-white/[0.05] shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+                      "border border-white/10 bg-white/[0.05] shadow-[0_12px_40px_rgba(0,0,0,0.35)]",
                     )}
                     onClick={() => goClubDetail(club.id)}
                     role="button"
@@ -427,7 +427,7 @@ export default function HomeDashboardPage() {
                     transition={{ type: "spring", stiffness: 260, damping: 20 }}
                     className={cn(
                       "relative overflow-hidden rounded-2xl p-4",
-                      "border border-white/10 bg-white/[0.05]"
+                      "border border-white/10 bg-white/[0.05]",
                     )}
                   >
                     <CornerGlow tone={ev.tone} />
@@ -487,7 +487,7 @@ export default function HomeDashboardPage() {
                               ev.ctaTone === "fuchsia" &&
                                 "bg-fuchsia-500/80 hover:bg-fuchsia-500",
                               ev.ctaTone === "violet" &&
-                                "bg-violet-500/80 hover:bg-violet-500"
+                                "bg-violet-500/80 hover:bg-violet-500",
                             )}
                           >
                             {ev.cta}
@@ -508,7 +508,7 @@ export default function HomeDashboardPage() {
                 key={s.label}
                 className={cn(
                   "relative overflow-hidden rounded-2xl p-4 text-center",
-                  glass
+                  glass,
                 )}
               >
                 <CornerGlow tone="violet" />
