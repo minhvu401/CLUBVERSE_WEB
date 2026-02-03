@@ -84,7 +84,7 @@ export default function EventParticipantsPage() {
       (p) =>
         p.fullName?.toLowerCase().includes(query) ||
         p.userEmail?.toLowerCase().includes(query) ||
-        p.userId.toLowerCase().includes(query)
+        p.userId.toLowerCase().includes(query),
     );
   }, [participants, searchQuery]);
 
@@ -153,7 +153,7 @@ export default function EventParticipantsPage() {
               {error || "Không tìm thấy sự kiện"}
             </div>
             <button
-              onClick={() => router.push("/club/events")}
+              onClick={() => router.push(`/club/events/${eventId}`)}
               className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white/85 hover:bg-white/10 transition"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -178,7 +178,7 @@ export default function EventParticipantsPage() {
       <main className="mx-auto max-w-7xl px-4 py-10 pb-20">
         {/* Back button */}
         <button
-          onClick={() => router.push("/club/events")}
+          onClick={() => router.push(`/club/events/${eventId}`)}
           className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 hover:bg-white/10 transition mb-6"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -267,7 +267,7 @@ export default function EventParticipantsPage() {
                 className={cn(
                   "rounded-3xl p-5 transition",
                   glass,
-                  participant.cancelledAt && "opacity-60"
+                  participant.cancelledAt && "opacity-60",
                 )}
               >
                 <div className="flex flex-col md:flex-row md:items-center gap-4">
@@ -339,7 +339,7 @@ export default function EventParticipantsPage() {
                         "rounded-full px-5 py-2.5 text-sm font-semibold transition inline-flex items-center justify-center gap-2 min-w-[140px]",
                         participant.checkedIn
                           ? "border border-white/10 bg-white/5 text-white/85 hover:bg-white/10"
-                          : "bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-900 hover:brightness-110"
+                          : "bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-900 hover:brightness-110",
                       )}
                     >
                       {actioningId === participant._id ? (
