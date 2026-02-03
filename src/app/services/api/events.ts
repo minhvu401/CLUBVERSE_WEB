@@ -42,7 +42,8 @@ export type ClubInfo = {
 
 export type EventItem = EventCoreFields & {
   _id: string;
-  clubId: ClubInfo;
+  clubId: ClubInfo | string;
+  clubName?: string;
   joinedUsers?: JoinedUser[];
   cancelledUsers?: CancelledUser[];
   status: string;
@@ -51,6 +52,7 @@ export type EventItem = EventCoreFields & {
   availableSlots: number;
   isFull: boolean;
   isRegistered: boolean;
+  isDeleted?: boolean;
   createdAt: string;
   updatedAt: string;
   __v: number;
@@ -74,8 +76,8 @@ type ListResponse = {
 };
 
 type ParticipantsResponse = {
-  participants?: Participant[];
-  data?: Participant[];
+  participants?: JoinedUser[];
+  data?: JoinedUser[];
 };
 
 const EVENTS_URL = `${AUTH_BASE_URL}/events`;
@@ -127,8 +129,8 @@ function extractEvents(payload?: ListResponse | EventItem[]): EventItem[] {
 }
 
 function extractParticipants(
-  payload?: ParticipantsResponse | Participant[],
-): Participant[] {
+  payload?: ParticipantsResponse | JoinedUser[],
+): JoinedUser[] {
   if (!payload) return [];
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload.participants)) return payload.participants;
@@ -188,8 +190,8 @@ export async function getEventById(
 export async function getEventParticipants(
   token: string,
   id: string,
-): Promise<Participant[]> {
-  const payload = await request<ParticipantsResponse | Participant[]>(
+): Promise<JoinedUser[]> {
+  const payload = await request<ParticipantsResponse | JoinedUser[]>(
     token,
     `${EVENTS_URL}/${id}/participants`,
   );
