@@ -96,9 +96,26 @@ export default function EventDetailPage() {
     setIsActioning(true);
     try {
       await registerEvent(token, event._id);
-      // Refresh event data
-      const data = await getEventById(token, event._id);
-      setEvent(data);
+      // Optimistic update
+      setEvent((prev) =>
+        prev
+          ? {
+              ...prev,
+              isRegistered: true,
+              joinedUsers: [
+                ...(prev.joinedUsers || []),
+                {
+                  userId: user._id,
+                  email: user.email || "",
+                  fullName: user.fullName || user.name || "Ẩn danh",
+                  phoneNumber: user.phoneNumber || "",
+                  registeredAt: new Date().toISOString(),
+                  checkedIn: false,
+                },
+              ],
+            }
+          : null,
+      );
     } catch (err: any) {
       alert(err.message || "Không thể đăng ký sự kiện");
     } finally {
@@ -114,9 +131,18 @@ export default function EventDetailPage() {
     setIsActioning(true);
     try {
       await cancelEventRegistration(token, event._id, reason);
-      // Refresh event data
-      const data = await getEventById(token, event._id);
-      setEvent(data);
+      // Optimistic update
+      setEvent((prev) =>
+        prev
+          ? {
+              ...prev,
+              isRegistered: false,
+              joinedUsers: (prev.joinedUsers || []).filter(
+                (u) => u.userId !== user._id,
+              ),
+            }
+          : null,
+      );
     } catch (err: any) {
       alert(err.message || "Không thể hủy đăng ký");
     } finally {
@@ -167,8 +193,8 @@ export default function EventDetailPage() {
   const status = getEventStatus();
   const isFull =
     event.maxParticipants &&
-    (event.participantCount || 0) >= event.maxParticipants;
-  const isRegistered = event.participants?.some((p) => p.userId === user?._id);
+    (event.joinedUsers?.length || 0) >= event.maxParticipants;
+  const isRegistered = event.isRegistered;
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden text-white">
@@ -269,7 +295,7 @@ export default function EventDetailPage() {
                     Người tham gia
                   </div>
                   <div className="text-sm text-white/90">
-                    {event.participantCount || 0}
+                    {event.joinedUsers?.length || 0}
                     {event.maxParticipants
                       ? ` / ${event.maxParticipants}`
                       : ""}{" "}

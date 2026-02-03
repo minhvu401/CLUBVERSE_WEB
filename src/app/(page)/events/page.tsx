@@ -47,7 +47,7 @@ function FilterButton({
         "rounded-full px-4 py-2 text-sm font-semibold transition border",
         active
           ? "border-cyan-400/50 bg-cyan-400/20 text-cyan-200"
-          : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10"
+          : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
       )}
     >
       {children}
@@ -115,7 +115,7 @@ export default function EventsPage() {
       (e) =>
         e.title.toLowerCase().includes(query) ||
         e.description.toLowerCase().includes(query) ||
-        e.location.toLowerCase().includes(query)
+        e.location.toLowerCase().includes(query),
     );
   }, [events, searchQuery]);
 
@@ -236,14 +236,14 @@ export default function EventsPage() {
               const status = getEventStatus(event);
               const isFull =
                 event.maxParticipants &&
-                (event.participantCount || 0) >= event.maxParticipants;
+                (event.joinedUsers?.length || 0) >= event.maxParticipants;
 
               return (
                 <article
                   key={event._id}
                   className={cn(
                     "relative overflow-hidden rounded-3xl p-6 group",
-                    glass
+                    glass,
                   )}
                 >
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(168,85,247,0.15),transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -309,7 +309,7 @@ export default function EventsPage() {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-white/70">
                         <Users className="h-4 w-4 text-emerald-400" />
-                        {event.participantCount || 0}
+                        {event.joinedUsers?.length || 0}
                         {event.maxParticipants
                           ? ` / ${event.maxParticipants}`
                           : ""}{" "}
