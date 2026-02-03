@@ -12,27 +12,48 @@ export type EventCoreFields = {
   images?: string[];
 };
 
-export type Participant = {
+export type JoinedUser = {
   _id: string;
   userId: string;
-  fullName?: string;
-  userEmail?: string;
+  email: string;
+  fullName: string;
+  phoneNumber: string;
   registeredAt: string;
   checkedIn: boolean;
   checkedInAt?: string;
-  cancelledAt?: string;
-  cancelReason?: string;
+};
+
+export type CancelledUser = {
+  _id: string;
+  userId: string;
+  email: string;
+  fullName: string;
+  phoneNumber: string;
+  reason: string;
+  cancelledAt: string;
+};
+
+export type ClubInfo = {
+  _id: string;
+  fullName: string;
+  rating?: number;
+  category?: string;
 };
 
 export type EventItem = EventCoreFields & {
   _id: string;
-  clubId: string;
-  clubName?: string;
-  participants?: Participant[];
-  participantCount?: number;
-  isDeleted?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
+  clubId: ClubInfo;
+  joinedUsers?: JoinedUser[];
+  cancelledUsers?: CancelledUser[];
+  status: string;
+  isActive: boolean;
+  reminderSent: boolean;
+  availableSlots: number;
+  isFull: boolean;
+  isRegistered: boolean;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
 };
 
 export type EventsQuery = {
@@ -106,7 +127,7 @@ function extractEvents(payload?: ListResponse | EventItem[]): EventItem[] {
 }
 
 function extractParticipants(
-  payload?: ParticipantsResponse | Participant[]
+  payload?: ParticipantsResponse | Participant[],
 ): Participant[] {
   if (!payload) return [];
   if (Array.isArray(payload)) return payload;
@@ -118,7 +139,7 @@ function extractParticipants(
 // ============ CREATE ============
 export async function createEvent(
   token: string,
-  body: EventCoreFields
+  body: EventCoreFields,
 ): Promise<EventItem> {
   return request<EventItem>(token, EVENTS_URL, {
     method: "POST",
@@ -129,22 +150,22 @@ export async function createEvent(
 // ============ READ ============
 export async function getAllEvents(
   token: string,
-  params?: EventsQuery
+  params?: EventsQuery,
 ): Promise<EventItem[]> {
   const payload = await request<ListResponse | EventItem[]>(
     token,
-    withQuery(EVENTS_URL, params)
+    withQuery(EVENTS_URL, params),
   );
   return extractEvents(payload);
 }
 
 export async function getMyEvents(
   token: string,
-  params?: MyEventsQuery
+  params?: MyEventsQuery,
 ): Promise<EventItem[]> {
   const payload = await request<ListResponse | EventItem[]>(
     token,
-    withQuery(`${EVENTS_URL}/my-events`, params)
+    withQuery(`${EVENTS_URL}/my-events`, params),
   );
   return extractEvents(payload);
 }
@@ -152,25 +173,25 @@ export async function getMyEvents(
 export async function getDeletedEvents(token: string): Promise<EventItem[]> {
   const payload = await request<ListResponse | EventItem[]>(
     token,
-    `${EVENTS_URL}/deleted`
+    `${EVENTS_URL}/deleted`,
   );
   return extractEvents(payload);
 }
 
 export async function getEventById(
   token: string,
-  id: string
+  id: string,
 ): Promise<EventItem> {
   return request<EventItem>(token, `${EVENTS_URL}/${id}`);
 }
 
 export async function getEventParticipants(
   token: string,
-  id: string
+  id: string,
 ): Promise<Participant[]> {
   const payload = await request<ParticipantsResponse | Participant[]>(
     token,
-    `${EVENTS_URL}/${id}/participants`
+    `${EVENTS_URL}/${id}/participants`,
   );
   return extractParticipants(payload);
 }
@@ -179,7 +200,7 @@ export async function getEventParticipants(
 export async function updateEvent(
   token: string,
   id: string,
-  body: Partial<EventCoreFields>
+  body: Partial<EventCoreFields>,
 ): Promise<EventItem> {
   return request<EventItem>(token, `${EVENTS_URL}/${id}`, {
     method: "PATCH",
@@ -190,7 +211,7 @@ export async function updateEvent(
 // ============ DELETE ============
 export async function softDeleteEvent(
   token: string,
-  id: string
+  id: string,
 ): Promise<{ message?: string }> {
   return request<{ message?: string }>(token, `${EVENTS_URL}/${id}/soft`, {
     method: "DELETE",
@@ -199,7 +220,7 @@ export async function softDeleteEvent(
 
 export async function hardDeleteEvent(
   token: string,
-  id: string
+  id: string,
 ): Promise<{ message?: string }> {
   return request<{ message?: string }>(token, `${EVENTS_URL}/${id}/hard`, {
     method: "DELETE",
@@ -208,7 +229,7 @@ export async function hardDeleteEvent(
 
 export async function restoreEvent(
   token: string,
-  id: string
+  id: string,
 ): Promise<{ message?: string }> {
   return request<{ message?: string }>(token, `${EVENTS_URL}/${id}/restore`, {
     method: "PATCH",
@@ -218,7 +239,7 @@ export async function restoreEvent(
 // ============ REGISTER / CANCEL ============
 export async function registerEvent(
   token: string,
-  id: string
+  id: string,
 ): Promise<{ message?: string }> {
   return request<{ message?: string }>(token, `${EVENTS_URL}/${id}/register`, {
     method: "POST",
@@ -228,7 +249,7 @@ export async function registerEvent(
 export async function cancelEventRegistration(
   token: string,
   id: string,
-  reason?: string
+  reason?: string,
 ): Promise<{ message?: string }> {
   return request<{ message?: string }>(token, `${EVENTS_URL}/${id}/cancel`, {
     method: "POST",
@@ -240,27 +261,27 @@ export async function cancelEventRegistration(
 export async function checkInParticipant(
   token: string,
   eventId: string,
-  userId: string
+  userId: string,
 ): Promise<{ message?: string }> {
   return request<{ message?: string }>(
     token,
     `${EVENTS_URL}/${eventId}/check-in/${userId}`,
     {
       method: "POST",
-    }
+    },
   );
 }
 
 export async function undoCheckIn(
   token: string,
   eventId: string,
-  userId: string
+  userId: string,
 ): Promise<{ message?: string }> {
   return request<{ message?: string }>(
     token,
     `${EVENTS_URL}/${eventId}/check-in/${userId}/undo`,
     {
       method: "DELETE",
-    }
+    },
   );
 }
