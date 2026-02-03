@@ -57,7 +57,7 @@ function FilterButton({
 
 export default function EventsPage() {
   const router = useRouter();
-  const { token, loading } = useAuth() as any;
+  const { user, token, loading } = useAuth() as any;
 
   const [events, setEvents] = useState<EventItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -237,6 +237,8 @@ export default function EventsPage() {
               const isFull =
                 event.maxParticipants &&
                 (event.joinedUsers?.length || 0) >= event.maxParticipants;
+              const isRegistered =
+                event.joinedUsers?.some((u) => u.userId === user?._id) || false;
 
               return (
                 <article
@@ -325,7 +327,7 @@ export default function EventsPage() {
                       >
                         Xem chi tiết
                       </button>
-                      {status === "upcoming" && !isFull && (
+                      {status === "upcoming" && !isFull && !isRegistered && (
                         <button
                           onClick={() => handleRegister(event._id)}
                           disabled={registeringId === event._id}
@@ -339,6 +341,14 @@ export default function EventsPage() {
                           ) : (
                             "Đăng ký"
                           )}
+                        </button>
+                      )}
+                      {status === "upcoming" && isRegistered && (
+                        <button
+                          disabled
+                          className="flex-1 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 px-4 py-2.5 text-sm font-bold text-slate-900 cursor-not-allowed inline-flex items-center justify-center gap-2"
+                        >
+                          Đã đăng ký
                         </button>
                       )}
                     </div>
