@@ -194,7 +194,8 @@ export default function EventDetailPage() {
   const isFull =
     event.maxParticipants &&
     (event.joinedUsers?.length || 0) >= event.maxParticipants;
-  const isRegistered = event.isRegistered;
+  const isRegistered =
+    event.joinedUsers?.some((u) => u.userId === user?._id) || false;
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden text-white">
@@ -331,25 +332,17 @@ export default function EventDetailPage() {
                       Đang xử lý...
                     </>
                   ) : (
-                    "Đăng ký tham gia"
+                    "Đăng ký"
                   )}
                 </button>
               )}
 
               {isRegistered && status === "upcoming" && (
                 <button
-                  onClick={handleCancel}
-                  disabled={isActioning}
-                  className="flex-1 md:flex-none rounded-full border border-red-400/30 bg-red-500/10 px-8 py-3 text-sm font-semibold text-red-200 hover:bg-red-500/20 transition disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                  disabled
+                  className="flex-1 md:flex-none rounded-full bg-gradient-to-r from-green-400 to-emerald-500 px-8 py-3 text-sm font-bold text-slate-900 cursor-not-allowed inline-flex items-center justify-center gap-2"
                 >
-                  {isActioning ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Đang xử lý...
-                    </>
-                  ) : (
-                    "Hủy đăng ký"
-                  )}
+                  Đã đăng ký
                 </button>
               )}
             </div>
