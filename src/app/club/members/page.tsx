@@ -126,20 +126,25 @@ function RoleBadge({ role }: { role: "admin" | "moderator" | "member" }) {
 }
 
 function StatusBadge({ status }: { status: "active" | "inactive" }) {
-  const statusMap = {
-    active: {
-      text: "Hoạt động",
-      cls: "bg-emerald-400/15 text-emerald-200 border-emerald-400/25",
-      dot: "bg-emerald-300",
-    },
-    inactive: {
-      text: "Không hoạt động",
-      cls: "bg-gray-400/15 text-gray-200 border-gray-400/25",
-      dot: "bg-gray-300",
-    },
-  };
+  const statusMap: Record<string, { text: string; cls: string; dot: string }> =
+    {
+      active: {
+        text: "Hoạt động",
+        cls: "bg-emerald-400/15 text-emerald-200 border-emerald-400/25",
+        dot: "bg-emerald-300",
+      },
+      inactive: {
+        text: "Không hoạt động",
+        cls: "bg-gray-400/15 text-gray-200 border-gray-400/25",
+        dot: "bg-gray-300",
+      },
+    };
 
-  const config = statusMap[status];
+  const config = statusMap[status] || {
+    text: status || "Unknown",
+    cls: "bg-gray-400/15 text-gray-200 border-gray-400/25",
+    dot: "bg-gray-300",
+  };
 
   return (
     <span
@@ -194,10 +199,21 @@ export default function ClubMembersPage() {
 
   // Get club ID from user profile
   const clubId = useMemo(() => {
-    if (!user?.clubJoined || !Array.isArray(user.clubJoined)) return null;
+    if (!user) return null;
+
+    // If user is a club account, use their ID as clubId
+    if (user.role?.toLowerCase() === "club") {
+      return user._id || user.id;
+    }
+
+    // If user is a student, get clubId from clubJoined
+    if (!user?.clubJoined || !Array.isArray(user.clubJoined)) {
+      return null;
+    }
+
     const club = user.clubJoined[0];
     return typeof club === "string" ? club : club?._id;
-  }, [user?.clubJoined]);
+  }, [user]);
 
   useEffect(() => {
     if (loading) return;
@@ -222,8 +238,6 @@ export default function ClubMembersPage() {
         role: roleFilter === "all" ? undefined : roleFilter,
         search: searchQuery || undefined,
         sortBy,
-        page,
-        limit: LIMIT,
       };
 
       const response = await getClubMembers(token, clubId, params);
@@ -234,7 +248,7 @@ export default function ClubMembersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [token, clubId, statusFilter, roleFilter, searchQuery, sortBy, page]);
+  }, [token, clubId, statusFilter, roleFilter, searchQuery, sortBy]);
 
   // Fetch statistics
   const fetchStatistics = useCallback(async () => {
@@ -256,7 +270,12 @@ export default function ClubMembersPage() {
       const actions = await getPendingActions(token, clubId);
       setPendingActions(actions);
     } catch (error) {
-      console.error("Failed to fetch pending actions:", error);
+      // Silently ignore 403 errors - endpoint may not be available for all clubs
+      if (error instanceof Error && error.message.includes("403")) {
+        setPendingActions(null);
+      } else {
+        console.error("Failed to fetch pending actions:", error);
+      }
     }
   }, [token, clubId]);
 
@@ -588,18 +607,18 @@ export default function ClubMembersPage() {
                   >
                     <div className="flex items-center gap-4">
                       <Image
-                        src={member.user?.avatarUrl || "/default-avatar.png"}
-                        alt={member.user?.fullName || "Avatar"}
+                        src={member.avatarUrl || "/default-avatar.png"}
+                        alt={member.fullName || "Avatar"}
                         width={48}
                         height={48}
                         className="h-12 w-12 rounded-full object-cover"
                       />
                       <div>
                         <div className="font-medium text-white">
-                          {member.user?.fullName}
+                          {member.fullName}
                         </div>
                         <div className="text-sm text-white/60">
-                          {member.user?.email}
+                          {member.email}
                         </div>
                         <div className="mt-1 text-xs text-white/50">
                           Tham gia:{" "}
@@ -611,7 +630,9 @@ export default function ClubMembersPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <StatusBadge status={member.status} />
+                      <StatusBadge
+                        status={member.isActive ? "active" : "inactive"}
+                      />
                       <RoleBadge role={member.role} />
 
                       <div className="relative">
@@ -691,7 +712,7 @@ export default function ClubMembersPage() {
               Thay đổi vai trò
             </h3>
             <p className="mt-2 text-sm text-white/70">
-              Thay đổi vai trò của {selectedMember.user?.fullName}
+              Thay đổi vai trò của {selectedMember.fullName}
             </p>
 
             <div className="mt-4">
@@ -748,8 +769,8 @@ export default function ClubMembersPage() {
               </h3>
             </div>
             <p className="mt-2 text-sm text-white/70">
-              Bạn có chắc muốn xóa {selectedMember.user?.fullName} khỏi câu lạc
-              bộ? Hành động này không thể hoàn tác.
+              Bạn có chắc muốn xóa {selectedMember.fullName} khỏi câu lạc bộ?
+              Hành động này không thể hoàn tác.
             </p>
 
             <div className="mt-4">

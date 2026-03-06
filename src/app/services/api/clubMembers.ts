@@ -6,19 +6,18 @@ import { AUTH_BASE_URL } from "./auth";
 export interface ClubMember {
   _id: string;
   userId: string;
-  clubId: string;
   role: "admin" | "moderator" | "member";
-  status: "active" | "inactive";
+  email: string;
+  fullName: string;
+  phoneNumber?: string;
+  school?: string;
+  major?: string;
+  year?: number;
+  skills?: string[];
+  interests?: string[];
   joinedAt: string;
-  user?: {
-    _id: string;
-    email: string;
-    fullName: string;
-    avatarUrl?: string;
-    school?: string;
-    major?: string;
-    year?: number;
-  };
+  isActive: boolean;
+  avatarUrl?: string;
 }
 
 // Get club members response
@@ -133,18 +132,19 @@ export const getClubMembers = async (
     role?: "admin" | "moderator" | "member";
     search?: string;
     sortBy?: "newest" | "oldest" | "name";
-    page?: number;
-    limit?: number;
   },
 ): Promise<GetClubMembersResponse> => {
   const queryParams = new URLSearchParams();
 
-  if (params?.status) queryParams.append("status", params.status);
-  if (params?.role) queryParams.append("role", params.role);
+  // Only add params if they are provided
+  if (params?.status) {
+    queryParams.append("status", params.status);
+  }
+  if (params?.role) {
+    queryParams.append("role", params.role);
+  }
   if (params?.search) queryParams.append("search", params.search);
   if (params?.sortBy) queryParams.append("sortBy", params.sortBy);
-  if (params?.page) queryParams.append("page", params.page.toString());
-  if (params?.limit) queryParams.append("limit", params.limit.toString());
 
   const queryString = queryParams.toString();
   const url = `/club-members/club/${clubId}${queryString ? `?${queryString}` : ""}`;
