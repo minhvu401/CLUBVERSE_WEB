@@ -194,7 +194,7 @@ function UserHeader({
     { label: "Trang Chủ", href: "/homepage", match: ["/", "/homepage"] },
     { label: "Khám Phá", href: "/finding", match: ["/finding"] },
     { label: "Sự Kiện", href: "/events", match: ["/events"] },
-    { label: "Câu Lạc Bộ", href: "/clb", match: ["/clb"] },
+    { label: "Câu Lạc Bộ", href: "/clubs", match: ["/clubs"] },
     { label: "Diễn Đàn", href: "/forum", match: ["/forum"] },
   ];
 
@@ -231,7 +231,8 @@ function ClubHeader({
   token,
 }: any) {
   const navItems = [
-    { label: "Trang CLB", href: "/club/home", match: ["/club/home"] },
+    { label: "Dashboard", href: "/club/dashboard", match: ["/club/dashboard"] },
+    { label: "Thành viên", href: "/club/members", match: ["/club/members"] },
     { label: "Diễn đàn", href: "/club/forum", match: ["/club/forum"] },
     { label: "Sự kiện", href: "/club/events", match: ["/club/events"] },
     {
@@ -239,13 +240,12 @@ function ClubHeader({
       href: "/club/applications",
       match: ["/club/applications"],
     },
-    { label: "Dashboard", href: "/club/dashboard", match: ["/club/dashboard"] },
   ];
 
   return (
     <HeaderShell>
       <div className="flex h-20 items-center justify-between bg-transparent border-0">
-        <Brand href={isAuthed ? "/club/home" : "/club/home"} />
+        <Brand href="/club/dashboard" />
         <NavLinks items={navItems} pathname={pathname} />
 
         {!isAuthed ? (
@@ -287,9 +287,12 @@ function AdminHeader({
 }: any) {
   const navItems = [
     { label: "Dashboard", href: "/admin", match: ["/admin"] },
-    { label: "Users", href: "/admin/users", match: ["/admin/users"] },
     { label: "CLB", href: "/admin/clubs", match: ["/admin/clubs"] },
-    { label: "Cài đặt", href: "/admin/settings", match: ["/admin/settings"] },
+    {
+      label: "Đơn duyệt",
+      href: "/admin/applications",
+      match: ["/admin/applications"],
+    },
   ];
 
   return (
@@ -309,7 +312,7 @@ function AdminHeader({
 
             <RightAuthed
               avatarUrl={user?.avatarUrl || user?.avatar}
-              onProfile={() => router.push("/admin/profile")}
+              onProfile={() => router.push("/profile")}
               onLogout={onLogout}
               token={token}
             />
