@@ -1,12 +1,12 @@
 import { AUTH_BASE_URL } from "./auth";
 
 export type NotificationType =
-  | "event_reminder"
-  | "event_update"
-  | "application_status"
-  | "club_invite"
-  | "forum_reply"
-  | "system";
+  | "APPLICATION_STATUS"
+  | "EVENT_REMINDER"
+  | "EVENT_UPDATE"
+  | "CLUB_INVITE"
+  | "FORUM_REPLY"
+  | "SYSTEM";
 
 export type NotificationItem = {
   _id: string;
@@ -15,8 +15,7 @@ export type NotificationItem = {
   title: string;
   message: string;
   isRead: boolean;
-  relatedId?: string;
-  relatedType?: "event" | "application" | "club" | "post";
+  metadata?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 };
@@ -27,12 +26,16 @@ export type NotificationsResponse = {
   unreadCount: number;
 };
 
-export type MarkAsReadResponse = {
+export type CreateNotificationBody = {
+  userId: string;
+  title: string;
   message: string;
+  type: NotificationType;
+  metadata?: Record<string, unknown>;
 };
 
-export type DeleteNotificationResponse = {
-  message: string;
+export type UpdateNotificationBody = {
+  isRead?: boolean;
 };
 
 const jsonHeaders = {
@@ -71,28 +74,49 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 /**
+ * Tạo thông báo mới
+ */
+export const createNotification = (
+  token: string,
+  body: CreateNotificationBody,
+): Promise<NotificationItem> => {
+  return request<NotificationItem>("/notifications", {
+    method: "POST",
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(body),
+  });
+};
+
+/**
  * Lấy danh sách thông báo của user hiện tại
- * @param token - Access token
- * @param page - Trang hiện tại (mặc định: 1)
- * @param limit - Số lượng thông báo mỗi trang (mặc định: 20)
  */
 export const getNotifications = (
   token: string,
-  page = 1,
-  limit = 20,
+  params?: { isRead?: boolean; page?: number; limit?: number },
 ): Promise<NotificationsResponse> => {
-  return request<NotificationsResponse>(
-    `/notifications?page=${page}&limit=${limit}`,
-    {
-      method: "GET",
-      headers: getAuthHeaders(token),
-    },
-  );
+  const query = new URLSearchParams();
+  if (params?.isRead !== undefined) query.set("isRead", String(params.isRead));
+  if (params?.page !== undefined) query.set("page", String(params.page));
+  if (params?.limit !== undefined) query.set("limit", String(params.limit));
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return request<NotificationsResponse>(`/notifications${qs}`, {
+    method: "GET",
+    headers: getAuthHeaders(token),
+  });
+};
+
+/**
+ * Xóa tất cả thông báo của user hiện tại
+ */
+export const deleteAllNotifications = (token: string): Promise<void> => {
+  return request<void>("/notifications", {
+    method: "DELETE",
+    headers: getAuthHeaders(token),
+  });
 };
 
 /**
  * Lấy số lượng thông báo chưa đọc
- * @param token - Access token
  */
 export const getUnreadCount = (token: string): Promise<{ count: number }> => {
   return request<{ count: number }>("/notifications/unread-count", {
@@ -102,15 +126,67 @@ export const getUnreadCount = (token: string): Promise<{ count: number }> => {
 };
 
 /**
+ * Lấy một thông báo theo ID
+ */
+export const getNotificationById = (
+  token: string,
+  notificationId: string,
+): Promise<NotificationItem> => {
+  return request<NotificationItem>(`/notifications/${notificationId}`, {
+    method: "GET",
+    headers: getAuthHeaders(token),
+  });
+};
+
+/**
+ * Cập nhật một thông báo
+ */
+export const updateNotification = (
+  token: string,
+  notificationId: string,
+  body: UpdateNotificationBody,
+): Promise<NotificationItem> => {
+  return request<NotificationItem>(`/notifications/${notificationId}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(body),
+  });
+};
+
+/**
+ * Xóa một thông báo
+ */
+export const deleteNotification = (
+  token: string,
+  notificationId: string,
+): Promise<void> => {
+  return request<void>(`/notifications/${notificationId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(token),
+  });
+};
+
+/**
  * Đánh dấu một thông báo là đã đọc
- * @param token - Access token
- * @param notificationId - ID của thông báo
  */
 export const markAsRead = (
   token: string,
   notificationId: string,
-): Promise<MarkAsReadResponse> => {
-  return request<MarkAsReadResponse>(`/notifications/${notificationId}/read`, {
+): Promise<NotificationItem> => {
+  return request<NotificationItem>(`/notifications/${notificationId}/read`, {
+    method: "PATCH",
+    headers: getAuthHeaders(token),
+  });
+};
+
+/**
+ * Đánh dấu một thông báo là chưa đọc
+ */
+export const markAsUnread = (
+  token: string,
+  notificationId: string,
+): Promise<NotificationItem> => {
+  return request<NotificationItem>(`/notifications/${notificationId}/unread`, {
     method: "PATCH",
     headers: getAuthHeaders(token),
   });
@@ -118,42 +194,10 @@ export const markAsRead = (
 
 /**
  * Đánh dấu tất cả thông báo là đã đọc
- * @param token - Access token
  */
-export const markAllAsRead = (token: string): Promise<MarkAsReadResponse> => {
-  return request<MarkAsReadResponse>("/notifications/read-all", {
+export const markAllAsRead = (token: string): Promise<{ message: string }> => {
+  return request<{ message: string }>("/notifications/read-all/mark", {
     method: "PATCH",
-    headers: getAuthHeaders(token),
-  });
-};
-
-/**
- * Xóa một thông báo
- * @param token - Access token
- * @param notificationId - ID của thông báo
- */
-export const deleteNotification = (
-  token: string,
-  notificationId: string,
-): Promise<DeleteNotificationResponse> => {
-  return request<DeleteNotificationResponse>(
-    `/notifications/${notificationId}`,
-    {
-      method: "DELETE",
-      headers: getAuthHeaders(token),
-    },
-  );
-};
-
-/**
- * Xóa tất cả thông báo đã đọc
- * @param token - Access token
- */
-export const deleteAllRead = (
-  token: string,
-): Promise<DeleteNotificationResponse> => {
-  return request<DeleteNotificationResponse>("/notifications/read", {
-    method: "DELETE",
     headers: getAuthHeaders(token),
   });
 };
