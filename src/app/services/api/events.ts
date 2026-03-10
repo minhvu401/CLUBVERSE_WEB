@@ -46,6 +46,7 @@ export type EventItem = EventCoreFields & {
   clubName?: string;
   joinedUsers?: JoinedUser[];
   cancelledUsers?: CancelledUser[];
+  participantCount?: number;
   status: string;
   isActive: boolean;
   reminderSent: boolean;
