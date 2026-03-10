@@ -4,6 +4,9 @@
 import React, { useState } from "react";
 import { X, Hash, Loader2, Sparkles, Upload, Trash2 } from "lucide-react";
 import { createPost, type PostCoreFields } from "@/app/services/api/post";
+import { useAuth } from "@/app/providers/AuthProviders";
+import { getClubMembers } from "@/app/services/api/clubMembers";
+import { createNotification } from "@/app/services/api/notifications";
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -25,6 +28,7 @@ export default function CreatePostModal({
   onSuccess,
   token,
 }: CreatePostModalProps) {
+  const { user } = useAuth() as any;
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [tagInput, setTagInput] = useState("");
@@ -150,7 +154,41 @@ export default function CreatePostModal({
         images: imageUrls.length > 0 ? imageUrls : undefined,
       };
 
-      await createPost(token, postData);
+      const createdPost = await createPost(token, postData);
+
+      // Notify all club members about the new post
+      const clubId =
+        user?.clubId ||
+        user?.club?._id ||
+        user?.managedClubId ||
+        user?._id ||
+        user?.id;
+      console.log("[Notify] clubId =", clubId, "| user =", user);
+      if (clubId) {
+        getClubMembers(token, String(clubId))
+          .then(({ members }) => {
+            console.log("[Notify] members count =", members.length);
+            return Promise.allSettled(
+              members.map((m: { userId: string }) =>
+                createNotification(token, {
+                  userId: m.userId,
+                  title: `Bài viết mới: ${postData.title}`,
+                  message: `CLB vừa đăng bài viết mới "${postData.title}". Hãy vào xem ngay!`,
+                  type: "FORUM_REPLY",
+                  metadata: { postId: createdPost._id },
+                }),
+              ),
+            );
+          })
+          .then((results) => {
+            const failed = results.filter((r) => r.status === "rejected");
+            if (failed.length) console.error("[Notify] failed =", failed);
+            else console.log("[Notify] all notifications sent successfully");
+          })
+          .catch(console.error);
+      } else {
+        console.warn("[Notify] clubId is undefined, skipping notifications");
+      }
 
       // Reset form
       setTitle("");
@@ -184,7 +222,7 @@ export default function CreatePostModal({
       <div
         className={cn(
           "relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 md:p-8",
-          glass
+          glass,
         )}
       >
         {/* Header */}
@@ -373,7 +411,12 @@ export default function CreatePostModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || uploadingImages || !title.trim() || !content.trim()}
+              disabled={
+                isSubmitting ||
+                uploadingImages ||
+                !title.trim() ||
+                !content.trim()
+              }
               className="flex-1 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-2.5 text-sm font-bold text-slate-900 shadow-lg shadow-cyan-500/35 hover:shadow-cyan-500/55 hover:brightness-110 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
             >
               {isSubmitting || uploadingImages ? (
