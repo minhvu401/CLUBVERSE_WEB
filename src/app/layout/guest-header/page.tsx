@@ -48,7 +48,7 @@ function NavLinks({
       "relative text-base font-medium transition-colors", // ⬅️ tăng từ text-sm
       active ? "text-amber-300" : "text-white/75 hover:text-white",
       active &&
-        "after:content-[''] after:absolute after:left-0 after:-bottom-2 after:h-[2px] after:w-full after:rounded-full after:bg-amber-300/90"
+        "after:content-[''] after:absolute after:left-0 after:-bottom-2 after:h-[2px] after:w-full after:rounded-full after:bg-amber-300/90",
     );
 
   return (
@@ -95,6 +95,7 @@ export default function GuestHeader() {
     { label: "Trang Chủ", href: "/", match: ["/"] },
     { label: "Giới Thiệu", href: "/about", match: ["/about"] },
     { label: "Tính Năng", href: "/features", match: ["/features"] },
+    { label: "Bảng Giá", href: "/pricing", match: ["/pricing"] },
   ];
 
   return (

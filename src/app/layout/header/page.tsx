@@ -192,7 +192,7 @@ function UserHeader({
 }: any) {
   const navItems = [
     { label: "Trang Chủ", href: "/homepage", match: ["/", "/homepage"] },
-    // { label: "Khám Phá", href: "/finding", match: ["/finding"] },
+    { label: "Khám Phá", href: "/finding", match: ["/finding"] },
     { label: "Sự Kiện", href: "/events", match: ["/events"] },
     { label: "Câu Lạc Bộ", href: "/clubs", match: ["/clubs"] },
     { label: "Diễn Đàn", href: "/forum", match: ["/forum"] },
@@ -221,10 +221,19 @@ function UserHeader({
   );
 }
 
-function ClubHeader({ pathname, isAuthed, user, onLogout, router, token }: any) {
+function ClubHeader({
+  pathname,
+  isAuthed,
+  user,
+  onLogout,
+  router,
+  token,
+}: any) {
   const navItems = [
+    { label: "Dashboard", href: "/club/dashboard", match: ["/club/dashboard"] },
     { label: "Diễn đàn", href: "/club/forum", match: ["/club/forum"] },
     { label: "Sự kiện", href: "/club/events", match: ["/club/events"] },
+    { label: "Thành viên", href: "/club/members", match: ["/club/members"] },
     {
       label: "Đơn đăng ký",
       href: "/club/applications",
@@ -276,8 +285,12 @@ function AdminHeader({
   token,
 }: any) {
   const navItems = [
-    { label: "Dashboard", href: "/admin/dashboard", match: ["/admin/dashboard"] },
-    { label: "Users", href: "/admin/users", match: ["/admin/users"] },
+    { label: "Tổng Quan", href: "/admin", match: ["/admin"] },
+    {
+      label: "Dashboard",
+      href: "/admin/dashboard",
+      match: ["/admin/dashboard"],
+    },
     { label: "CLB", href: "/admin/clubs", match: ["/admin/clubs"] },
     {
       label: "Đơn duyệt",
