@@ -7,6 +7,8 @@ import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders";
 import { createEvent, type EventCoreFields } from "@/app/services/api/events";
+import { getClubMembers } from "@/app/services/api/clubMembers";
+import { createNotification } from "@/app/services/api/notifications";
 import {
   ArrowLeft,
   Calendar,
@@ -27,7 +29,7 @@ const glass =
 
 export default function CreateEventPage() {
   const router = useRouter();
-  const { token } = useAuth() as any;
+  const { token, user } = useAuth() as any;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -63,7 +65,33 @@ export default function CreateEventPage() {
           : undefined,
       };
 
-      await createEvent(token, eventData);
+      const createdEvent = await createEvent(token, eventData);
+
+      // Notify all club members about the new event
+      const clubId =
+        user?.clubId ||
+        user?.club?._id ||
+        user?.managedClubId ||
+        user?._id ||
+        user?.id;
+      if (clubId) {
+        getClubMembers(token, String(clubId))
+          .then(({ members }) =>
+            Promise.allSettled(
+              members.map((m: { userId: string }) =>
+                createNotification(token, {
+                  userId: m.userId,
+                  title: `Sự kiện mới: ${title.trim()}`,
+                  message: `CLB vừa tạo sự kiện mới "${title.trim()}" vào ${new Date(time).toLocaleString("vi-VN")} tại ${location.trim()}.`,
+                  type: "EVENT_UPDATE",
+                  metadata: { eventId: createdEvent._id },
+                }),
+              ),
+            ),
+          )
+          .catch(() => null);
+      }
+
       router.push("/club/events");
     } catch (err: any) {
       setError(err.message || "Có lỗi xảy ra khi tạo sự kiện");
