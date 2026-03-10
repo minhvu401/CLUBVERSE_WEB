@@ -6,7 +6,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import {
-  Bell,
   Search,
   LogOut,
   LayoutDashboard,
@@ -16,6 +15,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/app/providers/AuthProviders";
+import NotificationDropdown from "@/components/NotificationDropdown";
 
 function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
@@ -70,7 +70,7 @@ function NavLinks({
       "relative text-sm font-medium transition-colors",
       active ? "text-amber-300" : "text-white/70 hover:text-white",
       active &&
-        "after:content-[''] after:absolute after:left-0 after:-bottom-2 after:h-[2px] after:w-full after:rounded-full after:bg-amber-300/90"
+        "after:content-[''] after:absolute after:left-0 after:-bottom-2 after:h-[2px] after:w-full after:rounded-full after:bg-amber-300/90",
     );
 
   return (
@@ -91,10 +91,12 @@ function RightAuthed({
   avatarUrl,
   onProfile,
   onLogout,
+  token,
 }: {
   avatarUrl?: string;
   onProfile: () => void;
   onLogout: () => void;
+  token?: string;
 }) {
   return (
     <div className="flex items-center gap-3">
@@ -107,15 +109,8 @@ function RightAuthed({
         />
       </div>
 
-      {/* Bell */}
-      <button
-        type="button"
-        className="relative rounded-full p-2 hover:bg-white/10 transition"
-        title="Thông báo"
-      >
-        <Bell className="h-5 w-5 text-white/85" />
-        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500" />
-      </button>
+      {/* Notification Dropdown */}
+      {token && <NotificationDropdown token={token} />}
 
       {/* Avatar */}
       <button
@@ -187,7 +182,14 @@ function MobileSearch({ show }: { show: boolean }) {
 }
 
 /** ====== USER HEADER (giữ như bạn đang có) ====== */
-function UserHeader({ pathname, isAuthed, user, onLogout, router }: any) {
+function UserHeader({
+  pathname,
+  isAuthed,
+  user,
+  onLogout,
+  router,
+  token,
+}: any) {
   const navItems = [
     { label: "Trang Chủ", href: "/homepage", match: ["/", "/homepage"] },
     // { label: "Khám Phá", href: "/finding", match: ["/finding"] },
@@ -209,6 +211,7 @@ function UserHeader({ pathname, isAuthed, user, onLogout, router }: any) {
             avatarUrl={user?.avatarUrl || user?.avatar}
             onProfile={() => router.push("/profile")}
             onLogout={onLogout}
+            token={token}
           />
         )}
       </div>
@@ -218,7 +221,7 @@ function UserHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   );
 }
 
-function ClubHeader({ pathname, isAuthed, user, onLogout, router }: any) {
+function ClubHeader({ pathname, isAuthed, user, onLogout, router, token }: any) {
   const navItems = [
     { label: "Diễn đàn", href: "/club/forum", match: ["/club/forum"] },
     { label: "Sự kiện", href: "/club/events", match: ["/club/events"] },
@@ -227,7 +230,6 @@ function ClubHeader({ pathname, isAuthed, user, onLogout, router }: any) {
       href: "/club/applications",
       match: ["/club/applications"],
     },
-    { label: "Dashboard", href: "/club/dashboard", match: ["/club/dashboard"] },
   ];
 
   return (
@@ -253,6 +255,7 @@ function ClubHeader({ pathname, isAuthed, user, onLogout, router }: any) {
               avatarUrl={user?.avatarUrl || user?.avatar}
               onProfile={() => router.push("/club/profile")}
               onLogout={onLogout}
+              token={token}
             />
           </div>
         )}
@@ -264,12 +267,23 @@ function ClubHeader({ pathname, isAuthed, user, onLogout, router }: any) {
 }
 
 /** ====== ADMIN HEADER ====== */
-function AdminHeader({ pathname, isAuthed, user, onLogout, router }: any) {
+function AdminHeader({
+  pathname,
+  isAuthed,
+  user,
+  onLogout,
+  router,
+  token,
+}: any) {
   const navItems = [
     { label: "Dashboard", href: "/admin/dashboard", match: ["/admin/dashboard"] },
     { label: "Users", href: "/admin/users", match: ["/admin/users"] },
     { label: "CLB", href: "/admin/clubs", match: ["/admin/clubs"] },
-    { label: "Cài đặt", href: "/admin/settings", match: ["/admin/settings"] },
+    {
+      label: "Đơn duyệt",
+      href: "/admin/applications",
+      match: ["/admin/applications"],
+    },
   ];
 
   return (
@@ -289,8 +303,9 @@ function AdminHeader({ pathname, isAuthed, user, onLogout, router }: any) {
 
             <RightAuthed
               avatarUrl={user?.avatarUrl || user?.avatar}
-              onProfile={() => router.push("/admin/profile")}
+              onProfile={() => router.push("/profile")}
               onLogout={onLogout}
+              token={token}
             />
           </div>
         )}
@@ -323,6 +338,7 @@ export default function Header() {
         user={user}
         onLogout={onLogout}
         router={router}
+        token={token}
       />
     );
   }
@@ -336,6 +352,7 @@ export default function Header() {
         user={user}
         onLogout={onLogout}
         router={router}
+        token={token}
       />
     );
   }
@@ -348,6 +365,7 @@ export default function Header() {
         user={user}
         onLogout={onLogout}
         router={router}
+        token={token}
       />
     );
   }
@@ -359,6 +377,7 @@ export default function Header() {
       user={user}
       onLogout={onLogout}
       router={router}
+      token={token}
     />
   );
 }

@@ -48,7 +48,7 @@ type FilterType = "all" | "upcoming" | "ongoing" | "past";
 /* ================= PAGE ================= */
 export default function EventsPage() {
   const router = useRouter();
-  const { token, loading } = useAuth() as any;
+  const { user, token, loading } = useAuth() as any;
 
   const [events, setEvents] = useState<EventItem[]>([]);
   const [filter, setFilter] = useState<FilterType>("all");
@@ -317,7 +317,7 @@ export default function EventsPage() {
                     </span>
                     <span className="flex items-center gap-1">
                       <Users className="h-4 w-4" />
-                      {event.participantCount || 0}
+                      {event.joinedUsers?.length || 0}
                     </span>
                   </div>
                 </div>

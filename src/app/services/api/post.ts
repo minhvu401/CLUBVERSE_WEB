@@ -92,7 +92,7 @@ function extractPosts(payload?: ListResponse | PostItem[]): PostItem[] {
 
 export async function createPost(
   token: string,
-  body: PostCoreFields
+  body: PostCoreFields,
 ): Promise<PostItem> {
   return request<PostItem>(token, POSTS_URL, {
     method: "POST",
@@ -102,11 +102,11 @@ export async function createPost(
 
 export async function getAllPosts(
   token: string,
-  params?: PostsQuery
+  params?: PostsQuery,
 ): Promise<PostItem[]> {
   const payload = await request<ListResponse | PostItem[]>(
     token,
-    withQuery(POSTS_URL, params)
+    withQuery(POSTS_URL, params),
   );
   return extractPosts(payload);
 }
@@ -114,7 +114,7 @@ export async function getAllPosts(
 export async function getClubPosts(
   token: string,
   clubId: string,
-  params?: Omit<PostsQuery, "clubId">
+  params?: Omit<PostsQuery, "clubId">,
 ): Promise<PostItem[]> {
   const path = withQuery(`${POSTS_URL}/club/${clubId}`, params);
   const payload = await request<ListResponse | PostItem[]>(token, path);
@@ -127,14 +127,14 @@ export async function getDeletedPosts(token: string): Promise<PostItem[]> {
     `${POSTS_URL}/deleted`,
     {
       method: "GET",
-    }
+    },
   );
   return extractPosts(payload);
 }
 
 export async function getPostById(
   token: string,
-  id: string
+  id: string,
 ): Promise<PostItem> {
   return request<PostItem>(token, `${POSTS_URL}/${id}`);
 }
@@ -142,7 +142,7 @@ export async function getPostById(
 export async function updatePost(
   token: string,
   id: string,
-  body: PostCoreFields
+  body: PostCoreFields,
 ): Promise<PostItem> {
   return request<PostItem>(token, `${POSTS_URL}/${id}`, {
     method: "PATCH",
@@ -152,7 +152,7 @@ export async function updatePost(
 
 export async function deletePost(
   token: string,
-  id: string
+  id: string,
 ): Promise<{ message?: string }> {
   return request<{ message?: string }>(token, `${POSTS_URL}/${id}`, {
     method: "DELETE",
@@ -161,7 +161,7 @@ export async function deletePost(
 
 export async function restorePost(
   token: string,
-  id: string
+  id: string,
 ): Promise<{ message?: string }> {
   return request<{ message?: string }>(token, `${POSTS_URL}/${id}/restore`, {
     method: "PATCH",
@@ -170,7 +170,7 @@ export async function restorePost(
 
 export async function deletePostPermanently(
   token: string,
-  id: string
+  id: string,
 ): Promise<{ message?: string }> {
   return request<{ message?: string }>(token, `${POSTS_URL}/${id}/permanent`, {
     method: "DELETE",
@@ -179,7 +179,7 @@ export async function deletePostPermanently(
 
 export async function likePost(
   token: string,
-  id: string
+  id: string,
 ): Promise<{ message?: string }> {
   return request<{ message?: string }>(token, `${POSTS_URL}/${id}/like`, {
     method: "POST",
@@ -188,7 +188,7 @@ export async function likePost(
 
 export async function unlikePost(
   token: string,
-  id: string
+  id: string,
 ): Promise<{ message?: string }> {
   return request<{ message?: string }>(token, `${POSTS_URL}/${id}/unlike`, {
     method: "DELETE",

@@ -60,7 +60,7 @@ function TabButton({
         "inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition border",
         active
           ? "border-cyan-400/50 bg-cyan-400/20 text-cyan-200"
-          : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10"
+          : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
       )}
     >
       {icon}
@@ -86,7 +86,7 @@ export default function ClubEventsPage() {
 
   const isClubRole = useMemo(
     () => String(user?.role || "").toLowerCase() === "club",
-    [user?.role]
+    [user?.role],
   );
 
   useEffect(() => {
@@ -144,7 +144,7 @@ export default function ClubEventsPage() {
   const hasPrevPage = page > 1;
 
   const getEventStatus = (
-    event: EventItem
+    event: EventItem,
   ): "upcoming" | "ongoing" | "past" => {
     if (!event.time) return "upcoming";
     const now = new Date();
@@ -169,7 +169,7 @@ export default function ClubEventsPage() {
         (e) =>
           e.title.toLowerCase().includes(query) ||
           e.description.toLowerCase().includes(query) ||
-          e.location.toLowerCase().includes(query)
+          e.location.toLowerCase().includes(query),
       );
     }
 
@@ -179,7 +179,7 @@ export default function ClubEventsPage() {
   const handleDelete = async (eventId: string) => {
     if (!token) return;
     const confirm = window.confirm(
-      "Bạn có chắc chắn muốn xóa sự kiện này không?"
+      "Bạn có chắc chắn muốn xóa sự kiện này không?",
     );
     if (!confirm) return;
 
@@ -281,7 +281,7 @@ export default function ClubEventsPage() {
                   "rounded-full px-4 py-2 text-sm font-semibold transition border",
                   statusFilter === "all"
                     ? "border-cyan-400/50 bg-cyan-400/20 text-cyan-200"
-                    : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10"
+                    : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
                 )}
               >
                 Tất cả
@@ -292,7 +292,7 @@ export default function ClubEventsPage() {
                   "inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition border",
                   statusFilter === "upcoming"
                     ? "border-blue-400/50 bg-blue-400/20 text-blue-200"
-                    : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10"
+                    : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
                 )}
               >
                 <Clock className="h-4 w-4" />
@@ -304,7 +304,7 @@ export default function ClubEventsPage() {
                   "inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition border",
                   statusFilter === "ongoing"
                     ? "border-green-400/50 bg-green-400/20 text-green-200"
-                    : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10"
+                    : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
                 )}
               >
                 <CheckCircle className="h-4 w-4" />
@@ -316,7 +316,7 @@ export default function ClubEventsPage() {
                   "inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition border",
                   statusFilter === "past"
                     ? "border-gray-400/50 bg-gray-400/20 text-gray-200"
-                    : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10"
+                    : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
                 )}
               >
                 <XCircle className="h-4 w-4" />
@@ -370,7 +370,7 @@ export default function ClubEventsPage() {
                 key={event._id}
                 className={cn(
                   "relative overflow-hidden rounded-3xl p-6",
-                  glass
+                  glass,
                 )}
               >
                 <div className="flex flex-col md:flex-row gap-6">
@@ -406,7 +406,7 @@ export default function ClubEventsPage() {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-white/70">
                         <Users className="h-4 w-4 text-emerald-400" />
-                        {event.participantCount || 0}
+                        {event.joinedUsers?.length || 0}
                         {event.maxParticipants
                           ? ` / ${event.maxParticipants}`
                           : ""}{" "}
@@ -443,7 +443,7 @@ export default function ClubEventsPage() {
                           <button
                             onClick={() =>
                               router.push(
-                                `/club/events/${event._id}/participants`
+                                `/club/events/${event._id}/participants`,
                               )
                             }
                             className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/20 transition"
