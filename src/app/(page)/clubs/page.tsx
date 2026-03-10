@@ -156,7 +156,7 @@ CÂU LẠC BỘ
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Tìm câu lạc bộ bạn quan tâm..."
+              placeholder=" bộ bạn quan tâm..."
               className="flex-1 bg-transparent outline-none text-sm placeholder:text-white/45"
             />
           </div>

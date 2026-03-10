@@ -44,7 +44,7 @@ export default function HomePage() {
               <button className="group relative rounded-full bg-sky-400 px-6 py-2 text-xs font-semibold text-slate-950 shadow-xl shadow-sky-500/40 transition-all duration-300 hover:bg-sky-300 hover:scale-105 hover:shadow-2xl hover:shadow-sky-500/60">
                 <span className="relative z-10">Tìm câu lạc bộ ngay</span>
                 <span className="absolute inset-0 rounded-full bg-gradient-to-r from-sky-300 to-cyan-300 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                <span className="relative z-10">Tìm câu lạc bộ ngay</span>
+
               </button>
             </Link>
           </div>
@@ -195,7 +195,7 @@ export default function HomePage() {
             <button className="group relative mt-5 rounded-full bg-sky-400 px-6 py-2 text-xs font-semibold text-slate-950 shadow-xl shadow-sky-500/40 transition-all duration-300 hover:bg-sky-300 hover:scale-110 hover:shadow-2xl hover:shadow-sky-400/70 animate-fade-in delay-200">
               <span className="relative z-10">Bắt đầu ngay</span>
               <span className="absolute inset-0 rounded-full bg-gradient-to-r from-sky-300 via-cyan-300 to-blue-300 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-hover:animate-pulse" />
-              <span className="relative z-10">Bắt đầu ngay</span>
+
             </button>
           </div>
         </section>
