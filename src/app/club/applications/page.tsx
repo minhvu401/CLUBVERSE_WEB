@@ -12,6 +12,8 @@ import {
   approveApplication,
   rejectApplication,
 } from "@/app/services/api/applications";
+import { createNotification } from "@/app/services/api/notifications";
+import SendNotificationModal from "@/components/SendNotificationModal";
 
 import {
   CheckCircle2,
@@ -49,6 +51,7 @@ type AppStatus = "PENDING" | "APPROVED" | "REJECTED" | "ACCEPTED" | "DECLINED";
 
 type Application = {
   id: string;
+  userId?: string;
   name: string;
   meta: string;
   reason: string;
@@ -89,7 +92,7 @@ function StatCard({
         <div
           className={cn(
             "h-9 w-9 rounded-xl grid place-items-center border",
-            toneMap[tone]
+            toneMap[tone],
           )}
         >
           {icon}
@@ -134,7 +137,7 @@ function StatusBadge({ status }: { status: AppStatus }) {
     <span
       className={cn(
         "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[0.72rem] font-semibold",
-        cfg.cls
+        cfg.cls,
       )}
     >
       <span className={cn("h-1.5 w-1.5 rounded-full", cfg.dot)} />
@@ -169,7 +172,7 @@ function ActionButton({
       className={cn(
         "inline-flex items-center gap-2 rounded-full px-4 py-2 text-[0.72rem] font-semibold transition",
         map[tone],
-        disabled && "opacity-60 cursor-not-allowed"
+        disabled && "opacity-60 cursor-not-allowed",
       )}
     >
       {children}
@@ -208,7 +211,7 @@ function Modal({
               onClick={() => !busy && onClose()}
               className={cn(
                 "grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.06] hover:bg-white/[0.10]",
-                busy && "opacity-60 cursor-not-allowed"
+                busy && "opacity-60 cursor-not-allowed",
               )}
               disabled={busy}
             >
@@ -229,14 +232,14 @@ function mapAppFromApi(raw: any): Application {
     s === "PENDING"
       ? "PENDING"
       : s === "APPROVED"
-      ? "APPROVED"
-      : s === "REJECTED"
-      ? "REJECTED"
-      : s === "ACCEPTED"
-      ? "ACCEPTED"
-      : s === "DECLINED"
-      ? "DECLINED"
-      : "PENDING";
+        ? "APPROVED"
+        : s === "REJECTED"
+          ? "REJECTED"
+          : s === "ACCEPTED"
+            ? "ACCEPTED"
+            : s === "DECLINED"
+              ? "DECLINED"
+              : "PENDING";
 
   const u = raw?.userId ?? {};
   const name = u?.fullName ?? "Không rõ tên";
@@ -254,6 +257,7 @@ function mapAppFromApi(raw: any): Application {
 
   return {
     id: String(raw?._id ?? raw?.id ?? ""),
+    userId: typeof raw?.userId === "string" ? raw.userId : String(u?._id ?? ""),
     name,
     meta,
     reason: raw?.reason ?? "",
@@ -272,7 +276,7 @@ export default function ClubApplicationsPage() {
 
   const isClubRole = useMemo(
     () => String(user?.role || "").toLowerCase() === "club",
-    [user?.role]
+    [user?.role],
   );
 
   useEffect(() => {
@@ -308,6 +312,9 @@ export default function ClubApplicationsPage() {
     const t = setTimeout(() => setToast(null), 2300);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // send notification modal
+  const [notifModalOpen, setNotifModalOpen] = useState(false);
 
   // approve modal
   const [approveOpen, setApproveOpen] = useState(false);
@@ -431,10 +438,25 @@ export default function ClubApplicationsPage() {
       });
 
       setApps((prev) =>
-        prev.map((a) => (a.id === approveId ? { ...a, status: "APPROVED" } : a))
+        prev.map((a) =>
+          a.id === approveId ? { ...a, status: "APPROVED" } : a,
+        ),
       );
 
       setToast({ type: "ok", text: data?.message || "Duyệt đơn thành công" });
+
+      // Gửi thông báo cho ứng viên
+      const approvedApp = apps.find((a) => a.id === approveId);
+      if (approvedApp?.userId) {
+        createNotification(token, {
+          userId: approvedApp.userId,
+          title: "Đơn đăng ký đã được duyệt ✓",
+          message: `Chúc mừng! Đơn đăng ký của bạn đã được duyệt. Địa điểm phỏng vấn: ${interviewLocation.trim()}.`,
+          type: "APPLICATION_STATUS",
+          metadata: { applicationId: approveId },
+        }).catch(() => null);
+      }
+
       setApproveOpen(false);
       setApproveId(null);
     } catch (e: any) {
@@ -468,10 +490,23 @@ export default function ClubApplicationsPage() {
       });
 
       setApps((prev) =>
-        prev.map((a) => (a.id === rejectId ? { ...a, status: "REJECTED" } : a))
+        prev.map((a) => (a.id === rejectId ? { ...a, status: "REJECTED" } : a)),
       );
 
       setToast({ type: "ok", text: data?.message || "Từ chối đơn thành công" });
+
+      // Gửi thông báo cho ứng viên
+      const rejectedApp = apps.find((a) => a.id === rejectId);
+      if (rejectedApp?.userId) {
+        createNotification(token, {
+          userId: rejectedApp.userId,
+          title: "Kết quả đơn đăng ký",
+          message: `Rất tiếc! Đơn đăng ký của bạn chưa được chấp nhận. Lý do: ${rejectionReason.trim()}`,
+          type: "APPLICATION_STATUS",
+          metadata: { applicationId: rejectId },
+        }).catch(() => null);
+      }
+
       setRejectOpen(false);
       setRejectId(null);
     } catch (e: any) {
@@ -517,7 +552,7 @@ export default function ClubApplicationsPage() {
               "rounded-2xl border px-4 py-2 text-[0.78rem] backdrop-blur-xl shadow-lg",
               toast.type === "ok"
                 ? "border-emerald-400/20 bg-emerald-500/15 text-emerald-50"
-                : "border-rose-400/20 bg-rose-500/15 text-rose-50"
+                : "border-rose-400/20 bg-rose-500/15 text-rose-50",
             )}
           >
             {toast.text}
@@ -526,17 +561,39 @@ export default function ClubApplicationsPage() {
       ) : null}
 
       <main className="mx-auto max-w-6xl px-4 pb-14 pt-10">
-        <div className="mb-5">
-          <div className="text-sm text-white/60">Approve application</div>
-          <h1 className="mt-1 text-xl font-semibold text-white">
-            Đơn Gia Nhập Câu Lạc Bộ
-          </h1>
-          <p className="mt-1 text-sm text-white/60">
-            Xem xét và phê duyệt đơn đăng ký thành viên mới
-          </p>
-          {fetchErr ? (
-            <div className="mt-2 text-sm text-rose-200/90">{fetchErr}</div>
-          ) : null}
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <div className="text-sm text-white/60">Quản lý đơn đăng ký</div>
+            <h1 className="mt-1 text-xl font-semibold text-white">
+              Đơn Gia Nhập Câu Lạc Bộ
+            </h1>
+            <p className="mt-1 text-sm text-white/60">
+              Xem xét và phê duyệt đơn đăng ký thành viên mới
+            </p>
+            {fetchErr ? (
+              <div className="mt-2 text-sm text-rose-200/90">{fetchErr}</div>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={() => setNotifModalOpen(true)}
+            className="shrink-0 inline-flex items-center gap-2 rounded-full bg-indigo-500/80 hover:bg-indigo-500 px-4 py-2 text-[0.78rem] font-semibold text-white shadow-[0_8px_24px_rgba(99,102,241,0.25)] transition"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+            >
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            Gửi thông báo CLB
+          </button>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
@@ -809,7 +866,7 @@ export default function ClubApplicationsPage() {
               onClick={() => setApproveOpen(false)}
               className={cn(
                 "rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[0.78rem] font-semibold text-white/80 hover:bg-white/[0.10]",
-                submittingApprove && "opacity-60 cursor-not-allowed"
+                submittingApprove && "opacity-60 cursor-not-allowed",
               )}
             >
               Hủy
@@ -821,7 +878,7 @@ export default function ClubApplicationsPage() {
               onClick={submitApprove}
               className={cn(
                 "rounded-full bg-emerald-500/85 px-4 py-2 text-[0.78rem] font-semibold text-white hover:bg-emerald-500",
-                submittingApprove && "opacity-60 cursor-not-allowed"
+                submittingApprove && "opacity-60 cursor-not-allowed",
               )}
             >
               {submittingApprove ? "Đang duyệt..." : "Xác nhận duyệt"}
@@ -829,6 +886,15 @@ export default function ClubApplicationsPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Gửi thông báo CLB */}
+      <SendNotificationModal
+        open={notifModalOpen}
+        onClose={() => setNotifModalOpen(false)}
+        token={token}
+        mode="club"
+        clubId={clubId}
+      />
 
       {/* ✅ MODAL TỪ CHỐI */}
       <Modal
@@ -857,7 +923,7 @@ export default function ClubApplicationsPage() {
               onClick={() => setRejectOpen(false)}
               className={cn(
                 "rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[0.78rem] font-semibold text-white/80 hover:bg-white/[0.10]",
-                submittingReject && "opacity-60 cursor-not-allowed"
+                submittingReject && "opacity-60 cursor-not-allowed",
               )}
             >
               Hủy
@@ -869,7 +935,7 @@ export default function ClubApplicationsPage() {
               onClick={submitReject}
               className={cn(
                 "rounded-full bg-rose-500/85 px-4 py-2 text-[0.78rem] font-semibold text-white hover:bg-rose-500",
-                submittingReject && "opacity-60 cursor-not-allowed"
+                submittingReject && "opacity-60 cursor-not-allowed",
               )}
             >
               {submittingReject ? "Đang từ chối..." : "Xác nhận từ chối"}

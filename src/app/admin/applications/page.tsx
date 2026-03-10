@@ -19,6 +19,8 @@ import {
   type MyApplication,
   type ApplicantProfile,
 } from "@/app/services/api/applications";
+import { createNotification } from "@/app/services/api/notifications";
+import SendNotificationModal from "@/components/SendNotificationModal";
 
 import {
   AlertCircle,
@@ -61,7 +63,7 @@ function toInputDateTime(value?: string) {
   if (Number.isNaN(date.getTime())) return "";
   const pad = (n: number) => `${n}`.padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-    date.getDate()
+    date.getDate(),
   )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
@@ -102,7 +104,7 @@ function StatCard({
         <div
           className={cn(
             "h-9 w-9 rounded-xl grid place-items-center border",
-            toneMap[tone]
+            toneMap[tone],
           )}
         >
           {icon}
@@ -166,7 +168,7 @@ function StatusBadge({ status }: { status: ApiStatus }) {
     <span
       className={cn(
         "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[0.72rem] font-semibold",
-        cfg.cls
+        cfg.cls,
       )}
     >
       <span className={cn("h-1.5 w-1.5 rounded-full", cfg.dot)} />
@@ -201,7 +203,7 @@ function Modal({
       <div
         className={cn(
           "absolute left-1/2 top-1/2 w-[92vw] -translate-x-1/2 -translate-y-1/2 max-h-[92vh] overflow-y-auto",
-          maxWidth
+          maxWidth,
         )}
       >
         <div className={cn("rounded-3xl p-5", glass)}>
@@ -234,7 +236,7 @@ export default function ClubAdminApplicationsPage() {
 
   const isAdmin = useMemo(
     () => String(user?.role || "").toLowerCase() === "admin",
-    [user?.role]
+    [user?.role],
   );
 
   useEffect(() => {
@@ -302,7 +304,7 @@ export default function ClubAdminApplicationsPage() {
     if (!clubIdFromProfile) {
       setApps([]);
       setFetchErr(
-        "Tài khoản chưa được gán CLB quản lý. Đang hiển thị dữ liệu demo."
+        "Tài khoản chưa được gán CLB quản lý. Đang hiển thị dữ liệu demo.",
       );
       return;
     }
@@ -388,7 +390,7 @@ export default function ClubAdminApplicationsPage() {
           setDetailErr(
             error instanceof Error
               ? error.message
-              : "Không thể tải chi tiết đơn đăng ký"
+              : "Không thể tải chi tiết đơn đăng ký",
           );
         }
       } finally {
@@ -406,6 +408,7 @@ export default function ClubAdminApplicationsPage() {
     app: MyApplication;
   } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [notifModalOpen, setNotifModalOpen] = useState(false);
   const [approveForm, setApproveForm] = useState({
     interviewDate: "",
     interviewLocation: "",
@@ -422,7 +425,7 @@ export default function ClubAdminApplicationsPage() {
 
   const openAction = (
     type: "approve" | "reject" | "final",
-    app: MyApplication
+    app: MyApplication,
   ) => {
     setActionModal({ type, app });
     setActionLoading(false);
@@ -476,6 +479,19 @@ export default function ClubAdminApplicationsPage() {
         interviewLocation: approveForm.interviewLocation,
         interviewNote: approveForm.interviewNote?.trim() || undefined,
       });
+
+      // Gửi thông báo cho ứng viên
+      const applicantId = pickApplicant(actionModal.app)._id;
+      if (applicantId) {
+        createNotification(token, {
+          userId: applicantId,
+          title: "Đơn đăng ký đã được duyệt ✓",
+          message: `Chúc mừng! Đơn đăng ký của bạn đã được duyệt. Địa điểm phỏng vấn: ${approveForm.interviewLocation}. Thời gian: ${new Date(approveForm.interviewDate).toLocaleString("vi-VN")}.`,
+          type: "APPLICATION_STATUS",
+          metadata: { applicationId: actionModal.app._id },
+        }).catch(() => null);
+      }
+
       setToast({ type: "ok", text: "Đã gửi lịch phỏng vấn" });
       closeAction();
       await refreshApplications();
@@ -504,6 +520,19 @@ export default function ClubAdminApplicationsPage() {
         id: actionModal.app._id,
         rejectionReason: rejectReason.trim(),
       });
+
+      // Gửi thông báo cho ứng viên
+      const applicantId = pickApplicant(actionModal.app)._id;
+      if (applicantId) {
+        createNotification(token, {
+          userId: applicantId,
+          title: "Kết quả đơn đăng ký",
+          message: `Rất tiếc! Đơn đăng ký của bạn chưa được chấp nhận. Lý do: ${rejectReason.trim()}`,
+          type: "APPLICATION_STATUS",
+          metadata: { applicationId: actionModal.app._id },
+        }).catch(() => null);
+      }
+
       setToast({ type: "ok", text: "Đã từ chối ứng viên" });
       closeAction();
       await refreshApplications();
@@ -538,6 +567,24 @@ export default function ClubAdminApplicationsPage() {
             ? finalForm.rejectionReason.trim()
             : undefined,
       });
+
+      // Gửi thông báo cho ứng viên
+      const applicantId = pickApplicant(actionModal.app)._id;
+      if (applicantId) {
+        const accepted = finalForm.decision === "accepted";
+        createNotification(token, {
+          userId: applicantId,
+          title: accepted
+            ? "Được nhận vào câu lạc bộ! 🎉"
+            : "Kết quả sau phỏng vấn",
+          message: accepted
+            ? "Chúc mừng! Bạn đã chính thức trở thành thành viên của câu lạc bộ."
+            : `Rất tiếc, bạn chưa được nhận. Lý do: ${finalForm.rejectionReason}`,
+          type: "APPLICATION_STATUS",
+          metadata: { applicationId: actionModal.app._id },
+        }).catch(() => null);
+      }
+
       setToast({ type: "ok", text: "Đã cập nhật kết quả cuối" });
       closeAction();
       await refreshApplications();
@@ -584,7 +631,7 @@ export default function ClubAdminApplicationsPage() {
               "rounded-2xl border px-4 py-2 text-[0.78rem] backdrop-blur-xl shadow-lg",
               toast.type === "ok"
                 ? "border-emerald-400/20 bg-emerald-500/15 text-emerald-50"
-                : "border-rose-400/20 bg-rose-500/15 text-rose-50"
+                : "border-rose-400/20 bg-rose-500/15 text-rose-50",
             )}
           >
             {toast.text}
@@ -593,25 +640,47 @@ export default function ClubAdminApplicationsPage() {
       ) : null}
 
       <main className="mx-auto max-w-7xl px-4 pb-16 pt-10">
-        <div className="mb-6 space-y-2">
-          <div className="text-sm text-white/60">Admin CLB</div>
-          <h1 className="text-2xl font-semibold text-white">
-            Quản Lý Đơn Đăng Ký
-          </h1>
-          <p className="text-sm text-white/65">
-            Theo dõi trạng thái, gửi lịch phỏng vấn và đưa ra quyết định cuối
-            cùng cho ứng viên của CLB.
-          </p>
-          <div className="text-xs text-white/70">
-            Đang quản lý:{" "}
-            <span className="font-semibold text-white">
-              {managedClub.fullName}
-            </span>
-            {isDemoMode ? " (demo)" : ""}
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <div className="text-sm text-white/60">Admin CLB</div>
+            <h1 className="text-2xl font-semibold text-white">
+              Quản Lý Đơn Đăng Ký
+            </h1>
+            <p className="text-sm text-white/65">
+              Theo dõi trạng thái, gửi lịch phỏng vấn và đưa ra quyết định cuối
+              cùng cho ứng viên của CLB.
+            </p>
+            <div className="text-xs text-white/70">
+              Đang quản lý:{" "}
+              <span className="font-semibold text-white">
+                {managedClub.fullName}
+              </span>
+              {isDemoMode ? " (demo)" : ""}
+            </div>
+            {fetchErr ? (
+              <div className="text-sm text-rose-200/90">{fetchErr}</div>
+            ) : null}
           </div>
-          {fetchErr ? (
-            <div className="text-sm text-rose-200/90">{fetchErr}</div>
-          ) : null}
+          <button
+            type="button"
+            onClick={() => setNotifModalOpen(true)}
+            className="shrink-0 inline-flex items-center gap-2 rounded-full bg-rose-500/80 hover:bg-rose-500 px-4 py-2 text-[0.78rem] font-semibold text-white shadow-[0_8px_24px_rgba(239,68,68,0.25)] transition"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+            >
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            Gửi thông báo hệ thống
+          </button>
         </div>
 
         <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
@@ -1159,7 +1228,7 @@ export default function ClubAdminApplicationsPage() {
                         ? option.value === "accepted"
                           ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-50"
                           : "border-white/40 bg-white/20 text-white"
-                        : "border-white/10 bg-white/4 text-white/70"
+                        : "border-white/10 bg-white/4 text-white/70",
                     )}
                   >
                     {option.label}
@@ -1208,6 +1277,14 @@ export default function ClubAdminApplicationsPage() {
           </form>
         )}
       </Modal>
+
+      {/* Gửi thông báo hệ thống */}
+      <SendNotificationModal
+        open={notifModalOpen}
+        onClose={() => setNotifModalOpen(false)}
+        token={token}
+        mode="system"
+      />
     </div>
   );
 }
