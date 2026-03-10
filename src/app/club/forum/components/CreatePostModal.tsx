@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, ImagePlus, Hash, Loader2 } from "lucide-react";
+import { X, Hash, Loader2, Sparkles, Upload, Trash2 } from "lucide-react";
 import { createPost, type PostCoreFields } from "@/app/services/api/post";
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -29,8 +29,11 @@ export default function CreatePostModal({
   const [content, setContent] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [images, setImages] = useState<{ url: string; file?: File }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [imageError, setImageError] = useState("");
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   const handleAddTag = () => {
     const tag = tagInput.trim();
@@ -44,6 +47,83 @@ export default function CreatePostModal({
     setTags(tags.filter((t) => t !== tagToRemove));
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImageError("");
+    const files = e.target.files;
+    if (!files) return;
+
+    const newImages: { url: string; file: File }[] = [];
+    let error = false;
+
+    Array.from(files).forEach((file) => {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setImageError("Kích thước file không được vượt quá 5MB");
+        error = true;
+        return;
+      }
+
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        setImageError("Chỉ chấp nhận file hình ảnh");
+        error = true;
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (result) {
+          newImages.push({ url: result, file });
+          if (newImages.length === Array.from(files).length && !error) {
+            setImages([...images, ...newImages].slice(0, 5)); // Max 5 images
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Reset input
+    e.target.value = "";
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImages(images.filter((_, i) => i !== index));
+  };
+
+  const uploadImages = async (): Promise<string[]> => {
+    const uploadedUrls: string[] = [];
+
+    for (const img of images) {
+      if (img.file) {
+        try {
+          const formData = new FormData();
+          formData.append("file", img.file);
+
+          const res = await fetch("/api/upload-post-image", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.message || "Upload ảnh thất bại");
+          }
+
+          const data = await res.json();
+          uploadedUrls.push(data.url);
+        } catch (err: any) {
+          throw new Error(err.message || "Lỗi khi upload ảnh");
+        }
+      } else {
+        // Nếu là URL cũ (từ edit), giữ lại
+        uploadedUrls.push(img.url);
+      }
+    }
+
+    return uploadedUrls;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -54,11 +134,20 @@ export default function CreatePostModal({
     }
 
     setIsSubmitting(true);
+    setUploadingImages(true);
+
     try {
+      // Upload images first
+      let imageUrls: string[] = [];
+      if (images.length > 0) {
+        imageUrls = await uploadImages();
+      }
+
       const postData: PostCoreFields = {
         title: title.trim(),
         content: content.trim(),
         tags: tags.length > 0 ? tags : undefined,
+        images: imageUrls.length > 0 ? imageUrls : undefined,
       };
 
       await createPost(token, postData);
@@ -68,6 +157,8 @@ export default function CreatePostModal({
       setContent("");
       setTags([]);
       setTagInput("");
+      setImages([]);
+      setImageError("");
 
       onSuccess?.();
       onClose();
@@ -75,6 +166,7 @@ export default function CreatePostModal({
       setError(err.message || "Có lỗi xảy ra khi tạo bài viết");
     } finally {
       setIsSubmitting(false);
+      setUploadingImages(false);
     }
   };
 
@@ -91,31 +183,34 @@ export default function CreatePostModal({
       {/* Modal */}
       <div
         className={cn(
-          "relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-6",
+          "relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 md:p-8",
           glass
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-white">Tạo bài viết mới</h2>
-            <p className="text-sm text-white/60 mt-1">
-              Chia sẻ kiến thức và thông tin với cộng đồng
+        <div className="flex items-start justify-between mb-6">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-1">
+              <h2 className="text-2xl font-bold text-white">Tạo bài viết</h2>
+              <Sparkles className="h-5 w-5 text-cyan-400" />
+            </div>
+            <p className="text-sm text-white/60">
+              Chia sẻ kiến thức với cộng đồng
             </p>
           </div>
           <button
             onClick={onClose}
-            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10] transition"
+            className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10] transition"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Error message */}
           {error && (
-            <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-200">
+            <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-200/90">
               {error}
             </div>
           )}
@@ -129,11 +224,11 @@ export default function CreatePostModal({
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Nhập tiêu đề bài viết..."
-              className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white placeholder:text-white/40 focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+              placeholder="Ví dụ: Mẹo học lập trình hiệu quả..."
+              className="w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white placeholder:text-white/35 focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 transition"
               maxLength={200}
             />
-            <div className="mt-1 text-xs text-white/40 text-right">
+            <div className="mt-1.5 text-xs text-white/40 text-right">
               {title.length}/200
             </div>
           </div>
@@ -146,11 +241,11 @@ export default function CreatePostModal({
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Viết nội dung bài viết của bạn..."
-              rows={8}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white placeholder:text-white/40 focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 resize-none"
+              placeholder="Viết nội dung bài viết của bạn tại đây..."
+              rows={7}
+              className="w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white placeholder:text-white/35 focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 transition resize-none"
             />
-            <div className="mt-1 text-xs text-white/40 text-right">
+            <div className="mt-1.5 text-xs text-white/40 text-right">
               {content.length} ký tự
             </div>
           </div>
@@ -171,13 +266,13 @@ export default function CreatePostModal({
                     handleAddTag();
                   }
                 }}
-                placeholder="Nhập tag và nhấn Enter..."
-                className="flex-1 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-white placeholder:text-white/40 focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+                placeholder="Thêm tag (nhấn Enter)..."
+                className="flex-1 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-white placeholder:text-white/35 focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 transition"
               />
               <button
                 type="button"
                 onClick={handleAddTag}
-                className="px-4 py-2 rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10] transition text-sm font-semibold"
+                className="px-4 py-2 rounded-2xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10] transition text-sm font-semibold"
               >
                 Thêm
               </button>
@@ -186,61 +281,111 @@ export default function CreatePostModal({
             {/* Tags list */}
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-3">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-2 rounded-full border border-violet-400/25 bg-violet-400/12 px-3 py-1 text-sm text-violet-200"
+                {tags.map((tag) => {
+                  const cleanTag = tag.startsWith("#") ? tag.slice(1) : tag;
+                  return (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-violet-400/25 bg-violet-400/12 px-3 py-1.5 text-xs font-semibold text-violet-200"
+                    >
+                      <Hash className="h-3 w-3" />
+                      {cleanTag}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="hover:text-white transition"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Images */}
+          <div>
+            <label className="block text-sm font-semibold text-white mb-2">
+              Hình ảnh
+            </label>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
+              id="image-input"
+            />
+            <label
+              htmlFor="image-input"
+              className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/10 bg-white/[0.03] p-6 cursor-pointer hover:border-cyan-400/30 hover:bg-cyan-400/5 transition"
+            >
+              <Upload className="h-8 w-8 text-cyan-400/60 mb-2" />
+              <p className="text-sm font-medium text-white">
+                Chọn ảnh hoặc kéo thả
+              </p>
+              <p className="text-xs text-white/40 mt-1">
+                Tối đa 5 ảnh, mỗi ảnh tối đa 5MB
+              </p>
+            </label>
+
+            {imageError && (
+              <p className="mt-2 text-xs text-red-200/90">{imageError}</p>
+            )}
+
+            {/* Images preview */}
+            {images.length > 0 && (
+              <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
+                {images.map((img, idx) => (
+                  <div
+                    key={idx}
+                    className="relative rounded-xl overflow-hidden border border-white/10 bg-white/[0.04] aspect-square"
                   >
-                    <Hash className="h-3.5 w-3.5" />
-                    {tag}
+                    <img
+                      src={img.url}
+                      alt={`preview-${idx}`}
+                      className="h-full w-full object-cover"
+                    />
                     <button
                       type="button"
-                      onClick={() => handleRemoveTag(tag)}
-                      className="hover:text-white transition"
+                      onClick={() => handleRemoveImage(idx)}
+                      disabled={uploadingImages}
+                      className="absolute top-1 right-1 grid h-6 w-6 place-items-center rounded-lg bg-red-500/80 hover:bg-red-600 transition disabled:opacity-50"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <Trash2 className="h-3 w-3 text-white" />
                     </button>
-                  </span>
+                  </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Images section (placeholder for future implementation) */}
-          <div>
-            <label className="block text-sm font-semibold text-white mb-2">
-              Hình ảnh (Coming soon)
-            </label>
-            <div className="rounded-xl border-2 border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
-              <ImagePlus className="h-10 w-10 text-white/30 mx-auto mb-2" />
-              <p className="text-sm text-white/40">
-                Tính năng upload ảnh sẽ được cập nhật sớm
-              </p>
-            </div>
-          </div>
-
           {/* Actions */}
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="flex-1 rounded-full border border-white/10 bg-white/[0.06] px-5 py-3 text-sm font-semibold text-white/85 hover:bg-white/[0.10] transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 rounded-full border border-white/10 bg-white/[0.06] px-5 py-2.5 text-sm font-semibold text-white/85 hover:bg-white/[0.10] transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Hủy
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !title.trim() || !content.trim()}
-              className="flex-1 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 text-sm font-bold text-slate-900 shadow-lg shadow-cyan-500/35 hover:shadow-cyan-500/55 hover:brightness-110 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              disabled={isSubmitting || uploadingImages || !title.trim() || !content.trim()}
+              className="flex-1 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-2.5 text-sm font-bold text-slate-900 shadow-lg shadow-cyan-500/35 hover:shadow-cyan-500/55 hover:brightness-110 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
             >
-              {isSubmitting ? (
+              {isSubmitting || uploadingImages ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Đang tạo...
+                  {uploadingImages ? "Đang upload ảnh..." : "Đang tạo..."}
                 </>
               ) : (
-                "Tạo bài viết"
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Tạo bài viết
+                </>
               )}
             </button>
           </div>

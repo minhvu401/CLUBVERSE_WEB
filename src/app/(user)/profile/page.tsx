@@ -35,6 +35,7 @@ import {
   LogOut,
   UploadCloud,
   ImageIcon,
+  Check,
 } from "lucide-react";
 
 type Chip = { id: string; label: string };
@@ -170,7 +171,6 @@ function ChipPill({
   );
 }
 
-/** ✅ FIX: ChevronDown canh giữa, không lệch */
 function Select({
   value,
   onChange,
@@ -187,7 +187,7 @@ function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none rounded-xl border border-white/10 bg-white/6 pl-3 pr-10 py-2 text-[0.78rem] leading-tight text-white/90 outline-none focus:border-white/20"
+        className="w-full appearance-none rounded-xl border border-white/10 bg-white/6 pl-3 pr-10 py-2.5 text-[0.78rem] leading-tight text-white/90 outline-none transition focus:border-white/30 focus:bg-white/10"
       >
         <option value="" disabled>
           {placeholder}
@@ -223,7 +223,7 @@ function Field({
 }) {
   return (
     <label className="space-y-1.5">
-      <span className="text-[0.72rem] text-white/60">{label}</span>
+      <span className="text-[0.72rem] font-medium text-white/65">{label}</span>
       <input
         type={type}
         value={value}
@@ -231,8 +231,8 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className={cn(
-          "w-full rounded-xl border border-white/10 bg-white/6 px-3 py-2 text-[0.78rem] text-white/90 outline-none focus:border-white/20",
-          disabled && "opacity-70"
+          "w-full rounded-xl border border-white/10 bg-white/6 px-3.5 py-2.5 text-[0.78rem] text-white/90 outline-none transition focus:border-white/30 focus:bg-white/10 placeholder:text-white/30",
+          disabled && "opacity-60 cursor-not-allowed"
         )}
       />
     </label>
@@ -263,7 +263,7 @@ function SlotPill({ slot }: { slot: Slot }) {
   );
 }
 
-/** ✅ NEW: Upload Avatar UI (đẹp, chuyên nghiệp, đúng tone glass) */
+/** ✅ ENHANCED: Upload Avatar UI - Beautiful & Professional */
 function AvatarUploadBox({
   shownAvatar,
   fileName,
@@ -280,75 +280,70 @@ function AvatarUploadBox({
   overSize: boolean;
 }) {
   return (
-    <div className="space-y-1.5 md:col-span-2">
-      <span className="text-[0.72rem] text-white/60">Avatar</span>
-
-      <div
-        className={cn(
-          "relative overflow-hidden rounded-2xl p-4",
-          "border border-white/10 bg-white/6"
-        )}
-      >
-        {/* glow */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(168,85,247,0.16),transparent_55%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_95%_10%,rgba(59,130,246,0.12),transparent_55%)]" />
-
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-white/10 bg-white/6">
-              {shownAvatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={shownAvatar}
-                  alt="avatar preview"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="grid h-full w-full place-items-center text-white/60">
-                  <ImageIcon className="h-6 w-6" />
-                </div>
-              )}
+    <div className="space-y-2 md:col-span-2">
+      <label className="text-[0.72rem] font-medium text-white/65">
+        Ảnh đại diện
+      </label>
+      <div className="rounded-xl border-2 border-dashed border-white/15 bg-white/4 p-4 transition hover:border-white/25 hover:bg-white/6">
+        <div className="flex items-center gap-4">
+          {/* Preview thumbnail */}
+          {shownAvatar ? (
+            <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border border-white/10">
+              <img
+                src={shownAvatar}
+                alt="preview"
+                className="h-full w-full object-cover"
+              />
             </div>
-
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-white">
-                {fileName || "Chưa chọn ảnh"}
-              </div>
-              <div className="mt-1 text-xs text-white/55">
-                {fileName
-                  ? `${fileSizeMB} MB`
-                  : "Chọn ảnh JPG/PNG/WebP (tối đa 2MB)."}
-              </div>
-              {overSize ? (
-                <div className="mt-1 text-xs text-rose-200">
-                  Ảnh vượt quá 2MB. Vui lòng chọn ảnh nhỏ hơn.
-                </div>
-              ) : null}
+          ) : (
+            <div className="grid h-20 w-20 flex-shrink-0 place-items-center rounded-lg border border-white/10 bg-white/5">
+              <ImageIcon size={32} className="text-white/40" />
             </div>
+          )}
+
+          {/* Upload info */}
+          <div className="flex-1 space-y-2">
+            {fileName ? (
+              <>
+                <p className="text-[0.75rem] font-semibold text-white/90">
+                  {fileName}
+                </p>
+                <p
+                  className={cn(
+                    "text-[0.7rem]",
+                    overSize ? "text-rose-400" : "text-white/60"
+                  )}
+                >
+                  {fileSizeMB} MB {overSize && "⚠️ Vượt quá 2MB"}
+                </p>
+              </>
+            ) : (
+              <p className="text-[0.75rem] text-white/60">
+                Chưa chọn ảnh. Nhấn "Chọn ảnh" để thêm
+              </p>
+            )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          {/* Action buttons */}
+          <div className="flex flex-shrink-0 gap-2">
             <button
               type="button"
               onClick={onPick}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-4 py-2 text-[0.78rem] font-semibold text-white/85 hover:bg-white/10 transition"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500/80 px-3 py-1.5 text-[0.7rem] font-semibold text-slate-950 transition hover:bg-sky-400"
             >
-              <UploadCloud className="h-4 w-4" />
-              Chọn ảnh
+              <UploadCloud size={14} />
+              <span className="hidden sm:inline">Chọn ảnh</span>
             </button>
-
-            <button
-              type="button"
-              onClick={onClear}
-              disabled={!fileName}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-4 py-2 text-[0.78rem] font-semibold text-white/85 hover:bg-white/10 transition",
-                !fileName && "opacity-50 cursor-not-allowed"
-              )}
-            >
-              <X className="h-4 w-4" />
-              Xóa
-            </button>
+            {fileName && (
+              <button
+                type="button"
+                onClick={onClear}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[0.7rem] font-semibold text-white/85 transition hover:bg-white/15"
+              >
+                <X size={14} />
+                <span className="hidden sm:inline">Xóa</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -372,6 +367,9 @@ export default function ProfilePage() {
   const [school, setSchool] = useState("");
   const [major, setMajor] = useState("");
   const [year, setYear] = useState("");
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const avatarBtnRef = useRef<HTMLButtonElement | null>(null);
+  const isPremium = Boolean((useAuth() as any)?.user?.isPremium);
 
   // ✅ avatar upload states
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -673,38 +671,6 @@ export default function ProfilePage() {
 
   const yearOptions = useMemo(() => ["Năm 1", "Năm 2", "Năm 3", "Năm 4"], []);
 
-  const days = useMemo(
-    () => [
-      { key: "t2", label: "Thứ 2" },
-      { key: "t3", label: "Thứ 3" },
-      { key: "t4", label: "Thứ 4" },
-      { key: "t5", label: "Thứ 5" },
-      { key: "t6", label: "Thứ 6" },
-      { key: "t7", label: "Thứ 7" },
-      { key: "cn", label: "Chủ nhật" },
-    ],
-    []
-  );
-
-  const availability: Record<string, Slot[]> = useMemo(
-    () => ({
-      t2: [
-        { start: "8:00", end: "12:00", tone: "green" },
-        { start: "14:00", end: "17:00", tone: "blue" },
-      ],
-      t3: [{ start: "9:00", end: "16:00", tone: "green" }],
-      t4: [{ start: "13:00", end: "16:00", tone: "purple" }],
-      t5: [
-        { start: "10:00", end: "12:00", tone: "purple" },
-        { start: "15:00", end: "18:00", tone: "blue" },
-      ],
-      t6: [{ start: "8:00", end: "17:00", tone: "green" }],
-      t7: [{ label: "Cả ngày", start: "Cả ngày", tone: "red" }],
-      cn: [{ label: "Cả ngày", start: "Cả ngày", tone: "red" }],
-    }),
-    []
-  );
-
   const pickedName = avatarFile?.name ?? "";
   const pickedSizeMB = avatarFile
     ? (avatarFile.size / 1024 / 1024).toFixed(2)
@@ -734,15 +700,15 @@ export default function ProfilePage() {
                   Về trang chủ
                 </button>
                 <div>
-                  <h1 className="text-lg font-semibold">Hồ sơ cá nhân</h1>
+                  <h1 className="text-2xl font-bold">Hồ sơ cá nhân</h1>
                   <p className="mt-1 text-[0.75rem] text-white/55">
-                    Cập nhật thông tin sinh viên
+                    Cập nhật và quản lý thông tin sinh viên của bạn
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-4 py-2">
+                <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-4 py-2 transition hover:bg-white/10">
                   <Search size={16} className="text-white/55" />
                   <input
                     placeholder="Tìm kiếm..."
@@ -751,60 +717,169 @@ export default function ProfilePage() {
                 </div>
                 <button
                   type="button"
-                  className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/6 hover:bg-white/10"
+                  className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/6 transition hover:bg-white/10"
                 >
                   <Bell size={16} />
                 </button>
               </div>
             </div>
 
+            {/* Profile Header Card */}
             <div
               className={cn(
-                "mt-5 rounded-2xl p-5",
+                "mt-6 rounded-2xl p-6",
                 "border border-white/10 bg-white/4"
               )}
             >
-              <div className="flex flex-col items-center gap-2 text-center">
-                <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-white/10 bg-white/6">
-                  {shownAvatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={shownAvatar}
-                      alt="avatar"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="grid h-full w-full place-items-center text-lg font-semibold">
-                      {initials(fullName || "User")}
+              <div className="flex flex-col items-center gap-4 md:flex-row md:gap-6 md:items-start">
+                <div className="relative flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setAvatarMenuOpen((v) => !v)}
+                    className="relative h-24 w-24 overflow-hidden rounded-2xl border-2 border-white/10 bg-white/6 transition hover:border-white/20 hover:shadow-lg"
+                  >
+                    <div className="relative h-full w-full">
+                      {shownAvatar ? (
+                        <img
+                          src={shownAvatar}
+                          alt="avatar"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center text-2xl font-bold text-white/60">
+                          {initials(fullName || "User")}
+                        </div>
+                      )}
+
+                      {/* Premium Badge */}
+                      {isPremium && (
+                        <div className="absolute -right-2 -top-2 flex items-center gap-1 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 px-2 py-1 text-[0.6rem] font-bold text-white shadow-lg">
+                          <Sparkles size={12} />
+                          Premium
+                        </div>
+                      )}
+                    </div>
+                  </button>
+
+                  {avatarMenuOpen && (
+                    <div className="absolute left-1/2 z-50 mt-2 w-40 -translate-x-1/2 rounded-xl border border-white/10 bg-slate-900/95 p-1 backdrop-blur-sm shadow-lg">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAvatarMenuOpen(false);
+                          window.open(shownAvatar, "_blank");
+                        }}
+                        className="w-full rounded-lg px-3 py-2 text-left text-xs text-white/85 transition hover:bg-white/10"
+                      >
+                        👁️ Xem avatar
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAvatarMenuOpen(false);
+                          fileInputRef.current?.click();
+                        }}
+                        className="w-full rounded-lg px-3 py-2 text-left text-xs text-white/85 transition hover:bg-white/10"
+                      >
+                        🔁 Đổi avatar
+                      </button>
                     </div>
                   )}
                 </div>
-                <div>
-                  <p className="text-sm font-semibold">{fullName || "—"}</p>
-                  <p className="text-[0.72rem] text-white/55">{major || "—"}</p>
+
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <p className="text-xl font-bold">{fullName || "Chưa đặt tên"}</p>
+                    <p className="mt-1 text-[0.75rem] text-white/55">
+                      {major || "—"}
+                    </p>
+                  </div>
+
+                  {/* Info Tags */}
+                  <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                    {school && (
+                      <div className="flex items-center gap-1.5 rounded-full bg-white/6 border border-white/10 px-3 py-1.5 text-[0.7rem]">
+                        <Home size={12} />
+                        {school}
+                      </div>
+                    )}
+                    {year && (
+                      <div className="flex items-center gap-1.5 rounded-full bg-white/6 border border-white/10 px-3 py-1.5 text-[0.7rem]">
+                        <User size={12} />
+                        {year}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Skills Section */}
+                  {skills.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[0.7rem] font-semibold text-white/70 uppercase tracking-wide">Kỹ năng</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {skills.slice(0, 4).map((skill) => (
+                          <ChipPill
+                            key={skill.id}
+                            label={skill.label}
+                            tone="blue"
+                          />
+                        ))}
+                        {skills.length > 4 && (
+                          <span className="inline-flex items-center rounded-full border border-white/20 bg-white/6 px-2.5 py-1 text-[0.65rem] text-white/70 font-medium">
+                            +{skills.length - 4}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Interests Section */}
+                  {interests.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[0.7rem] font-semibold text-white/70 uppercase tracking-wide">Sở thích</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {interests.slice(0, 4).map((interest) => (
+                          <ChipPill
+                            key={interest.id}
+                            label={interest.label}
+                            tone="purple"
+                          />
+                        ))}
+                        {interests.length > 4 && (
+                          <span className="inline-flex items-center rounded-full border border-white/20 bg-white/6 px-2.5 py-1 text-[0.65rem] text-white/70 font-medium">
+                            +{interests.length - 4}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {pageLoading ? (
-                <p className="mt-3 text-center text-[0.75rem] text-white/55">
+              {pageLoading && (
+                <p className="mt-4 text-center text-[0.75rem] text-white/55 animate-pulse">
                   Đang tải profile...
                 </p>
-              ) : null}
+              )}
             </div>
           </div>
 
-          <div className="mt-4 grid gap-4">
+          <div className="mt-6 grid gap-5">
+            {/* Personal Info Section */}
             <section className={cn("rounded-3xl p-5 md:p-6", glass)}>
               <SectionTitle
                 icon={<User size={16} />}
                 title="Thông tin cá nhân"
               />
 
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="mt-5 border-t border-white/10 pt-5" />
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <Field
                   label="Họ và tên"
                   value={fullName}
                   onChange={setFullName}
+                  placeholder="Nhập họ và tên"
                 />
                 <Field
                   label="Email"
@@ -818,29 +893,30 @@ export default function ProfilePage() {
                   label="Số điện thoại"
                   value={phoneNumber}
                   onChange={setPhoneNumber}
+                  placeholder="Ví dụ: 0123456789"
                 />
                 <Field
                   label="Trường"
                   value={school}
                   onChange={setSchool}
-                  placeholder="VD: FPTU"
+                  placeholder="Ví dụ: FPTU"
                 />
 
                 <Field
                   label="Chuyên ngành"
                   value={major}
                   onChange={setMajor}
-                  placeholder="VD: Software Engineering"
+                  placeholder="Ví dụ: Software Engineering"
                 />
 
                 <Select
                   value={year}
                   onChange={setYear}
-                  placeholder="Năm"
+                  placeholder="Chọn năm học"
                   options={yearOptions}
                 />
 
-                {/* ✅ NEW: Avatar uploader đẹp */}
+                {/* Avatar Uploader */}
                 <AvatarUploadBox
                   shownAvatar={shownAvatar}
                   fileName={pickedName}
@@ -850,7 +926,7 @@ export default function ProfilePage() {
                   onClear={clearAvatarPick}
                 />
 
-                {/* input thật (hidden) */}
+                {/* Hidden file input */}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -861,36 +937,48 @@ export default function ProfilePage() {
               </div>
             </section>
 
+            {/* Skills & Interests Section */}
             <section className={cn("rounded-3xl p-5 md:p-6", glass)}>
               <SectionTitle
                 icon={<Sparkles size={16} />}
                 title="Kỹ năng & Sở thích"
               />
 
-              <div className="mt-4 space-y-6">
-                <div className="space-y-2">
+              <div className="mt-5 border-t border-white/10 pt-5" />
+
+              <div className="mt-4 space-y-7">
+                {/* Skills */}
+                <div className="space-y-3">
                   <p className="text-[0.78rem] font-semibold text-white/85">
                     Kỹ năng
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {skills.map((c) => (
-                      <ChipPill
-                        key={c.id}
-                        label={c.label}
-                        tone="blue"
-                        onRemove={() =>
-                          setSkills((prev) => prev.filter((x) => x.id !== c.id))
-                        }
-                      />
-                    ))}
+                    {skills.length === 0 ? (
+                      <p className="text-[0.7rem] text-white/50 italic">
+                        Chưa thêm kỹ năng nào
+                      </p>
+                    ) : (
+                      skills.map((c) => (
+                        <ChipPill
+                          key={c.id}
+                          label={c.label}
+                          tone="blue"
+                          onRemove={() =>
+                            setSkills((prev) =>
+                              prev.filter((x) => x.id !== c.id)
+                            )
+                          }
+                        />
+                      ))
+                    )}
                   </div>
 
                   <div className="mt-3 flex items-center gap-2">
                     <input
                       value={skillInput}
                       onChange={(e) => setSkillInput(e.target.value)}
-                      placeholder="Thêm kỹ năng mới..."
-                      className="w-full rounded-xl border border-white/10 bg-white/6 px-3 py-2 text-[0.78rem] text-white/90 outline-none focus:border-white/20"
+                      placeholder="Thêm kỹ năng mới... (Enter để thêm)"
+                      className="flex-1 rounded-xl border border-white/10 bg-white/6 px-3.5 py-2.5 text-[0.78rem] text-white/90 outline-none transition focus:border-white/30 focus:bg-white/10 placeholder:text-white/30"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
@@ -901,39 +989,47 @@ export default function ProfilePage() {
                     <button
                       type="button"
                       onClick={addSkill}
-                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/90 px-4 py-2 text-[0.78rem] font-semibold text-slate-950 hover:bg-emerald-400"
+                      className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/80 px-4 py-2.5 text-[0.75rem] font-semibold text-slate-950 transition hover:bg-emerald-400"
                     >
-                      <Plus size={16} /> Thêm
+                      <Plus size={16} />
+                      <span className="hidden sm:inline">Thêm</span>
                     </button>
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                {/* Interests */}
+                <div className="space-y-3">
                   <p className="text-[0.78rem] font-semibold text-white/85">
                     Sở thích
                   </p>
 
                   <div className="flex flex-wrap gap-2">
-                    {interests.map((c) => (
-                      <ChipPill
-                        key={c.id}
-                        label={c.label}
-                        tone="purple"
-                        onRemove={() =>
-                          setInterests((prev) =>
-                            prev.filter((x) => x.id !== c.id)
-                          )
-                        }
-                      />
-                    ))}
+                    {interests.length === 0 ? (
+                      <p className="text-[0.7rem] text-white/50 italic">
+                        Chưa thêm sở thích nào
+                      </p>
+                    ) : (
+                      interests.map((c) => (
+                        <ChipPill
+                          key={c.id}
+                          label={c.label}
+                          tone="purple"
+                          onRemove={() =>
+                            setInterests((prev) =>
+                              prev.filter((x) => x.id !== c.id)
+                            )
+                          }
+                        />
+                      ))
+                    )}
                   </div>
 
                   <div className="mt-3 flex items-center gap-2">
                     <input
                       value={interestInput}
                       onChange={(e) => setInterestInput(e.target.value)}
-                      placeholder="Thêm sở thích mới..."
-                      className="w-full rounded-xl border border-white/10 bg-white/6 px-3 py-2 text-[0.78rem] text-white/90 outline-none focus:border-white/20"
+                      placeholder="Thêm sở thích mới... (Enter để thêm)"
+                      className="flex-1 rounded-xl border border-white/10 bg-white/6 px-3.5 py-2.5 text-[0.78rem] text-white/90 outline-none transition focus:border-white/30 focus:bg-white/10 placeholder:text-white/30"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
@@ -944,83 +1040,46 @@ export default function ProfilePage() {
                     <button
                       type="button"
                       onClick={addInterest}
-                      className="inline-flex items-center gap-2 rounded-xl bg-sky-500/90 px-4 py-2 text-[0.78rem] font-semibold text-slate-950 hover:bg-sky-400"
+                      className="inline-flex items-center gap-2 rounded-lg bg-sky-500/80 px-4 py-2.5 text-[0.75rem] font-semibold text-slate-950 transition hover:bg-sky-400"
                     >
-                      <Plus size={16} /> Thêm
+                      <Plus size={16} />
+                      <span className="hidden sm:inline">Thêm</span>
                     </button>
                   </div>
                 </div>
               </div>
             </section>
 
-            <section className={cn("rounded-3xl p-5 md:p-6", glass)}>
-              <SectionTitle
-                icon={<CalendarDays size={16} />}
-                title="Lịch rảnh"
-              />
-
-              <div className="mt-4 rounded-2xl border border-white/10 bg-white/4 p-4">
-                <div className="grid grid-cols-7 gap-2 text-center">
-                  {days.map((d) => (
-                    <div key={d.key} className="text-[0.7rem] text-white/65">
-                      {d.label}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-3 grid grid-cols-7 gap-2">
-                  {days.map((d) => (
-                    <div key={d.key} className="space-y-2">
-                      {(availability[d.key] ?? []).map((s, idx) => (
-                        <SlotPill key={`${d.key}-${idx}`} slot={s} />
-                      ))}
-                      {!(availability[d.key] ?? []).length ? (
-                        <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-center text-[0.68rem] text-white/35">
-                          —
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  type="button"
-                  className="mt-4 w-full rounded-xl bg-linear-to-r from-sky-500/90 to-emerald-500/90 px-4 py-2 text-[0.78rem] font-semibold text-slate-950 hover:from-sky-400 hover:to-emerald-400"
-                >
-                  + Thêm khung giờ rảnh
-                </button>
-              </div>
-
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className={cn(
-                    "inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/6 px-5 py-2 text-[0.78rem] font-semibold text-white/80 hover:bg-white/10",
-                    saving && "opacity-70 cursor-not-allowed"
-                  )}
-                >
-                  <X size={16} /> Hủy
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving || pageLoading}
-                  className={cn(
-                    "inline-flex items-center justify-center gap-2 rounded-xl bg-sky-500/90 px-5 py-2 text-[0.78rem] font-semibold text-slate-950 hover:bg-sky-400",
-                    (saving || pageLoading) && "opacity-70 cursor-not-allowed"
-                  )}
-                >
-                  <Save size={16} />
-                  {saving ? "Đang lưu..." : "Lưu thay đổi"}
-                </button>
-              </div>
-            </section>
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={saving || pageLoading}
+                className={cn(
+                  "inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/6 px-6 py-2.5 text-[0.78rem] font-semibold text-white/85 transition hover:border-white/25 hover:bg-white/10",
+                  (saving || pageLoading) && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                <X size={16} />
+                Hoàn tác
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || pageLoading}
+                className={cn(
+                  "inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-sky-500 to-cyan-500 px-6 py-2.5 text-[0.78rem] font-semibold text-slate-950 shadow-lg transition hover:shadow-xl hover:from-sky-400 hover:to-cyan-400",
+                  (saving || pageLoading) && "opacity-70 cursor-not-allowed"
+                )}
+              >
+                <Check size={16} />
+                {saving ? "Đang lưu..." : "Lưu thay đổi"}
+              </button>
+            </div>
           </div>
 
-          <div className="h-8" />
+          <div className="h-12" />
         </main>
       </div>
     </div>

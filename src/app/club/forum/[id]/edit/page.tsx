@@ -11,7 +11,7 @@ import {
   updatePost,
   type PostCoreFields,
 } from "@/app/services/api/post";
-import { X, Hash, Loader2, ArrowLeft, Save } from "lucide-react";
+import { X, Hash, Loader2, ArrowLeft, Save, Upload, Trash2 } from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -30,9 +30,12 @@ export default function EditPostPage() {
   const [content, setContent] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [images, setImages] = useState<{ url: string; file?: File }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [imageError, setImageError] = useState("");
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -52,6 +55,10 @@ export default function EditPostPage() {
         setTitle(post.title);
         setContent(post.content);
         setTags(post.tags || []);
+        // Load hình cũ từ API
+        if (post.images) {
+          setImages(post.images.map(url => ({ url })));
+        }
       } catch (err: any) {
         setError(err.message || "Không thể tải bài viết");
       } finally {
@@ -74,6 +81,83 @@ export default function EditPostPage() {
     setTags(tags.filter((t) => t !== tagToRemove));
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImageError("");
+    const files = e.target.files;
+    if (!files) return;
+
+    const newImages: { url: string; file: File }[] = [];
+    let error = false;
+
+    Array.from(files).forEach((file) => {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setImageError("Kích thước file không được vượt quá 5MB");
+        error = true;
+        return;
+      }
+
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        setImageError("Chỉ chấp nhận file hình ảnh");
+        error = true;
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (result) {
+          newImages.push({ url: result, file });
+          if (newImages.length === Array.from(files).length && !error) {
+            setImages([...images, ...newImages].slice(0, 5)); // Max 5 images
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Reset input
+    e.target.value = "";
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImages(images.filter((_, i) => i !== index));
+  };
+
+  const uploadImages = async (): Promise<string[]> => {
+    const uploadedUrls: string[] = [];
+
+    for (const img of images) {
+      if (img.file) {
+        try {
+          const formData = new FormData();
+          formData.append("file", img.file);
+
+          const res = await fetch("/api/upload-post-image", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.message || "Upload ảnh thất bại");
+          }
+
+          const data = await res.json();
+          uploadedUrls.push(data.url);
+        } catch (err: any) {
+          throw new Error(err.message || "Lỗi khi upload ảnh");
+        }
+      } else {
+        // Nếu là URL cũ (từ API), giữ lại
+        uploadedUrls.push(img.url);
+      }
+    }
+
+    return uploadedUrls;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -84,11 +168,20 @@ export default function EditPostPage() {
     }
 
     setIsSubmitting(true);
+    setUploadingImages(true);
+
     try {
+      // Upload images first
+      let imageUrls: string[] = [];
+      if (images.length > 0) {
+        imageUrls = await uploadImages();
+      }
+
       const postData: PostCoreFields = {
         title: title.trim(),
         content: content.trim(),
         tags: tags.length > 0 ? tags : undefined,
+        images: imageUrls.length > 0 ? imageUrls : undefined,
       };
 
       await updatePost(token, postId, postData);
@@ -96,6 +189,7 @@ export default function EditPostPage() {
     } catch (err: any) {
       setError(err.message || "Có lỗi xảy ra khi cập nhật bài viết");
       setIsSubmitting(false);
+      setUploadingImages(false);
     }
   };
 
@@ -239,6 +333,63 @@ export default function EditPostPage() {
               )}
             </div>
 
+            {/* Images */}
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">
+                Hình ảnh
+              </label>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+                id="image-input"
+              />
+              <label
+                htmlFor="image-input"
+                className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/10 bg-white/[0.03] p-6 cursor-pointer hover:border-cyan-400/30 hover:bg-cyan-400/5 transition"
+              >
+                <Upload className="h-8 w-8 text-cyan-400/60 mb-2" />
+                <p className="text-sm font-medium text-white">
+                  Chọn ảnh hoặc kéo thả
+                </p>
+                <p className="text-xs text-white/40 mt-1">
+                  Tối đa 5 ảnh, mỗi ảnh tối đa 5MB
+                </p>
+              </label>
+
+              {imageError && (
+                <p className="mt-2 text-xs text-red-200/90">{imageError}</p>
+              )}
+
+              {/* Images preview */}
+              {images.length > 0 && (
+                <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
+                  {images.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className="relative rounded-xl overflow-hidden border border-white/10 bg-white/[0.04] aspect-square"
+                    >
+                      <img
+                        src={img.url}
+                        alt={`preview-${idx}`}
+                        className="h-full w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(idx)}
+                        disabled={uploadingImages}
+                        className="absolute top-1 right-1 grid h-6 w-6 place-items-center rounded-lg bg-red-500/80 hover:bg-red-600 transition disabled:opacity-50"
+                      >
+                        <Trash2 className="h-3 w-3 text-white" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Actions */}
             <div className="flex gap-3 pt-4">
               <button
@@ -251,13 +402,13 @@ export default function EditPostPage() {
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting || !title.trim() || !content.trim()}
+                disabled={isSubmitting || uploadingImages || !title.trim() || !content.trim()}
                 className="flex-1 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 text-sm font-bold text-slate-900 shadow-lg shadow-cyan-500/35 hover:shadow-cyan-500/55 hover:brightness-110 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
-                {isSubmitting ? (
+                {isSubmitting || uploadingImages ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Đang lưu...
+                    {uploadingImages ? "Đang upload ảnh..." : "Đang lưu..."}
                   </>
                 ) : (
                   <>

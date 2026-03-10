@@ -22,8 +22,6 @@ import {
   Plus,
   Flame,
   Pin,
-  MessageSquare,
-  Eye,
   Heart,
   Filter,
   ChevronLeft,
@@ -31,7 +29,6 @@ import {
   BadgeCheck,
   Sparkles,
   Hash,
-  Users,
   ShieldCheck,
   Trash2,
 } from "lucide-react";
@@ -176,10 +173,8 @@ export default function ForumPage() {
           p._id === postId
             ? {
                 ...p,
-                likes: isLiked
-                  ? p.likes?.filter((id) => id !== user?._id)
-                  : [...(p.likes || []), user?._id],
-                likeCount: (p.likeCount || 0) + (isLiked ? -1 : 1),
+                like: (p.like || 0) + (isLiked ? -1 : 1),
+                isLiked: !isLiked,
               }
             : p
         )
@@ -215,7 +210,6 @@ export default function ForumPage() {
   };
 
   // Mock posts removed - using API data
-  const mockPosts: PostItem[] = [];
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -256,24 +250,6 @@ export default function ForumPage() {
     if (days < 7) return `${days} ngày trước`;
     return date.toLocaleDateString("vi-VN");
   };
-
-  const onlineMembers = [
-    {
-      name: "Nguyễn Văn A",
-      avatar:
-        "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?auto=format&fit=crop&w=96&q=80",
-    },
-    {
-      name: "Trần Thị B",
-      avatar:
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=96&q=80",
-    },
-    {
-      name: "Phạm Thị D",
-      avatar:
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=96&q=80",
-    },
-  ];
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden text-white">
@@ -366,7 +342,7 @@ export default function ForumPage() {
 
             {!isLoadingPosts &&
               filtered.map((p) => {
-                const isLiked = p.likes?.includes(user?._id);
+                const isLiked = p.isLiked || false;
 
                 return (
                   <article
@@ -384,7 +360,7 @@ export default function ForumPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            {(p.likeCount || 0) > 50 && (
+                            {(p.like || 0) > 50 && (
                               <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/25 bg-amber-400/12 px-3 py-1 text-[0.7rem] font-semibold text-amber-200">
                                 <Flame className="h-3.5 w-3.5" />
                                 Hot
@@ -408,19 +384,22 @@ export default function ForumPage() {
                           </p>
 
                           <div className="mt-3 flex flex-wrap gap-2">
-                            {(p.tags || []).slice(0, 3).map((t, i) => (
-                              <Tag
-                                key={t}
-                                text={t}
-                                tone={
-                                  i === 0
-                                    ? "violet"
-                                    : i === 1
-                                    ? "sky"
-                                    : "fuchsia"
-                                }
-                              />
-                            ))}
+                            {(p.tags || []).slice(0, 3).map((t, i) => {
+                              const cleanTag = t.startsWith("#") ? t.slice(1) : t;
+                              return (
+                                <Tag
+                                  key={t}
+                                  text={cleanTag}
+                                  tone={
+                                    i === 0
+                                      ? "violet"
+                                      : i === 1
+                                      ? "sky"
+                                      : "fuchsia"
+                                  }
+                                />
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -448,7 +427,7 @@ export default function ForumPage() {
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="truncate text-sm font-semibold text-white">
-                                Club Member
+                                {typeof p.clubId === 'object' ? p.clubId.fullName : 'Club'}
                               </span>
                             </div>
                             <div className="mt-0.5 text-[0.72rem] text-white/55">
@@ -459,7 +438,7 @@ export default function ForumPage() {
 
                         <div className="flex items-center gap-4">
                           <button
-                            onClick={() => handleLike(p._id, isLiked || false)}
+                            onClick={() => handleLike(p._id, isLiked)}
                             className="inline-flex items-center gap-1.5 text-[0.72rem] text-white/55 hover:text-white transition cursor-pointer"
                           >
                             <Heart
@@ -468,14 +447,8 @@ export default function ForumPage() {
                                 isLiked && "fill-red-500 text-red-500"
                               )}
                             />
-                            {p.likeCount || 0}
+                            {p.like || 0}
                           </button>
-
-                          <Stat
-                            icon={<MessageSquare className="h-4 w-4" />}
-                            value={0}
-                          />
-                          <Stat icon={<Eye className="h-4 w-4" />} value={0} />
 
                           <button
                             type="button"
@@ -522,36 +495,6 @@ export default function ForumPage() {
 
           {/* Sidebar */}
           <aside className="space-y-5">
-            {/* Quick actions */}
-            <div className={cn("rounded-3xl p-5", glass)}>
-              <div className="flex items-center gap-2">
-                <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06]">
-                  <Plus className="h-4 w-4 text-white/80" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold">Tạo nhanh</div>
-                  <div className="mt-0.5 text-[0.72rem] text-white/55">
-                    Đăng bài, thông báo, hỏi đáp
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => alert("Demo: tạo bài viết")}
-                className="mt-4 w-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-2.5 text-[0.78rem] font-bold text-slate-900 shadow-lg shadow-cyan-500/35 hover:shadow-cyan-500/55 hover:brightness-110 active:scale-95 transition"
-              >
-                Tạo bài viết
-              </button>
-
-              <button
-                type="button"
-                onClick={() => alert("Demo: tạo thông báo")}
-                className="mt-2 w-full rounded-full border border-white/10 bg-white/[0.06] px-5 py-2.5 text-[0.78rem] font-semibold text-white/85 hover:bg-white/[0.10] transition"
-              >
-                Tạo thông báo
-              </button>
-            </div>
 
             {/* Top tags */}
             <div className={cn("rounded-3xl p-5", glass)}>
@@ -568,24 +511,27 @@ export default function ForumPage() {
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                {tagStats.map(([t, count], i) => (
-                  <span
-                    key={t}
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[0.72rem] font-semibold",
-                      i % 3 === 0
-                        ? "border-violet-400/25 bg-violet-400/12 text-violet-200"
-                        : i % 3 === 1
-                        ? "border-sky-400/25 bg-sky-400/12 text-sky-200"
-                        : "border-fuchsia-400/25 bg-fuchsia-400/12 text-fuchsia-200"
-                    )}
-                  >
-                    #{t}
-                    <span className="text-white/55 font-semibold">
-                      ({count})
+                {tagStats.map(([t, count], i) => {
+                  const cleanTag = t.startsWith("#") ? t.slice(1) : t;
+                  return (
+                    <span
+                      key={t}
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[0.72rem] font-semibold",
+                        i % 3 === 0
+                          ? "border-violet-400/25 bg-violet-400/12 text-violet-200"
+                          : i % 3 === 1
+                          ? "border-sky-400/25 bg-sky-400/12 text-sky-200"
+                          : "border-fuchsia-400/25 bg-fuchsia-400/12 text-fuchsia-200"
+                      )}
+                    >
+                      #{cleanTag}
+                      <span className="text-white/55 font-semibold">
+                        ({count})
+                      </span>
                     </span>
-                  </span>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -608,48 +554,6 @@ export default function ForumPage() {
                 <li>• Không spam, không đăng nội dung không liên quan.</li>
                 <li>• Khi hỏi đáp: cung cấp log/ảnh lỗi rõ ràng.</li>
               </ul>
-            </div>
-
-            {/* Online members */}
-            <div className={cn("rounded-3xl p-5", glass)}>
-              <div className="flex items-center gap-2">
-                <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06]">
-                  <Users className="h-4 w-4 text-white/80" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold">Online</div>
-                  <div className="mt-0.5 text-[0.72rem] text-white/55">
-                    Thành viên đang hoạt động
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                {onlineMembers.map((m) => (
-                  <div
-                    key={m.name}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-10 w-10 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15">
-                        <img
-                          src={m.avatar}
-                          alt="avatar"
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                      <div className="truncate text-sm font-semibold text-white">
-                        {m.name}
-                      </div>
-                    </div>
-
-                    <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-[0.72rem] font-semibold text-emerald-200">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-                      Online
-                    </span>
-                  </div>
-                ))}
-              </div>
             </div>
           </aside>
         </div>

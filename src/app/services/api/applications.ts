@@ -1,4 +1,4 @@
-import { AUTH_BASE_URL } from "@/app/services/api/auth";
+export const AUTH_BASE_URL = "https://clubverse.onrender.com";
 
 export type ApiStatus =
   | "PENDING"
