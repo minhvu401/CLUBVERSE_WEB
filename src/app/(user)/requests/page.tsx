@@ -20,12 +20,13 @@ import {
   Clock3,
   CheckCircle2,
   XCircle,
-  Users2,
   Search,
   FileText,
   X,
   BadgeCheck,
   BadgeX,
+  ChevronRight,
+  AlertCircle,
 } from "lucide-react";
 
 /* ================= utils ================= */
@@ -117,17 +118,17 @@ function Modal({
     <div className="fixed inset-0 z-[80]">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="absolute left-1/2 top-1/2 w-[92vw] max-w-2xl -translate-x-1/2 -translate-y-1/2">
-        <div className={cn("rounded-3xl p-5", glass)}>
+        <div className={cn("rounded-3xl p-6", glass)}>
           <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold">{title}</div>
+            <div className="text-lg font-semibold">{title}</div>
             <button
               onClick={onClose}
-              className="grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/10"
+              className="grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/10 hover:bg-white/20 transition-colors"
             >
-              <X size={14} />
+              <X size={16} />
             </button>
           </div>
-          <div className="mt-4">{children}</div>
+          <div className="mt-5">{children}</div>
         </div>
       </div>
     </div>
@@ -261,73 +262,108 @@ export default function MyApplicationsPage() {
     <div className="relative min-h-screen text-white">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-indigo-950 via-purple-900 to-violet-950" />
 
-      <div className="mx-auto flex max-w-7xl gap-4 px-4 py-6">
+      <div className="mx-auto flex max-w-7xl gap-6 px-4 py-8">
         <AppSidebar activeKey="requests" />
 
-        <main className="flex-1 space-y-4">
-          {/* title */}
-          <div className={cn("rounded-3xl p-5", glass)}>
-            <h1 className="text-lg font-semibold">Đơn đã gửi</h1>
-            <p className="mt-1 text-xs text-white/55">
-              Theo dõi trạng thái đăng ký câu lạc bộ
+        <main className="flex-1 space-y-6">
+          {/* Header */}
+          <div className={cn("rounded-2xl p-6", glass)}>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+              Đơn đã gửi
+            </h1>
+            <p className="mt-2 text-sm text-white/60">
+              Quản lý và theo dõi trạng thái đăng ký câu lạc bộ của bạn
             </p>
           </div>
 
-          {/* stats */}
+          {/* Stats Grid */}
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <Stat label="Chờ duyệt" value={stats.pending} />
-            <Stat label="Đã duyệt" value={stats.approved} />
-            <Stat label="Bị từ chối" value={stats.rejected} />
-            <Stat label="Tổng" value={stats.total} />
+            <Stat
+              label="Chờ duyệt"
+              value={stats.pending}
+              icon={<Clock3 size={18} />}
+              color="from-amber-400 to-amber-600"
+            />
+            <Stat
+              label="Đã duyệt"
+              value={stats.approved}
+              icon={<CheckCircle2 size={18} />}
+              color="from-sky-400 to-sky-600"
+            />
+            <Stat
+              label="Bị từ chối"
+              value={stats.rejected}
+              icon={<XCircle size={18} />}
+              color="from-rose-400 to-rose-600"
+            />
+            <Stat
+              label="Tổng"
+              value={stats.total}
+              icon={<FileText size={18} />}
+              color="from-violet-400 to-violet-600"
+            />
           </div>
 
-          {/* list */}
-          <section className={cn("rounded-3xl", glass)}>
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-              <div className="text-sm font-semibold">Danh sách đơn</div>
-              <div className="flex items-center gap-2">
-                <Search size={14} />
-                <input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Tìm kiếm..."
-                  className="bg-transparent text-sm outline-none"
-                />
+          {/* List Section */}
+          <section className={cn("rounded-2xl overflow-hidden", glass)}>
+            {/* Header with Search */}
+            <div className="border-b border-white/10 px-6 py-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <h2 className="text-lg font-semibold">Danh sách đơn ({filtered.length})</h2>
+                <div className="flex items-center gap-3 bg-white/5 rounded-full px-4 py-2 border border-white/10">
+                  <Search size={16} className="text-white/40" />
+                  <input
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="Tìm kiếm câu lạc bộ..."
+                    className="bg-transparent text-sm outline-none w-full placeholder-white/40"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="space-y-3 p-5">
-              {filtered.map((a) => {
-                const club = getClub(a.clubId);
-                return (
-                  <div
-                    key={a._id}
-                    className="rounded-2xl border border-white/10 bg-white/5 p-4"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="font-semibold">
-                        {club.fullName || "Câu lạc bộ"}
+            {/* Content */}
+            {filtered.length === 0 ? (
+              <div className="p-8 text-center">
+                <AlertCircle size={40} className="mx-auto mb-3 text-white/30" />
+                <p className="text-white/60">
+                  {allApps.length === 0
+                    ? "Bạn chưa gửi đơn nào"
+                    : "Không tìm thấy đơn phù hợp"}
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/10">
+                {filtered.map((a) => {
+                  const club = getClub(a.clubId);
+                  return (
+                    <div
+                      key={a._id}
+                      onClick={() => openDetail(a._id)}
+                      className="px-6 py-4 hover:bg-white/[0.08] transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-2 flex-wrap">
+                            <h3 className="font-semibold text-base truncate">
+                              {club.fullName || "Câu lạc bộ"}
+                            </h3>
+                            <StatusBadge status={a.status} />
+                          </div>
+                          <p className="text-sm text-white/60 line-clamp-1">
+                            {a.reason || "Không có lý do"}
+                          </p>
+                          <div className="text-xs text-white/40 mt-2">
+                            {fmtDate(a.submittedAt || a.createdAt)}
+                          </div>
+                        </div>
+                        <ChevronRight size={20} className="text-white/30 flex-shrink-0 mt-1" />
                       </div>
-                      <StatusBadge status={a.status} />
                     </div>
-
-                    <p className="mt-2 text-sm text-white/70 line-clamp-2">
-                      {a.reason}
-                    </p>
-
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        onClick={() => openDetail(a._id)}
-                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs"
-                      >
-                        <FileText size={14} />
-                        Xem chi tiết
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         </main>
       </div>
@@ -339,56 +375,95 @@ export default function MyApplicationsPage() {
         onClose={() => setDetailOpen(false)}
       >
         {detailLoading ? (
-          <div className="text-sm text-white/70">Đang tải...</div>
+          <div className="text-center py-8">
+            <div className="inline-block animate-spin">
+              <Clock3 size={24} className="text-white/60" />
+            </div>
+            <p className="text-sm text-white/60 mt-3">Đang tải...</p>
+          </div>
         ) : !detail ? null : (
-          <div className="space-y-4 text-sm text-white/85">
-            <StatusBadge status={detail.status} />
+          <div className="space-y-5">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <h3 className="font-semibold">
+                {getClub(detail.clubId).fullName}
+              </h3>
+              <StatusBadge status={detail.status} />
+            </div>
 
-            <TimelineItem
-              label="Đã gửi đơn"
-              time={fmtDate(detail.submittedAt || detail.createdAt)}
-              active
-            />
-            <TimelineItem
-              label="CLB phản hồi"
-              time={
-                detail.respondedAt
-                  ? fmtDate(detail.respondedAt)
-                  : "Chưa phản hồi"
-              }
-              active={!!detail.respondedAt}
-            />
+            <div className="space-y-4">
+              <TimelineItem
+                label="Đã gửi đơn"
+                time={fmtDate(detail.submittedAt || detail.createdAt)}
+                active
+              />
+              <TimelineItem
+                label="CLB phản hồi"
+                time={
+                  detail.respondedAt
+                    ? fmtDate(detail.respondedAt)
+                    : "Chưa phản hồi"
+                }
+                active={!!detail.respondedAt}
+              />
+            </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-              {detail.reason}
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm text-white/70">{detail.reason}</p>
             </div>
 
             {(detail.interviewDate ||
               detail.interviewLocation ||
               detail.interviewNote) && (
-              <div className="rounded-xl border border-sky-400/20 bg-sky-500/10 p-4">
-                <div className="font-semibold text-sky-200 mb-2">
-                  Phản hồi từ CLB
+              <div className="rounded-xl border border-sky-400/30 bg-gradient-to-br from-sky-500/10 to-cyan-500/5 p-5">
+                <div className="font-semibold text-sky-200 mb-4">
+                  📋 Phản hồi từ CLB
                 </div>
-                <div>⏰ {fmtDate(detail.interviewDate)}</div>
-                <div>📍 {detail.interviewLocation}</div>
-                {detail.interviewNote && <div>📝 {detail.interviewNote}</div>}
+                <div className="space-y-3 text-sm">
+                  {detail.interviewDate && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">⏰</span>
+                      <span>{fmtDate(detail.interviewDate)}</span>
+                    </div>
+                  )}
+                  {detail.interviewLocation && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">📍</span>
+                      <span>{detail.interviewLocation}</span>
+                    </div>
+                  )}
+                  {detail.interviewNote && (
+                    <div className="flex gap-3">
+                      <span className="text-lg flex-shrink-0">📝</span>
+                      <span className="text-white/70">{detail.interviewNote}</span>
+                    </div>
+                  )}
+                </div>
 
                 {detail.status === "APPROVED" && (
-                  <div className="mt-4 flex gap-2">
+                  <div className="mt-5 flex gap-3">
                     <button
                       disabled={responding !== null}
                       onClick={() => handleRespond("accept")}
-                      className="flex-1 rounded-full bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-950"
+                      className={cn(
+                        "flex-1 rounded-lg px-4 py-3 text-sm font-semibold transition-all",
+                        responding === "accept"
+                          ? "bg-emerald-500 text-white scale-95"
+                          : "bg-emerald-500 text-slate-950 hover:bg-emerald-400 active:scale-95"
+                      )}
                     >
-                      Xác nhận tham gia
+                      ✓ Xác nhận tham gia
                     </button>
                     <button
                       disabled={responding !== null}
                       onClick={() => handleRespond("decline")}
-                      className="flex-1 rounded-full border border-rose-400/40 bg-rose-500/15 px-4 py-2 text-xs font-semibold text-rose-200"
+                      className={cn(
+                        "flex-1 rounded-lg px-4 py-3 text-sm font-semibold transition-all",
+                        responding === "decline"
+                          ? "border border-rose-400 bg-rose-500/20 text-rose-200 scale-95"
+                          : "border border-rose-400/40 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25 active:scale-95"
+                      )}
                     >
-                      Từ chối lịch
+                      ✕ Từ chối lịch
                     </button>
                   </div>
                 )}
@@ -403,11 +478,40 @@ export default function MyApplicationsPage() {
 
 /* ================= small components ================= */
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({
+  label,
+  value,
+  icon,
+  color,
+}: {
+  label: string;
+  value: number;
+  icon?: React.ReactNode;
+  color?: string;
+}) {
   return (
-    <div className={cn("rounded-2xl p-4", glass)}>
-      <div className="text-xs text-white/55">{label}</div>
-      <div className="text-xl font-semibold">{value}</div>
+    <div
+      className={cn(
+        "rounded-2xl p-5 border border-white/10 bg-white/[0.05] backdrop-blur-xl hover:bg-white/[0.08] transition-all",
+        "group cursor-pointer"
+      )}
+    >
+      {icon && (
+        <div
+          className={cn(
+            "mb-3 p-2 rounded-lg w-fit",
+            color
+              ? `bg-gradient-to-br ${color}`
+              : "bg-gradient-to-br from-violet-400 to-violet-600"
+          )}
+        >
+          <div className="text-white">{icon}</div>
+        </div>
+      )}
+      <div className="text-xs text-white/55 font-medium">{label}</div>
+      <div className="text-3xl font-bold mt-2 text-white group-hover:text-cyan-300 transition-colors">
+        {value}
+      </div>
     </div>
   );
 }
@@ -422,18 +526,20 @@ function TimelineItem({
   active?: boolean;
 }) {
   return (
-    <div className="flex gap-3">
-      <div
-        className={cn(
-          "mt-1 h-2.5 w-2.5 rounded-full",
-          active ? "bg-sky-400" : "bg-white/30"
-        )}
-      />
-      <div>
-        <div className={active ? "font-semibold" : "text-white/50"}>
+    <div className="flex gap-4">
+      <div className="flex flex-col items-center gap-2">
+        <div
+          className={cn(
+            "h-3 w-3 rounded-full transition-all",
+            active ? "bg-gradient-to-r from-cyan-400 to-blue-400 shadow-lg shadow-cyan-500/50" : "bg-white/20"
+          )}
+        />
+      </div>
+      <div className="pb-4 flex-1">
+        <div className={cn("font-medium text-sm", active ? "text-white" : "text-white/50")}>
           {label}
         </div>
-        <div className="text-xs text-white/50">{time}</div>
+        <div className="text-xs text-white/40 mt-1">{time}</div>
       </div>
     </div>
   );

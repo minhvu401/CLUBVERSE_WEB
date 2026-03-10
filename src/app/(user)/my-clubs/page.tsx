@@ -1,17 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import AppSidebar from "@/components/AppSidebar";
 import { useAuth } from "@/app/providers/AuthProviders";
 import {
   Users,
   CalendarDays,
-  ShieldCheck,
   FileText,
   X,
-  UserCircle2,
+  Loader2,
+  MessageCircle,
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { getMyClubs } from "@/app/services/api/users";
 
 /* ================= utils ================= */
 
@@ -29,144 +32,163 @@ function fmtDate(s?: string) {
   return d.toLocaleDateString("vi-VN");
 }
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
 /* ================= types ================= */
 
-interface ClubMember {
-  id: string;
-  fullName: string;
-  role: "member" | "admin";
-  joinedAt: string;
-}
-
 interface MyClub {
-  id: string;
-  name: string;
-  category: string;
-  role: "member" | "admin";
+  clubId: string;
+  clubInfo: {
+    _id: string;
+    fullName: string;
+    category: string;
+    description?: string;
+    rating?: number;
+  };
   joinedAt: string;
-  description?: string;
-  members: ClubMember[];
+  isActive?: boolean;
+  members?: any[];
 }
 
 /* ================= mock data ================= */
 
 const MOCK_CLUBS: MyClub[] = [
   {
-    id: "club-1",
-    name: "CLB Công nghệ",
-    category: "Học thuật",
-    role: "member",
+    clubId: "club-1",
+    clubInfo: {
+      _id: "club-1",
+      fullName: "CLB Công nghệ",
+      category: "Học thuật",
+      description: "Nơi giao lưu và học tập về công nghệ, lập trình",
+      rating: 4.5,
+    },
     joinedAt: "2025-10-12",
-    description: "Nơi giao lưu và học tập về công nghệ, lập trình",
-    members: [
-      {
-        id: "u1",
-        fullName: "Nguyễn Văn A",
-        role: "admin",
-        joinedAt: "2025-09-01",
-      },
-      {
-        id: "u2",
-        fullName: "Trần Thị B",
-        role: "member",
-        joinedAt: "2025-10-12",
-      },
-    ],
-  },
-  {
-    id: "club-2",
-    name: "CLB Truyền thông",
-    category: "Kỹ năng",
-    role: "admin",
-    joinedAt: "2025-09-01",
-    description: "Quản lý nội dung, sự kiện và truyền thông CLB",
-    members: [
-      {
-        id: "u3",
-        fullName: "Lê Văn C",
-        role: "admin",
-        joinedAt: "2025-08-15",
-      },
-      {
-        id: "u4",
-        fullName: "Phạm Thị D",
-        role: "member",
-        joinedAt: "2025-09-10",
-      },
-    ],
+    isActive: true,
   },
 ];
-
-/* ================= modal ================= */
-
-function Modal({
-  open,
-  title,
-  children,
-  onClose,
-}: {
-  open: boolean;
-  title: string;
-  children: React.ReactNode;
-  onClose: () => void;
-}) {
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-[80]">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="absolute left-1/2 top-1/2 w-[92vw] max-w-xl -translate-x-1/2 -translate-y-1/2">
-        <div className={cn("rounded-3xl p-5", glass)}>
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold">{title}</div>
-            <button
-              onClick={onClose}
-              className="grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/10"
-            >
-              <X size={14} />
-            </button>
-          </div>
-          <div className="mt-4">{children}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ================= page ================= */
 
 export default function MyClubsPage() {
+  const router = useRouter();
   const { loading } = useAuth();
+  const [clubs, setClubs] = useState<MyClub[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<"all" | "active">("active");
 
-  const [clubs] = useState<MyClub[]>(MOCK_CLUBS);
-  const [openClub, setOpenClub] = useState<MyClub | null>(null);
-  const [openMembers, setOpenMembers] = useState<MyClub | null>(null);
+  useEffect(() => {
+    const fetchClubs = async () => {
+      try {
+        const token =
+          localStorage.getItem("token") || localStorage.getItem("accessToken");
+        if (!token) {
+          setError("No token found");
+          return;
+        }
+        const data = await getMyClubs(token, filterStatus === "all" ? "" : "active");
+        setClubs(data);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch clubs"
+        );
+        setClubs(MOCK_CLUBS);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  if (loading) return null;
+    if (!loading) {
+      setIsLoading(true);
+      fetchClubs();
+    }
+  }, [loading, filterStatus]);
+
+  if (loading || isLoading) {
+    return (
+      <div className="relative min-h-screen text-white">
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-indigo-950 via-purple-900 to-violet-950" />
+
+        <div className="mx-auto flex max-w-7xl gap-4 px-4 py-6">
+          <AppSidebar activeKey="clubs" />
+
+          <main className="flex-1 space-y-4">
+            {/* title */}
+            <div className={cn("rounded-3xl p-5", glass)}>
+              <h1 className="text-lg font-semibold">Câu lạc bộ của tôi</h1>
+              <p className="mt-1 text-xs text-white/55">
+                Các câu lạc bộ bạn đang tham gia
+              </p>
+            </div>
+
+            {/* loading skeleton */}
+            <section className={cn("rounded-3xl", glass)}>
+              <div className="space-y-3 p-5">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/8 to-white/3 p-5 animate-pulse"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-white/10" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-32 rounded bg-white/10" />
+                        <div className="h-3 w-48 rounded bg-white/10" />
+                        <div className="h-3 w-24 rounded bg-white/10" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen text-white">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-indigo-950 via-purple-900 to-violet-950" />
 
       <div className="mx-auto flex max-w-7xl gap-4 px-4 py-6">
-        <AppSidebar activeKey="my-clubs" />
+        <AppSidebar activeKey="clubs" />
 
         <main className="flex-1 space-y-4">
           {/* title */}
           <div className={cn("rounded-3xl p-5", glass)}>
-            <h1 className="text-lg font-semibold">Câu lạc bộ của tôi</h1>
-            <p className="mt-1 text-xs text-white/55">
-              Các câu lạc bộ bạn đang tham gia
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-lg font-semibold">Câu lạc bộ của tôi</h1>
+                <p className="mt-1 text-xs text-white/55">
+                  Các câu lạc bộ bạn đang tham gia
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* filter */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setFilterStatus("active")}
+              className={cn(
+                "rounded-full px-4 py-2 text-sm font-medium transition",
+                filterStatus === "active"
+                  ? "border border-emerald-500/50 bg-emerald-500/20 text-emerald-200"
+                  : "border border-white/15 bg-white/10 text-white/70 hover:bg-white/15"
+              )}
+            >
+              Đang hoạt động
+            </button>
+            <button
+              onClick={() => setFilterStatus("all")}
+              className={cn(
+                "rounded-full px-4 py-2 text-sm font-medium transition",
+                filterStatus === "all"
+                  ? "border border-emerald-500/50 bg-emerald-500/20 text-emerald-200"
+                  : "border border-white/15 bg-white/10 text-white/70 hover:bg-white/15"
+              )}
+            >
+              Tất cả
+            </button>
           </div>
 
           {/* list */}
@@ -174,52 +196,68 @@ export default function MyClubsPage() {
             <div className="space-y-3 p-5">
               {clubs.map((c) => (
                 <div
-                  key={c.id}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                  key={c.clubId}
+                  className="group rounded-2xl border border-white/10 bg-gradient-to-br from-white/8 to-white/3 p-5 transition hover:border-emerald-500/30 hover:bg-gradient-to-br hover:from-emerald-500/10 hover:to-sky-500/10"
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="font-semibold">{c.name}</div>
+                  <div className="flex items-start gap-4">
+                    {/* Club Avatar */}
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/30 to-sky-500/30 text-lg font-bold">
+                      {c.clubInfo.fullName.charAt(0).toUpperCase()}
+                    </div>
 
-                    <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[0.65rem]">
-                      {c.category}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      {/* Club Name & Category */}
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <h3 className="text-sm font-semibold truncate">
+                          {c.clubInfo.fullName}
+                        </h3>
+                        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[0.65rem] font-medium text-emerald-200">
+                          {c.clubInfo.category}
+                        </span>
+                      </div>
 
-                    {c.role === "admin" && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/20 px-3 py-1 text-[0.65rem] font-semibold text-emerald-200">
-                        <ShieldCheck size={12} />
-                        Ban chủ nhiệm
-                      </span>
-                    )}
-                  </div>
+                      {/* Description */}
+                      {c.clubInfo.description && (
+                        <p className="text-xs text-white/60 line-clamp-2 mb-3">
+                          {c.clubInfo.description}
+                        </p>
+                      )}
 
-                  <div className="mt-2 flex flex-wrap gap-3 text-xs text-white/70">
-                    <span className="flex items-center gap-1">
-                      <CalendarDays size={14} />
-                      Tham gia: {fmtDate(c.joinedAt)}
-                    </span>
+                      {/* Stats */}
+                      <div className="flex flex-wrap gap-4 text-xs text-white/70">
+                        <span className="flex items-center gap-1.5">
+                          <CalendarDays
+                            size={13}
+                            className="text-emerald-400/70"
+                          />
+                          {fmtDate(c.joinedAt)}
+                        </span>
 
-                    <span className="flex items-center gap-1">
-                      <Users size={14} />
-                      {c.members.length} thành viên
-                    </span>
-                  </div>
+                        {c.clubInfo.rating !== undefined && (
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-yellow-400/70">⭐</span>
+                            {c.clubInfo.rating.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
 
-                  <div className="mt-3 flex justify-end gap-2">
-                    <button
-                      onClick={() => setOpenMembers(c)}
-                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs"
-                    >
-                      <Users size={14} />
-                      Thành viên
-                    </button>
-
-                    <button
-                      onClick={() => setOpenClub(c)}
-                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs"
-                    >
-                      <FileText size={14} />
-                      Chi tiết
-                    </button>
+                    {/* Action Buttons */}
+                    <div className="shrink-0 flex items-center gap-2">
+                      <button
+                        onClick={() => router.push(`/my-messages?clubId=${c.clubId}&clubName=${encodeURIComponent(c.clubInfo.fullName)}`)}
+                        className="rounded-lg bg-gradient-to-r from-sky-500/20 to-emerald-500/20 border border-sky-500/30 px-3 py-2 text-xs font-medium text-white transition hover:from-sky-500/30 hover:to-emerald-500/30 hover:border-sky-500/50 flex items-center gap-1"
+                        title="Nhắn tin cho câu lạc bộ"
+                      >
+                        <MessageCircle size={14} />
+                      </button>
+                      <Link
+                        href={`/clubs/${c.clubId}`}
+                        className="rounded-lg bg-gradient-to-r from-emerald-500/20 to-sky-500/20 border border-emerald-500/30 px-3 py-2 text-xs font-medium text-white transition hover:from-emerald-500/30 hover:to-sky-500/30 hover:border-emerald-500/50 flex items-center gap-1"
+                      >
+                        <FileText size={14} />
+                      </Link>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -227,61 +265,6 @@ export default function MyClubsPage() {
           </section>
         </main>
       </div>
-
-      {/* club detail modal */}
-      <Modal
-        open={!!openClub}
-        title="Thông tin câu lạc bộ"
-        onClose={() => setOpenClub(null)}
-      >
-        {openClub && (
-          <div className="space-y-2 text-sm text-white/80">
-            <div className="font-semibold text-white">{openClub.name}</div>
-            <div>📂 Danh mục: {openClub.category}</div>
-            <div>📅 Ngày tham gia: {fmtDate(openClub.joinedAt)}</div>
-            {openClub.description && (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                {openClub.description}
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
-
-      {/* members modal */}
-      <Modal
-        open={!!openMembers}
-        title="Danh sách thành viên"
-        onClose={() => setOpenMembers(null)}
-      >
-        {openMembers && (
-          <div className="space-y-3">
-            {openMembers.members.map((m) => (
-              <div
-                key={m.id}
-                className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3"
-              >
-                <div className="grid h-10 w-10 place-items-center rounded-full bg-sky-500/30 font-semibold text-slate-950">
-                  {initials(m.fullName)}
-                </div>
-
-                <div className="flex-1">
-                  <div className="text-sm font-semibold">{m.fullName}</div>
-                  <div className="text-xs text-white/60">
-                    Tham gia: {fmtDate(m.joinedAt)}
-                  </div>
-                </div>
-
-                {m.role === "admin" && (
-                  <span className="rounded-full bg-emerald-400/20 px-3 py-1 text-[0.65rem] font-semibold text-emerald-200">
-                    Quản lý
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }

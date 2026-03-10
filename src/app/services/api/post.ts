@@ -11,7 +11,20 @@ export type PostCoreFields = {
 
 export type PostItem = PostCoreFields & {
   _id: string;
-  clubId: string;
+  clubId: {
+    _id: string;
+    fullName: string;
+    category?: string;
+    rating?: number;
+  } | string;
+  like?: number;
+  likedBy?: Array<{
+    userId: string;
+    likedAt: string;
+    _id: string;
+  }>;
+  isLiked?: boolean;
+  isActive?: boolean;
   likeCount?: number;
   likes?: string[];
   isDeleted?: boolean;

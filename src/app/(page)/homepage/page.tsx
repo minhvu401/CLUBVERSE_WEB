@@ -7,7 +7,6 @@ import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders";
 import { getAllEvents } from "@/app/services/api/events";
-
 import { motion } from "framer-motion";
 import {
   Sparkles,
@@ -17,10 +16,13 @@ import {
   Users,
   Clock,
   MapPin,
+  Brain,
+  Stars,
+  Zap,
 } from "lucide-react";
-
 import { getAllClubs, type ClubItem } from "@/app/services/api/auth";
 
+/* ================= UTILS ================= */
 function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
 }
@@ -28,94 +30,40 @@ function cn(...classes: (string | false | null | undefined)[]) {
 const glass =
   "border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
 
-function CornerGlow({
-  tone = "violet",
-}: {
-  tone?: "violet" | "sky" | "emerald" | "amber" | "fuchsia";
-}) {
-  const toneMap: Record<string, string> = {
-    violet: "from-violet-500/65 to-indigo-500/0",
-    sky: "from-sky-400/65 to-indigo-500/0",
-    emerald: "from-emerald-400/65 to-teal-500/0",
-    amber: "from-amber-400/70 to-orange-500/0",
-    fuchsia: "from-fuchsia-500/65 to-violet-500/0",
+/* ================= DECOR ================= */
+function CornerGlow({ tone = "violet" }: { tone?: string }) {
+  const map: Record<string, string> = {
+    violet: "from-violet-500/60 to-indigo-500/0",
+    emerald: "from-emerald-400/60 to-teal-500/0",
+    fuchsia: "from-fuchsia-500/60 to-violet-500/0",
+    amber: "from-amber-400/60 to-orange-500/0",
+    sky: "from-sky-400/60 to-indigo-500/0",
   };
 
   return (
     <div
       aria-hidden
       className={cn(
-        "pointer-events-none absolute -right-10 -top-10 h-28 w-28 rotate-45",
+        "pointer-events-none absolute -right-12 -top-12 h-32 w-32 rotate-45",
         "bg-gradient-to-br",
-        toneMap[tone] ?? toneMap.violet,
-        "blur-[0.3px]"
+        map[tone],
+        "blur"
       )}
     />
   );
 }
 
-function SectionHeader({
-  icon,
-  title,
-  subtitle,
-  actionHref,
-  actionText,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  subtitle?: string;
-  actionHref?: string;
-  actionText?: string;
-}) {
-  return (
-    <div className="flex items-end justify-between gap-3">
-      <div className="flex items-center gap-3">
-        <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06]">
-          {icon}
-        </div>
-        <div>
-          <h2 className="text-sm font-semibold">{title}</h2>
-          {subtitle ? (
-            <p className="mt-0.5 text-[0.72rem] text-white/55">{subtitle}</p>
-          ) : null}
-        </div>
-      </div>
-
-      {actionHref ? (
-        <Link
-          href={actionHref}
-          className="text-[0.72rem] font-semibold text-white/55 hover:text-white/80"
-        >
-          {actionText ?? "Xem tất cả"} →
-        </Link>
-      ) : null}
-    </div>
-  );
-}
-
-type HomeEvent = {
-  id: string;
-  day: string;
-  month: string;
-  title: string;
-  desc: string;
-  time: string;
-  place: string;
-  attendees: string;
-  tone: "violet" | "emerald" | "fuchsia" | "amber";
-  cta: string;
-  ctaTone: "violet" | "emerald" | "fuchsia" | "amber";
-};
-
+/* ================= PAGE ================= */
 export default function HomeDashboardPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
 
   const [clubs, setClubs] = useState<ClubItem[]>([]);
-  const [clubsLoading, setClubsLoading] = useState(false);
-  const [clubsError, setClubsError] = useState<string | null>(null);
-  const [events, setEvents] = useState<HomeEvent[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
+
+  const isPremiumUser = Boolean((user as any)?.isPremium);
+  const displayName = user?.fullName || "Bạn";
 
   useEffect(() => {
     if (!loading && !token) router.push("/login");
@@ -123,417 +71,213 @@ export default function HomeDashboardPage() {
 
   useEffect(() => {
     if (!token) return;
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        setClubsLoading(true);
-        setClubsError(null);
-
-        const res = await getAllClubs(token);
-
-        if (!cancelled) setClubs(res);
-      } catch (error: unknown) {
-        if (!cancelled) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : "Không tải được danh sách câu lạc bộ";
-          setClubsError(message);
-        }
-      } finally {
-        if (!cancelled) setClubsLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    getAllClubs(token).then(setClubs);
+    setEventsLoading(true);
+    getAllEvents(token, { filter: "upcoming", limit: 4 })
+      .then(setEvents)
+      .finally(() => setEventsLoading(false));
   }, [token]);
-
-  useEffect(() => {
-    if (!token) return;
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        setEventsLoading(true);
-
-        const res = await getAllEvents(token, {
-          filter: "upcoming",
-          limit: 4,
-          skip: 0,
-        });
-
-        if (cancelled) return;
-
-        const tones = ["violet", "emerald", "fuchsia", "amber"] as const;
-
-        const mapped: HomeEvent[] = (res || []).slice(0, 4).map((e, idx) => {
-          const start = e.time ? new Date(e.time) : null;
-
-          return {
-            id: String(e._id),
-            day: start ? start.getDate().toString().padStart(2, "0") : "--",
-            month: start ? `THG ${start.getMonth() + 1}` : "THG --",
-            title: e.title ?? "Sự kiện",
-            desc: e.description ?? "Chưa có mô tả",
-            time: start
-              ? start.toLocaleTimeString("vi-VN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : "Chưa rõ",
-            place: e.location ?? "Chưa cập nhật",
-            attendees: `+${e.participantCount ?? 0} khác`,
-            tone: tones[idx % tones.length],
-            cta: "Tham Gia",
-            ctaTone: tones[idx % tones.length],
-          };
-        });
-
-        setEvents(mapped);
-      } catch (err) {
-        console.error("Fetch homepage events failed", err);
-      } finally {
-        if (!cancelled) setEventsLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
-
-  const displayName = user?.fullName || "Minh";
 
   const clubCards = useMemo(() => {
-    const tones = ["violet", "emerald", "fuchsia", "amber", "sky"] as const;
-
-    return clubs.map((c, idx) => ({
-      id: c._id,
-      name: c.fullName ?? "Câu lạc bộ",
-      tag: c.category ?? "Khác",
-      desc: c.description ?? "Chưa có mô tả.",
-      members: `${(c.clubJoined?.length ?? 0).toLocaleString(
-        "vi-VN"
-      )} thành viên`,
-      tone: tones[idx % tones.length],
-      icon: "🏷️",
-      cta: "Tham Gia",
-    }));
+    const tones = ["violet", "emerald", "fuchsia", "amber", "sky"];
+    return clubs.map((c, i) => ({ ...c, tone: tones[i % tones.length] }));
   }, [clubs]);
 
-  // ✅ GO TO DETAIL
-  const goClubDetail = (id: string) => {
-    router.push(`/clubs/${id}`);
-  };
-
-  const stats = [
-    { label: "Câu Lạc Bộ Tham Gia", value: "12" },
-    { label: "Sự Kiện Sắp Tới", value: "8" },
-    { label: "Điểm Hoạt Động", value: "156" },
-    { label: "Bạn Bè Mới", value: "24" },
-  ];
-
   return (
-    <div className="relative isolate min-h-screen overflow-hidden text-white">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-indigo-950 via-purple-900 to-violet-950" />
-
-      <div className="pointer-events-none absolute -top-44 left-1/2 -z-10 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-violet-500/25 blur-3xl" />
-      <div className="pointer-events-none absolute -top-28 left-10 -z-10 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 right-0 -z-10 h-96 w-96 rounded-full bg-indigo-400/15 blur-3xl" />
-
+    <div className="relative isolate min-h-screen text-white">
+      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-indigo-950 via-purple-900 to-violet-950" />
       <Header />
 
-      {loading ? (
-        <main className="mx-auto flex max-w-6xl items-center justify-center px-4 pb-16 pt-28">
-          <div
-            className={cn("rounded-3xl px-6 py-4 text-sm text-white/75", glass)}
-          >
-            Đang tải...
+      <main className="mx-auto max-w-6xl px-4 pt-28 pb-24 space-y-12">
+        {/* HERO */}
+        <section className={cn("relative rounded-3xl p-8", glass)}>
+          <CornerGlow />
+          <h1 className="text-2xl md:text-3xl font-semibold">
+            👋 Chào mừng, {displayName}
+          </h1>
+          <p className="mt-1 text-sm text-white/70">
+            <span className="font-semibold text-white">ClubVerse</span> – Kết nối
+            đam mê, mở rộng thế giới sinh viên
+          </p>
+
+          <p className="mt-3 max-w-xl text-sm text-white/60">
+            Khám phá câu lạc bộ, sự kiện và cộng đồng phù hợp nhất với bạn – được
+            gợi ý thông minh bởi AI.
+          </p>
+
+          {/* QUICK ACTIONS */}
+          <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <QuickAction
+              icon={<Compass size={18} />}
+              label="Khám phá CLB"
+              onClick={() => router.push("/clubs")}
+            />
+            <QuickAction
+              icon={<CalendarDays size={18} />}
+              label="Lịch sự kiện"
+              onClick={() => router.push("/events")}
+            />
+            <QuickAction
+              icon={<Zap size={18} />}
+              label="Hoạt động hôm nay"
+              onClick={() => router.push("/events")}
+            />
           </div>
-        </main>
-      ) : !token ? (
-        <main className="mx-auto flex max-w-6xl items-center justify-center px-4 pb-16 pt-28">
-          <div
-            className={cn("rounded-3xl px-6 py-4 text-sm text-white/75", glass)}
-          >
-            Đang chuyển hướng...
-          </div>
-        </main>
-      ) : (
-        <main className="mx-auto flex max-w-6xl flex-col gap-7 px-4 pb-20 pt-28">
-          {/* HERO */}
-          <section
-            className={cn(
-              "relative overflow-hidden rounded-3xl p-6 md:p-8",
-              glass
-            )}
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.10),transparent_60%)]" />
-            <div className="relative">
-              <h1 className="text-center text-2xl font-semibold md:text-3xl">
-                Chào mừng, {displayName}{" "}
-                <span className="inline-block">🌟</span>
-              </h1>
-              <p className="mx-auto mt-2 max-w-2xl text-center text-[0.78rem] text-white/60 md:text-sm">
-                Khám phá thế giới câu lạc bộ với những gợi ý thông minh và sự
-                kiện sắp tới dành riêng cho bạn.
-              </p>
+        </section>
 
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-semibold text-white/85 hover:bg-white/[0.10]">
-                  <Compass size={16} />
-                  Khám Phá Câu Lạc Bộ
-                </button>
+        {/* AI CLUBS */}
+        <section
+          className={cn(
+            "relative rounded-3xl p-6",
+            glass,
+            !isPremiumUser && "overflow-hidden"
+          )}
+        >
+          <p className="text-[0.72rem] text-white/55 mb-4">
+            Dựa trên hoạt động, sự kiện đã tham gia và sở thích của bạn
+          </p>
 
-                <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-semibold text-white/85 hover:bg-white/[0.10]">
-                  <CalendarDays size={16} />
-                  Lịch Của Tôi
-                </button>
-
-                <button className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-violet-500/25 hover:from-violet-400 hover:to-indigo-400">
-                  <Plus size={16} />
-                  Tạo Câu Lạc Bộ
+          {!isPremiumUser && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 backdrop-blur">
+              <div className="text-center max-w-xs">
+                <Stars className="mx-auto mb-3 text-violet-300" />
+                <p className="text-sm font-semibold">Tính năng Premium</p>
+                <p className="mt-1 text-xs text-white/60">
+                  Mở khóa AI gợi ý CLB dành riêng cho bạn
+                </p>
+                <button
+                  onClick={() => router.push("/pricing")}
+                  className="mt-4 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 px-5 py-2 text-xs font-semibold"
+                >
+                  Nâng cấp ngay
                 </button>
               </div>
             </div>
-          </section>
+          )}
 
-          {/* CLUBS */}
-          <section className={cn("rounded-3xl p-5 md:p-6", glass)}>
-            <SectionHeader
-              icon={<Sparkles size={18} className="text-violet-200" />}
-              title="Câu Lạc Bộ AI Gợi Ý"
-              actionHref="/clubs"
-              actionText="Xem Tất Cả"
-            />
-
-            <div className="mt-4 grid gap-4 md:grid-cols-4">
-              {clubsLoading ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "relative overflow-hidden rounded-2xl p-4",
-                      "border border-white/10 bg-white/[0.05]"
-                    )}
-                  >
-                    <div className="h-9 w-9 rounded-xl bg-white/10" />
-                    <div className="mt-3 h-4 w-4/5 rounded bg-white/10" />
-                    <div className="mt-2 h-3 w-full rounded bg-white/10" />
-                    <div className="mt-2 h-3 w-5/6 rounded bg-white/10" />
-                    <div className="mt-4 h-8 w-full rounded-full bg-white/10" />
-                  </div>
-                ))
-              ) : clubsError ? (
-                <div
-                  className={cn(
-                    "rounded-2xl p-4 text-sm text-white/70",
-                    "border border-white/10 bg-white/[0.05]"
-                  )}
-                >
-                  {clubsError}
-                </div>
-              ) : clubCards.length === 0 ? (
-                <div
-                  className={cn(
-                    "rounded-2xl p-4 text-sm text-white/70",
-                    "border border-white/10 bg-white/[0.05]"
-                  )}
-                >
-                  Chưa có câu lạc bộ nào.
-                </div>
-              ) : (
-                clubCards.map((club) => (
-                  <motion.article
-                    key={club.id}
-                    whileHover={{ y: -4 }}
-                    transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                    className={cn(
-                      "relative cursor-pointer overflow-hidden rounded-2xl p-4",
-                      "border border-white/10 bg-white/[0.05] shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
-                    )}
-                    onClick={() => goClubDetail(club.id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ")
-                        goClubDetail(club.id);
-                    }}
-                  >
-                    <CornerGlow tone={club.tone} />
-                    <div className="relative">
-                      <div className="flex items-center justify-between">
-                        <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-black/20 text-base">
-                          {club.icon}
-                        </div>
-                        <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[0.65rem] text-white/70">
-                          {club.tag}
-                        </span>
-                      </div>
-
-                      <h3 className="mt-3 text-sm font-semibold leading-snug">
-                        {club.name}
-                      </h3>
-                      <p className="mt-1.5 line-clamp-3 text-[0.72rem] leading-relaxed text-white/60">
-                        {club.desc}
-                      </p>
-
-                      <div className="mt-3 flex items-center justify-between text-[0.68rem] text-white/55">
-                        <span className="inline-flex items-center gap-1.5">
-                          <Users size={14} />
-                          {club.members}
-                        </span>
-                      </div>
-
-                      {/* ✅ BUTTON GO DETAIL */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          goClubDetail(club.id);
-                        }}
-                        className="mt-3 w-full rounded-full bg-violet-500/90 py-2 text-[0.72rem] font-semibold text-white hover:bg-violet-500"
-                      >
-                        {club.cta}
-                      </button>
-                    </div>
-                  </motion.article>
-                ))
-              )}
-            </div>
-          </section>
-
-          {/* EVENTS */}
-          <section className={cn("rounded-3xl p-5 md:p-6", glass)}>
-            <SectionHeader
-              icon={<CalendarDays size={18} className="text-violet-200" />}
-              title="Sự Kiện Sắp Tới"
-              actionHref="/events"
-              actionText="Xem Lịch Đầy Đủ"
-            />
-
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              {eventsLoading ? (
-                <div className="text-sm text-white/60">Đang tải sự kiện...</div>
-              ) : (
-                events.map((ev) => (
-                  <motion.article
-                    key={ev.id}
-                    whileHover={{ y: -4 }}
-                    transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                    className={cn(
-                      "relative overflow-hidden rounded-2xl p-4",
-                      "border border-white/10 bg-white/[0.05]"
-                    )}
-                  >
-                    <CornerGlow tone={ev.tone} />
-                    <div className="relative flex gap-4">
-                      <div className="w-14 shrink-0 rounded-2xl border border-white/10 bg-black/20 px-2 py-2 text-center">
-                        <div className="text-lg font-semibold">{ev.day}</div>
-                        <div className="text-[0.6rem] text-white/55">
-                          {ev.month}
-                        </div>
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <h3 className="truncate text-sm font-semibold">
-                            {ev.title}
-                          </h3>
-                        </div>
-
-                        <p className="mt-1.5 line-clamp-2 text-[0.72rem] text-white/60">
-                          {ev.desc}
-                        </p>
-
-                        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[0.68rem] text-white/55">
-                          <span className="inline-flex items-center gap-1.5">
-                            <Clock size={14} />
-                            {ev.time}
-                          </span>
-                          <span className="inline-flex items-center gap-1.5">
-                            <MapPin size={14} />
-                            {ev.place}
-                          </span>
-                        </div>
-
-                        <div className="mt-3 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="flex -space-x-2">
-                              {[1, 2, 3].map((i) => (
-                                <div
-                                  key={i}
-                                  className="h-6 w-6 rounded-full border border-white/10 bg-white/10"
-                                  aria-hidden="true"
-                                />
-                              ))}
-                            </div>
-                            <span className="text-[0.68rem] text-white/55">
-                              {ev.attendees}
-                            </span>
-                          </div>
-
-                          <button
-                            className={cn(
-                              "rounded-full px-4 py-1.5 text-[0.72rem] font-semibold text-white",
-                              ev.ctaTone === "emerald" &&
-                                "bg-emerald-500/80 hover:bg-emerald-500",
-                              ev.ctaTone === "amber" &&
-                                "bg-amber-400/80 hover:bg-amber-400 text-black",
-                              ev.ctaTone === "fuchsia" &&
-                                "bg-fuchsia-500/80 hover:bg-fuchsia-500",
-                              ev.ctaTone === "violet" &&
-                                "bg-violet-500/80 hover:bg-violet-500"
-                            )}
-                          >
-                            {ev.cta}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.article>
-                ))
-              )}
-            </div>
-          </section>
-
-          {/* STATS */}
-          <section className="grid gap-4 md:grid-cols-4">
-            {stats.map((s) => (
-              <div
-                key={s.label}
+          <div className="grid gap-4 md:grid-cols-4">
+            {clubCards.map((club) => (
+              <motion.article
+                key={club._id}
+                whileHover={{ y: -6 }}
                 className={cn(
-                  "relative overflow-hidden rounded-2xl p-4 text-center",
-                  glass
+                  "relative rounded-2xl p-4 bg-white/5 border border-white/10",
+                  !isPremiumUser &&
+                    "opacity-30 grayscale pointer-events-none"
                 )}
               >
-                <CornerGlow tone="violet" />
-                <div className="relative">
-                  <div className="text-2xl font-semibold">{s.value}</div>
-                  <div className="mt-1 text-[0.7rem] text-white/60">
-                    {s.label}
-                  </div>
+                <CornerGlow tone={club.tone} />
+                <h3 className="text-sm font-semibold">{club.fullName}</h3>
+                <p className="mt-1.5 line-clamp-3 text-[0.72rem] text-white/60">
+                  {club.description}
+                </p>
+                <div className="mt-3 text-[0.68rem] text-white/55">
+                  <Users size={14} className="inline mr-1" />
+                  {club.clubJoined?.length ?? 0} thành viên
                 </div>
-              </div>
+              </motion.article>
             ))}
-          </section>
+          </div>
+        </section>
 
-          {/* Floating Action Button */}
-          <button
-            className="fixed bottom-6 right-6 grid h-12 w-12 place-items-center rounded-2xl bg-violet-500 text-white shadow-xl shadow-violet-500/30 hover:bg-violet-400"
-            aria-label="Tạo nhanh"
-            title="Tạo nhanh"
-          >
-            <Plus />
-          </button>
-        </main>
-      )}
+        {/* EVENTS */}
+        <section className={cn("rounded-3xl p-6", glass)}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold">Sự kiện sắp tới</h2>
+            <Link
+              href="/events"
+              className="text-xs font-semibold text-violet-300"
+            >
+              Xem tất cả →
+            </Link>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {eventsLoading ? (
+              <div className="text-sm text-white/60">Đang tải sự kiện...</div>
+            ) : (
+              events.map((e: any) => (
+                <motion.article
+                  key={e._id}
+                  whileHover={{ y: -4 }}
+                  onClick={() => router.push(`/events/${e._id}`)}
+                  className="cursor-pointer rounded-2xl p-4 border border-white/10 bg-white/5"
+                >
+                  <h3 className="text-sm font-semibold">{e.title}</h3>
+                  <p className="mt-1 line-clamp-2 text-[0.72rem] text-white/60">
+                    {e.description}
+                  </p>
+                  <div className="mt-3 flex gap-4 text-[0.68rem] text-white/55">
+                    <span>
+                      <Clock size={14} className="inline mr-1" />
+                      {new Date(e.time).toLocaleTimeString("vi-VN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    <span>
+                      <MapPin size={14} className="inline mr-1" />
+                      {e.location}
+                    </span>
+                  </div>
+                </motion.article>
+              ))
+            )}
+          </div>
+        </section>
+
+        {/* BOTTOM CTA */}
+        <section className="text-center py-10">
+          <h3 className="text-lg font-semibold">
+            Sẵn sàng tham gia cộng đồng ClubVerse?
+          </h3>
+          <p className="mt-1 text-sm text-white/60">
+            Hơn 100+ câu lạc bộ và sự kiện đang chờ bạn khám phá
+          </p>
+          <div className="mt-4 flex justify-center gap-3">
+            <button
+              onClick={() => router.push("/clubs")}
+              className="rounded-full bg-violet-500 px-6 py-2.5 text-sm font-semibold"
+            >
+              Tham gia CLB
+            </button>
+            <button
+              onClick={() => router.push("/events")}
+              className="rounded-full border border-white/10 bg-white/5 px-6 py-2.5 text-sm"
+            >
+              Xem sự kiện
+            </button>
+          </div>
+        </section>
+      </main>
 
       <Footer />
+
+      {/* FAB */}
+      <button className="fixed bottom-6 right-6 grid h-12 w-12 place-items-center rounded-2xl bg-violet-500 shadow-xl">
+        <Plus />
+      </button>
     </div>
+  );
+}
+
+/* ================= SUB ================= */
+function QuickAction({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs hover:bg-white/10"
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
   );
 }

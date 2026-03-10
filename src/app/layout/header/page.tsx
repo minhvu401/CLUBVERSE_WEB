@@ -190,9 +190,9 @@ function MobileSearch({ show }: { show: boolean }) {
 function UserHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   const navItems = [
     { label: "Trang Chủ", href: "/homepage", match: ["/", "/homepage"] },
-    { label: "Khám Phá", href: "/finding", match: ["/finding"] },
+    // { label: "Khám Phá", href: "/finding", match: ["/finding"] },
     { label: "Sự Kiện", href: "/events", match: ["/events"] },
-    { label: "Câu Lạc Bộ", href: "/clb", match: ["/clb"] },
+    { label: "Câu Lạc Bộ", href: "/clubs", match: ["/clubs"] },
     { label: "Diễn Đàn", href: "/forum", match: ["/forum"] },
   ];
 
@@ -218,10 +218,8 @@ function UserHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   );
 }
 
-/** ====== CLUB HEADER (đổi về /homeclub) ====== */
 function ClubHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   const navItems = [
-    { label: "Trang CLB", href: "/club/home", match: ["/club/home"] },
     { label: "Diễn đàn", href: "/club/forum", match: ["/club/forum"] },
     { label: "Sự kiện", href: "/club/events", match: ["/club/events"] },
     {
@@ -235,7 +233,7 @@ function ClubHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   return (
     <HeaderShell>
       <div className="flex h-20 items-center justify-between bg-transparent border-0">
-        <Brand href={isAuthed ? "/club/home" : "/club/home"} />
+        <Brand href={isAuthed ? "/club/forum" : "/club/forum"} />
         <NavLinks items={navItems} pathname={pathname} />
 
         {!isAuthed ? (
@@ -268,7 +266,7 @@ function ClubHeader({ pathname, isAuthed, user, onLogout, router }: any) {
 /** ====== ADMIN HEADER ====== */
 function AdminHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   const navItems = [
-    { label: "Dashboard", href: "/admin", match: ["/admin"] },
+    { label: "Dashboard", href: "/admin/dashboard", match: ["/admin/dashboard"] },
     { label: "Users", href: "/admin/users", match: ["/admin/users"] },
     { label: "CLB", href: "/admin/clubs", match: ["/admin/clubs"] },
     { label: "Cài đặt", href: "/admin/settings", match: ["/admin/settings"] },
@@ -277,7 +275,7 @@ function AdminHeader({ pathname, isAuthed, user, onLogout, router }: any) {
   return (
     <HeaderShell>
       <div className="flex h-20 items-center justify-between bg-transparent border-0">
-        <Brand href={isAuthed ? "/admin" : "/"} />
+        <Brand href={isAuthed ? "/admin/dashboard" : "/"} />
         <NavLinks items={navItems} pathname={pathname} />
 
         {!isAuthed ? (
