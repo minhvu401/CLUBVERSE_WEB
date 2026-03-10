@@ -7,12 +7,20 @@ import { useRouter } from "next/navigation";
 import {
   getNotifications,
   markAsRead,
+  markAsUnread,
   markAllAsRead,
   deleteNotification,
-  deleteAllRead,
+  deleteAllNotifications,
   type NotificationItem,
 } from "@/app/services/api/notifications";
-import { Bell, CheckCheck, Trash2, Filter, ArrowLeft } from "lucide-react";
+import {
+  Bell,
+  Check,
+  CheckCheck,
+  Trash2,
+  Filter,
+  ArrowLeft,
+} from "lucide-react";
 
 export default function NotificationsPage() {
   const { token } = useAuth() as any;
@@ -27,7 +35,13 @@ export default function NotificationsPage() {
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getNotifications(token, page, 20);
+      const isReadParam =
+        filter === "unread" ? false : filter === "read" ? true : undefined;
+      const data = await getNotifications(token, {
+        page,
+        limit: 20,
+        isRead: isReadParam,
+      });
       setNotifications(data.notifications || []);
       setTotal(data.total || 0);
       setUnreadCount(data.unreadCount || 0);
@@ -36,7 +50,7 @@ export default function NotificationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, page]);
+  }, [token, page, filter]);
 
   useEffect(() => {
     if (!token) {
@@ -44,7 +58,7 @@ export default function NotificationsPage() {
       return;
     }
     fetchNotifications();
-  }, [token, page, router, fetchNotifications]);
+  }, [token, page, filter, router, fetchNotifications]);
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
@@ -57,6 +71,20 @@ export default function NotificationsPage() {
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
       console.error("Error marking as read:", error);
+    }
+  };
+
+  const handleMarkAsUnread = async (notificationId: string) => {
+    try {
+      await markAsUnread(token, notificationId);
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n._id === notificationId ? { ...n, isRead: false } : n,
+        ),
+      );
+      setUnreadCount((prev) => prev + 1);
+    } catch (error) {
+      console.error("Error marking as unread:", error);
     }
   };
 
@@ -87,13 +115,17 @@ export default function NotificationsPage() {
   };
 
   const handleDeleteAllRead = async () => {
+    if (
+      !window.confirm("Xóa tất cả thông báo? Hành động này không thể hoàn tác.")
+    )
+      return;
     try {
-      await deleteAllRead(token);
-      setNotifications((prev) => prev.filter((n) => !n.isRead));
-      setTotal(unreadCount);
-      await fetchNotifications();
+      await deleteAllNotifications(token);
+      setNotifications([]);
+      setTotal(0);
+      setUnreadCount(0);
     } catch (error) {
-      console.error("Error deleting all read:", error);
+      console.error("Error deleting all notifications:", error);
     }
   };
 
@@ -102,33 +134,30 @@ export default function NotificationsPage() {
       handleMarkAsRead(notification._id);
     }
 
-    if (notification.relatedId && notification.relatedType) {
-      let path = "";
-      switch (notification.relatedType) {
-        case "event":
-          path = `/events/${notification.relatedId}`;
-          break;
-        case "club":
-          path = `/clubs/${notification.relatedId}`;
-          break;
-        case "post":
-          path = `/forum/post/${notification.relatedId}`;
-          break;
-        case "application":
-          path = `/club/applications/${notification.relatedId}`;
-          break;
-      }
-      if (path) {
-        router.push(path);
-      }
+    let path = "";
+    const meta = notification.metadata || {};
+    switch (notification.type) {
+      case "EVENT_REMINDER":
+      case "EVENT_UPDATE":
+        if (meta.eventId) path = `/events/${meta.eventId}`;
+        break;
+      case "CLUB_INVITE":
+        if (meta.clubId) path = `/clubs/${meta.clubId}`;
+        break;
+      case "FORUM_REPLY":
+        if (meta.postId) path = `/forum/post/${meta.postId}`;
+        break;
+      case "APPLICATION_STATUS":
+        if (meta.applicationId)
+          path = `/club/applications/${meta.applicationId}`;
+        break;
+    }
+    if (path) {
+      router.push(path);
     }
   };
 
-  const filteredNotifications = notifications.filter((n) => {
-    if (filter === "unread") return !n.isRead;
-    if (filter === "read") return n.isRead;
-    return true;
-  });
+  const filteredNotifications = notifications;
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -152,16 +181,16 @@ export default function NotificationsPage() {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case "event_reminder":
-      case "event_update":
+      case "EVENT_REMINDER":
+      case "EVENT_UPDATE":
         return "📅";
-      case "application_status":
+      case "APPLICATION_STATUS":
         return "📝";
-      case "club_invite":
+      case "CLUB_INVITE":
         return "🎯";
-      case "forum_reply":
+      case "FORUM_REPLY":
         return "💬";
-      case "system":
+      case "SYSTEM":
         return "🔔";
       default:
         return "📢";
@@ -198,16 +227,16 @@ export default function NotificationsPage() {
                   className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
                 >
                   <CheckCheck className="h-4 w-4" />
-                  <span>Đọc hết</span>
+                  <span>Dấu đọc hết</span>
                 </button>
               )}
-              {notifications.some((n) => n.isRead) && (
+              {notifications.length > 0 && (
                 <button
                   onClick={handleDeleteAllRead}
                   className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
                 >
                   <Trash2 className="h-4 w-4" />
-                  <span>Xóa đã đọc</span>
+                  <span>Xóa tất cả</span>
                 </button>
               )}
             </div>
@@ -220,7 +249,10 @@ export default function NotificationsPage() {
           {(["all", "unread", "read"] as const).map((f) => (
             <button
               key={f}
-              onClick={() => setFilter(f)}
+              onClick={() => {
+                setFilter(f);
+                setPage(1);
+              }}
               className={`px-4 py-2 rounded-md transition ${
                 filter === f
                   ? "bg-indigo-600 text-white"
@@ -285,22 +317,34 @@ export default function NotificationsPage() {
                         <p className="text-xs text-gray-400">
                           {formatTime(notification.createdAt)}
                         </p>
-                        {notification.relatedType && (
-                          <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
-                            {notification.relatedType === "event"
-                              ? "Sự kiện"
-                              : notification.relatedType === "club"
-                                ? "Câu lạc bộ"
-                                : notification.relatedType === "post"
-                                  ? "Bài viết"
-                                  : "Đơn đăng ký"}
-                          </span>
-                        )}
                       </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex-shrink-0 flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                    <div className="flex-shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                      {notification.isRead ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMarkAsUnread(notification._id);
+                          }}
+                          className="p-2 hover:bg-indigo-100 rounded-lg transition"
+                          title="Đánh dấu chưa đọc"
+                        >
+                          <Check className="h-4 w-4 text-indigo-400" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMarkAsRead(notification._id);
+                          }}
+                          className="p-2 hover:bg-indigo-100 rounded-lg transition"
+                          title="Đánh dấu đã đọc"
+                        >
+                          <CheckCheck className="h-4 w-4 text-indigo-600" />
+                        </button>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -309,7 +353,7 @@ export default function NotificationsPage() {
                         className="p-2 hover:bg-red-100 rounded-lg transition"
                         title="Xóa"
                       >
-                        <Trash2 className="h-5 w-5 text-red-600" />
+                        <Trash2 className="h-4 w-4 text-red-500" />
                       </button>
                     </div>
                   </div>
