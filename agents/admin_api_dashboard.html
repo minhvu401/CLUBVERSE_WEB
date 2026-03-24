@@ -1,0 +1,274 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); }
+  .wrap { padding: 16px 0; }
+  .section { margin-bottom: 20px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; }
+  .section-header { padding: 12px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; background: var(--color-background-secondary); }
+  .section-header:hover { background: var(--color-background-tertiary); }
+  .badge { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+  .badge-admin { background: #EEEDFE; color: #3C3489; }
+  .badge-count { background: var(--color-background-primary); color: var(--color-text-secondary); border: 0.5px solid var(--color-border-secondary); }
+  .dark .badge-admin { background: #26215C; color: #AFA9EC; }
+  .section-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); flex: 1; }
+  .chevron { font-size: 11px; color: var(--color-text-tertiary); transition: transform 0.2s; }
+  .chevron.open { transform: rotate(90deg); }
+  .api-list { display: none; padding: 8px 0; }
+  .api-list.open { display: block; }
+  .api-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 16px; border-top: 0.5px solid var(--color-border-tertiary); }
+  .api-row:hover { background: var(--color-background-secondary); }
+  .method { font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 4px; min-width: 48px; text-align: center; flex-shrink: 0; margin-top: 1px; }
+  .get    { background: #E1F5EE; color: #0F6E56; }
+  .post   { background: #E6F1FB; color: #185FA5; }
+  .patch  { background: #FAEEDA; color: #854F0B; }
+  .delete { background: #FCEBEB; color: #A32D2D; }
+  .put    { background: #EEEDFE; color: #3C3489; }
+  .dark .get    { background: #085041; color: #9FE1CB; }
+  .dark .post   { background: #0C447C; color: #B5D4F4; }
+  .dark .patch  { background: #633806; color: #FAC775; }
+  .dark .delete { background: #791F1F; color: #F7C1C1; }
+  .dark .put    { background: #26215C; color: #AFA9EC; }
+  .api-info { flex: 1; }
+  .api-summary { font-size: 13px; color: var(--color-text-primary); line-height: 1.4; }
+  .api-path { font-size: 11px; color: var(--color-text-tertiary); font-family: var(--font-mono); margin-top: 2px; }
+  .api-note { font-size: 11px; color: var(--color-text-secondary); margin-top: 3px; }
+  .icon { font-size: 16px; flex-shrink: 0; }
+  .summary-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .stat-pill { display: flex; flex-direction: column; align-items: center; background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 8px 16px; flex: 1; min-width: 80px; }
+  .stat-num { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+  .stat-label { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+</style>
+<div class="wrap">
+  <div class="summary-bar">
+    <div class="stat-pill"><span class="stat-num">14</span><span class="stat-label">Tổng API admin</span></div>
+    <div class="stat-pill"><span class="stat-num">4</span><span class="stat-label">Nhóm chức năng</span></div>
+    <div class="stat-pill"><span class="stat-num">2</span><span class="stat-label">Exclusive admin</span></div>
+    <div class="stat-pill"><span class="stat-num">Bearer</span><span class="stat-label">Auth type</span></div>
+  </div>
+
+  <!-- User Management -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="icon">👤</span>
+      <span class="section-title">Quản lý người dùng</span>
+      <span class="badge badge-admin">Admin Only</span>
+      <span class="badge badge-count">3 API</span>
+      <span class="chevron">▶</span>
+    </div>
+    <div class="api-list">
+      <div class="api-row">
+        <span class="method get">GET</span>
+        <div class="api-info">
+          <div class="api-summary">Lấy danh sách tất cả người dùng</div>
+          <div class="api-path">GET /users</div>
+          <div class="api-note">Chỉ ADMIN mới có quyền — xem toàn bộ user trong hệ thống</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method delete">DEL</span>
+        <div class="api-info">
+          <div class="api-summary">Vô hiệu hóa tài khoản người dùng</div>
+          <div class="api-path">DELETE /users/{id}/deactivate</div>
+          <div class="api-note">Soft deactivate — tài khoản bị khóa nhưng dữ liệu giữ nguyên</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method patch">PATCH</span>
+        <div class="api-info">
+          <div class="api-summary">Kích hoạt lại tài khoản</div>
+          <div class="api-path">PATCH /users/{id}/reactivate</div>
+          <div class="api-note">Mở khóa tài khoản đã bị vô hiệu hóa trước đó</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Applications -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="icon">📋</span>
+      <span class="section-title">Quản lý đơn đăng ký vào CLB</span>
+      <span class="badge" style="background:#E1F5EE;color:#0F6E56">Club/Admin</span>
+      <span class="badge badge-count">5 API</span>
+      <span class="chevron">▶</span>
+    </div>
+    <div class="api-list">
+      <div class="api-row">
+        <span class="method get">GET</span>
+        <div class="api-info">
+          <div class="api-summary">Xem danh sách đơn đăng ký của 1 club</div>
+          <div class="api-path">GET /applications/club/{clubId}?status=PENDING|APPROVED|REJECTED...</div>
+          <div class="api-note">Filter theo trạng thái đơn</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method get">GET</span>
+        <div class="api-info">
+          <div class="api-summary">Xem chi tiết đơn đăng ký</div>
+          <div class="api-path">GET /applications/{id}</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method patch">PATCH</span>
+        <div class="api-info">
+          <div class="api-summary">Duyệt đơn + gửi lịch phỏng vấn</div>
+          <div class="api-path">PATCH /applications/{id}/approve</div>
+          <div class="api-note">Body: interviewDate (required), interviewLocation, interviewNote</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method patch">PATCH</span>
+        <div class="api-info">
+          <div class="api-summary">Từ chối đơn đăng ký</div>
+          <div class="api-path">PATCH /applications/{id}/reject</div>
+          <div class="api-note">Body: rejectionReason</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method patch">PATCH</span>
+        <div class="api-info">
+          <div class="api-summary">Quyết định cuối sau phỏng vấn</div>
+          <div class="api-path">PATCH /applications/{id}/final-decision</div>
+          <div class="api-note">Body: decision (accepted | declined). Nếu accepted → tự động thêm vào thành viên CLB</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Club Members -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="icon">🏛️</span>
+      <span class="section-title">Quản lý thành viên CLB</span>
+      <span class="badge" style="background:#E1F5EE;color:#0F6E56">Club Account</span>
+      <span class="badge badge-count">6 API</span>
+      <span class="chevron">▶</span>
+    </div>
+    <div class="api-list">
+      <div class="api-row">
+        <span class="method get">GET</span>
+        <div class="api-info">
+          <div class="api-summary">Xem danh sách thành viên CLB</div>
+          <div class="api-path">GET /club-members/club/{clubId}</div>
+          <div class="api-note">Filter: status, role, search, sortBy</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method get">GET</span>
+        <div class="api-info">
+          <div class="api-summary">Xem chi tiết 1 thành viên</div>
+          <div class="api-path">GET /club-members/club/{clubId}/member/{memberId}</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method delete">DEL</span>
+        <div class="api-info">
+          <div class="api-summary">Xóa thành viên khỏi CLB</div>
+          <div class="api-path">DELETE /club-members/club/{clubId}/remove</div>
+          <div class="api-note">Body: userId, reason (bắt buộc)</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method put">PUT</span>
+        <div class="api-info">
+          <div class="api-summary">Cập nhật vai trò thành viên</div>
+          <div class="api-path">PUT /club-members/club/{clubId}/update-role</div>
+          <div class="api-note">Body: userId, newRole (admin | moderator | member)</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method get">GET</span>
+        <div class="api-info">
+          <div class="api-summary">Thống kê thành viên CLB</div>
+          <div class="api-path">GET /club-members/club/{clubId}/statistics</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method get">GET</span>
+        <div class="api-info">
+          <div class="api-summary">Export danh sách thành viên</div>
+          <div class="api-path">GET /club-members/club/{clubId}/export</div>
+          <div class="api-note">Filter theo status: active | inactive | all</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Events -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="icon">🎯</span>
+      <span class="section-title">Quản lý sự kiện & bài viết</span>
+      <span class="badge" style="background:#E1F5EE;color:#0F6E56">Club Account</span>
+      <span class="badge badge-count">8 API</span>
+      <span class="chevron">▶</span>
+    </div>
+    <div class="api-list">
+      <div class="api-row">
+        <span class="method post">POST</span>
+        <div class="api-info">
+          <div class="api-summary">Tạo sự kiện mới</div>
+          <div class="api-path">POST /events</div>
+          <div class="api-note">title, description, location, time, maxParticipants (required)</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method patch">PATCH</span>
+        <div class="api-info">
+          <div class="api-summary">Cập nhật sự kiện</div>
+          <div class="api-path">PATCH /events/{id}</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method delete">DEL</span>
+        <div class="api-info">
+          <div class="api-summary">Xóa mềm sự kiện</div>
+          <div class="api-path">DELETE /events/{id}/soft</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method delete">DEL</span>
+        <div class="api-info">
+          <div class="api-summary">Xóa vĩnh viễn sự kiện</div>
+          <div class="api-path">DELETE /events/{id}/hard</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method patch">PATCH</span>
+        <div class="api-info">
+          <div class="api-summary">Khôi phục sự kiện đã xóa</div>
+          <div class="api-path">PATCH /events/{id}/restore</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method get">GET</span>
+        <div class="api-info">
+          <div class="api-summary">Danh sách người tham gia sự kiện</div>
+          <div class="api-path">GET /events/{id}/participants</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method post">POST</span>
+        <div class="api-info">
+          <div class="api-summary">Check-in người tham gia</div>
+          <div class="api-path">POST /events/{id}/check-in/{userId}</div>
+        </div>
+      </div>
+      <div class="api-row">
+        <span class="method delete">DEL</span>
+        <div class="api-info">
+          <div class="api-summary">Hủy check-in</div>
+          <div class="api-path">DELETE /events/{id}/check-in/{userId}/undo</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  function toggle(header) {
+    const list = header.nextElementSibling;
+    const chev = header.querySelector('.chevron');
+    list.classList.toggle('open');
+    chev.classList.toggle('open');
+  }
+</script>

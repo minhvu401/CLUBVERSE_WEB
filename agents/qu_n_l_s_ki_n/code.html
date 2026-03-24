@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "outline-variant": "#aba9d7",
+              "inverse-surface": "#0a082f",
+              "on-surface": "#2b2a51",
+              "surface-bright": "#f9f5ff",
+              "on-tertiary-fixed": "#004a3f",
+              "on-primary-fixed": "#000000",
+              "error": "#b41340",
+              "primary-container": "#859aff",
+              "surface-variant": "#dcd9ff",
+              "inverse-on-surface": "#9a99c6",
+              "secondary-container": "#ffc69c",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-low": "#f2efff",
+              "primary-fixed": "#859aff",
+              "on-error": "#ffefef",
+              "secondary-fixed": "#ffc69c",
+              "tertiary-container": "#6bfde0",
+              "on-tertiary-fixed-variant": "#006a5a",
+              "surface": "#f9f5ff",
+              "outline": "#74739e",
+              "secondary": "#8d4a00",
+              "background": "#f9f5ff",
+              "on-tertiary-container": "#005f51",
+              "surface-container": "#e9e5ff",
+              "tertiary-fixed-dim": "#5aeed2",
+              "tertiary-fixed": "#6bfde0",
+              "secondary-dim": "#7c4000",
+              "surface-dim": "#d2d0ff",
+              "on-primary-fixed-variant": "#00207e",
+              "on-secondary-fixed-variant": "#7d4100",
+              "inverse-primary": "#6d88ff",
+              "secondary-fixed-dim": "#ffb377",
+              "surface-tint": "#0846ed",
+              "surface-container-highest": "#dcd9ff",
+              "on-secondary": "#fff0e7",
+              "on-primary": "#f2f1ff",
+              "on-primary-container": "#001867",
+              "primary-fixed-dim": "#718bff",
+              "on-secondary-fixed": "#532900",
+              "tertiary-dim": "#005a4d",
+              "error-dim": "#a70138",
+              "primary": "#0846ed",
+              "on-background": "#2b2a51",
+              "on-tertiary": "#c2ffef",
+              "primary-dim": "#003cd3",
+              "surface-container-high": "#e2dfff",
+              "error-container": "#f74b6d",
+              "on-surface-variant": "#585781",
+              "tertiary": "#006859",
+              "on-error-container": "#510017",
+              "on-secondary-container": "#6f3900"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .tonal-shift { background-color: rgba(242, 239, 255, 0.5); }
+      .tonal-transition-no-border { border: none ! from-surface-to-transparent; }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-64 rounded-r-3xl bg-white/70 backdrop-blur-xl shadow-[0px_20px_40px_rgba(43,42,81,0.06)] flex flex-col h-full py-8 px-4 z-50">
+<div class="mb-10 px-4">
+<h1 class="text-2xl font-black tracking-tighter text-blue-700">Academic Pulse</h1>
+<p class="text-xs font-medium text-slate-500 uppercase tracking-widest mt-1">Admin Dashboard</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-blue-500 hover:translate-y-[-1px] transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="font-medium">Clubs</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-blue-500 hover:translate-y-[-1px] transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-medium">Users</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-blue-600 font-bold border-r-4 border-blue-600 hover:translate-y-[-1px] transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="font-medium">Events</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-blue-500 hover:translate-y-[-1px] transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="article">article</span>
+<span class="font-medium">Posts</span>
+</a>
+</nav>
+<div class="mt-auto border-t border-outline-variant/10 pt-6 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-blue-500 hover:translate-y-[-1px] transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-medium">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-blue-500 hover:translate-y-[-1px] transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-medium">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<main class="ml-64 min-h-screen">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 bg-slate-50/50 backdrop-blur-md flex justify-between items-center px-8 z-40">
+<div class="flex items-center gap-4 bg-surface-container-highest/50 px-4 py-2 rounded-xl w-96">
+<span class="material-symbols-outlined text-outline" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full placeholder:text-outline" placeholder="Search events or clubs..." type="text"/>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4">
+<button class="relative p-2 text-slate-600 hover:bg-white/80 rounded-lg transition-all duration-300">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-secondary rounded-full"></span>
+</button>
+<button class="p-2 text-slate-600 hover:bg-white/80 rounded-lg transition-all duration-300">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+</button>
+</div>
+<div class="h-8 w-[1px] bg-outline-variant/20"></div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<p class="text-sm font-bold text-on-surface">Alex Rivera</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-tighter">Super Admin</p>
+</div>
+<img alt="Admin Avatar" class="w-10 h-10 rounded-xl object-cover bg-primary-container" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAKes5XZOfX2FNEYUuaNqNXzgPRHGtGEqanukRfDdFbzqDRhlL886c4ykj7ZruXsNgkcoFnUzW6Pd50_WzlzMrg--Ns_3_9s9pGVdjPx7KwSCFHzNKPY88mo5hEdxd7EUv5UaM0ElbXKkmhnT0rZenb6AqCojbEc-cHaTtAZcW8_vv_XRKmsDDxKcAc-byYlip1tfzZou1JeLuhwH0avkcUQOEeT-mjziUNsXRDYkl1DgQFF3Ukl7Xv2CGQfoe4R_QaCTJduaijSq2X"/>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="mt-16 p-8 space-y-8">
+<!-- Hero Header Section -->
+<section class="flex flex-col md:flex-row justify-between items-end gap-6">
+<div>
+<h2 class="text-4xl font-black text-on-surface tracking-tight leading-none mb-2">Campus Events</h2>
+<p class="text-on-surface-variant text-lg">Managing the heart of student engagement.</p>
+</div>
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary px-8 py-4 rounded-xl font-bold flex items-center gap-3 shadow-lg hover:translate-y-[-2px] transition-all">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+                    Create New Event
+                </button>
+</section>
+<!-- Bento Layout Grid -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Main Events List (8 Columns) -->
+<div class="col-span-12 lg:col-span-8 space-y-6">
+<!-- Filters & Stats Row -->
+<div class="flex items-center justify-between bg-surface-container-low p-4 rounded-2xl">
+<div class="flex gap-2">
+<button class="px-4 py-2 bg-surface-container-lowest text-primary rounded-lg font-bold text-sm shadow-sm">All Events</button>
+<button class="px-4 py-2 text-on-surface-variant hover:bg-white/50 rounded-lg text-sm transition-all">Upcoming</button>
+<button class="px-4 py-2 text-on-surface-variant hover:bg-white/50 rounded-lg text-sm transition-all">Completed</button>
+</div>
+<div class="flex items-center gap-4 text-sm text-on-surface-variant font-medium">
+<span class="flex items-center gap-1"><b class="text-primary">24</b> Active</span>
+<span class="flex items-center gap-1"><b class="text-tertiary">142</b> This Month</span>
+</div>
+</div>
+<!-- Event Cards List -->
+<div class="space-y-4">
+<!-- Event Card 1 -->
+<div class="group bg-surface-container-lowest p-6 rounded-2xl flex items-center gap-6 hover:shadow-xl transition-all duration-300 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1.5 h-full bg-primary"></div>
+<div class="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Modern tech conference stage with bright blue neon lighting and silhouette of a crowd in a university hall" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJZ7jwqG2jQqvWzK9gxsXizrirS8jqTxeZQRsojtQz5rhvImVmyqKvOO8uxIImVK_yJv5dLT5wxAypzVxa8wYRtOCMfME-5Fn96Y6IPWniUmuqaUALP_hMifz1FlMovdeMXUZ1KrbYqQN6iyWPzlosQoJdv2U8ORyz-BIjLtN8XdfXZZFhboKGGB_V7WdUTR5A2LE8Mb5NyySwIXofCuy2Mwm5KDJtye2yza-50NkROu_Moexq85bFQsQkU4QH_scl6amPvxvwufir"/>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-1">
+<span class="bg-primary/10 text-primary text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Upcoming</span>
+<h3 class="font-bold text-lg text-on-surface">Tech Innovators Summit 2024</h3>
+</div>
+<div class="grid grid-cols-2 gap-y-2 text-sm text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="groups">groups</span>
+                                        Computer Science Society
+                                    </div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="schedule">schedule</span>
+                                        Oct 24, 10:00 AM
+                                    </div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="location_on">location_on</span>
+                                        Main Auditorium
+                                    </div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="person_add">person_add</span>
+                                        452 Registered
+                                    </div>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<button class="p-2 text-outline hover:bg-surface-container-low rounded-lg transition-colors">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+<button class="p-2 text-outline hover:bg-surface-container-low rounded-lg transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Event Card 2 -->
+<div class="group bg-surface-container-lowest p-6 rounded-2xl flex items-center gap-6 hover:shadow-xl transition-all duration-300 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1.5 h-full bg-tertiary"></div>
+<div class="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Artistic studio setting with paintings, brushes, and soft natural morning light coming through a window" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA96ptLrAtjTfApo7MbLv77IrzewYK0fzVozrBro1RjE9xFbesJQSiIyIt8VxRMAUroqoXzX9ZH12DMc82WaWStX2DDAunEKLIBc7jUwxBoCBg-wS1xaAR4UNDojko2ZfKz8OxuuIZZiyuoGmi5HhAhlj_8aGjgHFyjp127Frp9eG5kfZMmMNbhBv5UOWBLEdycA4fhxXxxiLGdsGpcuZCvqUsMdNIRk-RcL9qaDSYPHOI3fou7U3qgWFNGl9KEH07x6nzwlsVJZSoT"/>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-1">
+<span class="bg-tertiary/10 text-tertiary text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Completed</span>
+<h3 class="font-bold text-lg text-on-surface">Spring Art Exhibition</h3>
+</div>
+<div class="grid grid-cols-2 gap-y-2 text-sm text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="palette">palette</span>
+                                        Fine Arts Guild
+                                    </div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="schedule">schedule</span>
+                                        Oct 15, 02:00 PM
+                                    </div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="location_on">location_on</span>
+                                        West Wing Gallery
+                                    </div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="person_add">person_add</span>
+                                        890 Attended
+                                    </div>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<button class="p-2 text-outline hover:bg-surface-container-low rounded-lg transition-colors">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+</button>
+<button class="p-2 text-outline hover:bg-surface-container-low rounded-lg transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Event Card 3 -->
+<div class="group bg-surface-container-lowest p-6 rounded-2xl flex items-center gap-6 hover:shadow-xl transition-all duration-300 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1.5 h-full bg-error"></div>
+<div class="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Overhead shot of fresh organic breakfast bowls and coffee on a rustic table with vibrant morning energy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5mn9cF_15tRp3sKTXcHy5V2TSq8bh02xH28YEm0nOuFAUeDD45Xwz-thGdWFpm1zD0L9YENcbuKgNplMlP4JPONXu35nCj803coA_AXn3Mlf7mO-AuaCUlm9kwCnc--2lMOOaxEuMSBRMtyCtNHRd1ZrL5qqkpNXYv2Bf6dxzfpsFFnHroXAz1OM4k-lipWRxjerabUgq26oBIrDGupwo55MC4or-5UvrLsk8u2bOpKUJUFuvJbYryaMlV5jlWvW2IVC3XFXxB6BF"/>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-1">
+<span class="bg-error/10 text-error text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Canceled</span>
+<h3 class="font-bold text-lg text-on-surface">Wellness Morning Yoga</h3>
+</div>
+<div class="grid grid-cols-2 gap-y-2 text-sm text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="fitness_center">fitness_center</span>
+                                        Yoga &amp; Health Club
+                                    </div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="schedule">schedule</span>
+                                        Oct 21, 07:30 AM
+                                    </div>
+<div class="flex items-center gap-2 text-error">
+<span class="material-symbols-outlined text-sm" data-icon="info">info</span>
+                                        Postponed due to weather
+                                    </div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="person_add">person_add</span>
+                                        45 Notified
+                                    </div>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<button class="p-2 text-outline hover:bg-surface-container-low rounded-lg transition-colors">
+<span class="material-symbols-outlined" data-icon="refresh">refresh</span>
+</button>
+<button class="p-2 text-outline hover:bg-surface-container-low rounded-lg transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Calendar & Analytics (4 Columns) -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<!-- Calendar Preview -->
+<div class="bg-surface-container-lowest p-6 rounded-3xl shadow-sm border border-outline-variant/5">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-bold text-lg">October 2024</h3>
+<div class="flex gap-1">
+<button class="p-1 hover:bg-surface-container-low rounded-lg transition-colors"><span class="material-symbols-outlined text-sm" data-icon="chevron_left">chevron_left</span></button>
+<button class="p-1 hover:bg-surface-container-low rounded-lg transition-colors"><span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span></button>
+</div>
+</div>
+<div class="grid grid-cols-7 gap-2 text-center text-[10px] font-black uppercase text-on-surface-variant mb-4">
+<div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+</div>
+<div class="grid grid-cols-7 gap-2">
+<!-- Simple calendar skeleton -->
+<div class="aspect-square flex items-center justify-center text-sm text-outline">28</div>
+<div class="aspect-square flex items-center justify-center text-sm text-outline">29</div>
+<div class="aspect-square flex items-center justify-center text-sm text-outline">30</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">1</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">2</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">3</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">4</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">5</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">6</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">7</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">8</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">9</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">10</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">11</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">12</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">13</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">14</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold relative bg-tertiary/20 rounded-xl">15<span class="absolute bottom-1 w-1 h-1 bg-tertiary rounded-full"></span></div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">16</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">17</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">18</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">19</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">20</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold relative bg-error/20 rounded-xl">21<span class="absolute bottom-1 w-1 h-1 bg-error rounded-full"></span></div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">22</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">23</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold relative bg-primary text-on-primary rounded-xl shadow-md">24<span class="absolute bottom-1 w-1 h-1 bg-on-primary rounded-full"></span></div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">25</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">26</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">27</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">28</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">29</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">30</div>
+<div class="aspect-square flex items-center justify-center text-sm font-bold">31</div>
+</div>
+</div>
+<!-- Registration Pulse Chart (Concept) -->
+<div class="bg-primary-container/20 p-6 rounded-3xl border border-primary/10">
+<h4 class="font-black text-on-primary-container text-sm uppercase mb-4 tracking-wider">Registration Growth</h4>
+<div class="h-32 flex items-end gap-2 mb-4">
+<div class="flex-1 bg-primary/40 rounded-t-lg" style="height: 40%"></div>
+<div class="flex-1 bg-primary/40 rounded-t-lg" style="height: 65%"></div>
+<div class="flex-1 bg-primary/40 rounded-t-lg" style="height: 50%"></div>
+<div class="flex-1 bg-primary/60 rounded-t-lg" style="height: 85%"></div>
+<div class="flex-1 bg-primary rounded-t-lg" style="height: 100%"></div>
+</div>
+<p class="text-xs text-on-primary-container/70 font-medium">Trending up by <span class="text-on-primary-container font-black">24%</span> compared to last week's engagement cycle.</p>
+</div>
+<!-- Club Spotlight -->
+<div class="bg-surface-container-highest/30 p-6 rounded-3xl">
+<h4 class="font-bold text-on-surface mb-4">Active Organizers</h4>
+<div class="space-y-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-xs font-bold text-on-secondary-container">CS</div>
+<div class="flex-1">
+<p class="text-sm font-bold">CS Society</p>
+<p class="text-[10px] text-on-surface-variant">4 Active Events</p>
+</div>
+<span class="material-symbols-outlined text-sm text-outline" data-icon="open_in_new">open_in_new</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-tertiary-container flex items-center justify-center text-xs font-bold text-on-tertiary-container">FA</div>
+<div class="flex-1">
+<p class="text-sm font-bold">Fine Arts Guild</p>
+<p class="text-[10px] text-on-surface-variant">2 Active Events</p>
+</div>
+<span class="material-symbols-outlined text-sm text-outline" data-icon="open_in_new">open_in_new</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-xs font-bold text-on-primary-container">MS</div>
+<div class="flex-1">
+<p class="text-sm font-bold">Music Society</p>
+<p class="text-[10px] text-on-surface-variant">1 Active Event</p>
+</div>
+<span class="material-symbols-outlined text-sm text-outline" data-icon="open_in_new">open_in_new</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
