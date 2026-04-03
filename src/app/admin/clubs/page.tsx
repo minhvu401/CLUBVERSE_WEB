@@ -14,7 +14,13 @@ import {
   ShieldCheck,
   ShieldAlert,
   UserMinus,
-  UserCheck
+  UserCheck,
+  X,
+  Mail,
+  Phone,
+  Calendar,
+  ChevronRight,
+  Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminClubs, useDeactivateUser, useReactivateUser } from "@/hooks/useAdmin";
@@ -24,6 +30,7 @@ export default function ClubManagementPage() {
   const [search, setSearch] = useState("");
   const [selectedClub, setSelectedClub] = useState<any>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [viewingClub, setViewingClub] = useState<any>(null);
 
   const { data: clubs, isLoading } = useAdminClubs();
   const deactivateMutation = useDeactivateUser();
@@ -167,7 +174,10 @@ export default function ClubManagementPage() {
                 </div>
 
                 <div className="flex gap-3">
-                   <button className="flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-white text-[10px] font-black uppercase tracking-widest transition-all">
+                   <button 
+                    onClick={() => setViewingClub(club)}
+                    className="flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-white text-[10px] font-black uppercase tracking-widest transition-all"
+                   >
                       Chi tiết
                    </button>
                    <button 
@@ -202,6 +212,179 @@ export default function ClubManagementPage() {
         variant={selectedClub?.isActive ? "danger" : "success"}
         isLoading={deactivateMutation.isPending || reactivateMutation.isPending}
       />
+
+      <ClubDetailModal 
+        club={viewingClub} 
+        onClose={() => setViewingClub(null)} 
+      />
+    </div>
+  );
+}
+
+function ClubDetailModal({ club, onClose }: { club: any, onClose: () => void }) {
+  if (!club) return null;
+
+  return (
+    <div className={cn(
+      "fixed inset-0 z-[100] flex items-center justify-center p-4 transition-all duration-300",
+      club ? "opacity-100 visible" : "opacity-0 invisible"
+    )}>
+      <div className="absolute inset-0 bg-[#030303]/80 backdrop-blur-md" onClick={onClose} />
+      
+      <div className="relative w-full max-w-3xl bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-purple-500/10 blur-[80px] rounded-full pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/10 blur-[80px] rounded-full pointer-events-none" />
+
+        <div className="relative h-full flex flex-col max-h-[90vh]">
+          <div className="p-8 pb-4 flex justify-between items-start border-b border-white/5">
+            <div className="flex gap-6">
+              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-white/10 flex items-center justify-center text-3xl font-black text-purple-400 shadow-inner overflow-hidden">
+                {club.avatar ? (
+                  <img src={club.avatar} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <Building2 className="w-8 h-8" />
+                )}
+              </div>
+              <div className="pt-1">
+                <div className="flex items-center gap-3 mb-1">
+                  <h3 className="text-2xl font-black text-white uppercase tracking-tight">{club.fullName}</h3>
+                  {club.isVerified && <ShieldCheck className="w-5 h-5 text-purple-400" />}
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <p className="text-white/40 font-medium text-sm flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5" />
+                    {club.email}
+                  </p>
+                  <p className="text-white/40 font-medium text-sm flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-purple-500" />
+                    {club.category || "Chưa phân loại"}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <button 
+              onClick={onClose}
+              className="p-2 rounded-xl bg-white/5 border border-white/5 text-white/30 hover:text-white hover:bg-white/10 transition-all"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-8 pt-6 space-y-8">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-center group hover:bg-white/[0.08] transition-all">
+                <p className="text-[10px] font-black uppercase text-white/30 tracking-widest mb-1 group-hover:text-amber-400 transition-colors">Đánh giá</p>
+                <div className="flex items-center justify-center gap-1.5 text-xl font-black text-white">
+                  <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  {club.rating?.toFixed(1) || "5.0"}
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-center group hover:bg-white/[0.08] transition-all">
+                <p className="text-[10px] font-black uppercase text-white/30 tracking-widest mb-1 group-hover:text-blue-400 transition-colors">Thành viên</p>
+                <div className="flex items-center justify-center gap-1.5 text-xl font-black text-white">
+                  <Users className="w-4 h-4 text-blue-400" />
+                  {club.clubJoined?.length || 0}
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-center group hover:bg-white/[0.08] transition-all">
+                <p className="text-[10px] font-black uppercase text-white/30 tracking-widest mb-1 group-hover:text-purple-400 transition-colors">Bài viết</p>
+                <div className="flex items-center justify-center gap-1.5 text-xl font-black text-white">
+                  <ExternalLink className="w-4 h-4 text-purple-400" />
+                  {club.posts?.length || 0}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-6">
+                <section>
+                  <h4 className="text-[10px] font-black uppercase text-white/20 tracking-[0.2em] mb-4">Thông tin cơ bản</h4>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                        <Building2 className="w-4 h-4 text-purple-400" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[10px] font-bold text-white/20 uppercase">Trường học</p>
+                        <p className="text-sm text-white/80 font-medium">{club.school || "N/A"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                        <Phone className="w-4 h-4 text-purple-400" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[10px] font-bold text-white/20 uppercase">Số điện thoại</p>
+                        <p className="text-sm text-white/80 font-medium">{club.phoneNumber || "N/A"}</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section>
+                  <h4 className="text-[10px] font-black uppercase text-white/20 tracking-[0.2em] mb-4">Giới thiệu</h4>
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-sm text-white/60 font-medium leading-relaxed italic">
+                      "{club.description || "Câu lạc bộ này chưa cập nhật mô tả chi tiết."}"
+                  </div>
+                </section>
+                
+                <section>
+                  <h4 className="text-[10px] font-black uppercase text-white/20 tracking-[0.2em] mb-4">Hệ thống</h4>
+                  <div className="flex gap-3">
+                    <div className={cn(
+                      "flex-1 px-4 py-3 rounded-2xl border text-center transition-all",
+                      club.isActive ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-400" : "bg-red-500/5 border-red-500/20 text-red-500"
+                    )}>
+                      <p className="text-[9px] font-black uppercase tracking-widest mb-0.5">Hoạt động</p>
+                      <p className="text-xs font-bold">{club.isActive ? "ACTIVE" : "INACTIVE"}</p>
+                    </div>
+                    <div className={cn(
+                      "flex-1 px-4 py-3 rounded-2xl border text-center transition-all",
+                      club.isVerified ? "bg-purple-500/5 border-purple-500/20 text-purple-400" : "bg-white/5 border-white/10 text-white/20"
+                    )}>
+                      <p className="text-[9px] font-black uppercase tracking-widest mb-0.5">Xác thực</p>
+                      <p className="text-xs font-bold">{club.isVerified ? "VERIFIED" : "NO"}</p>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-black uppercase text-white/20 tracking-[0.2em] mb-4 flex items-center justify-between">
+                  Bài viết gần đây
+                  <span className="text-[9px] lowercase font-medium tracking-normal text-white/40">({club.posts?.length || 0})</span>
+                </h4>
+                <div className="space-y-3">
+                  {club.posts?.length > 0 ? (
+                    club.posts.map((post: any) => (
+                      <div key={post._id} className="p-4 bg-white/5 border border-white/5 rounded-2xl group/post hover:bg-white/[0.08] hover:border-purple-500/30 transition-all cursor-default relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-purple-500/0 group-hover/post:bg-purple-500 transition-all" />
+                        <h5 className="text-sm font-bold text-white/80 group-hover/post:text-purple-400 transition-colors mb-2 line-clamp-2 leading-snug">
+                          {post.title}
+                        </h5>
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-white/20 uppercase tracking-widest">
+                          <Calendar className="w-3 h-3" />
+                          {new Date(post.createdAt).toLocaleDateString("vi-VN")}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-12 flex flex-col items-center justify-center rounded-[2rem] border border-white/5 border-dashed text-white/20">
+                      <Info className="w-8 h-8 mb-3 opacity-30 text-purple-500/30" />
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em]">Chưa có bài viết</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="p-8 border-t border-white/5 bg-white/[0.01] flex justify-between items-center text-[10px] font-black uppercase tracking-[0.2em] text-white/20">
+             <span>Gia nhập: {new Date(club.createdAt).toLocaleDateString("vi-VN")}</span>
+             <span>Cập nhật: {new Date(club.updatedAt).toLocaleDateString("vi-VN")}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -44,20 +44,15 @@ export function AdminSidebar() {
       {/* Glow Effect Top Left */}
       <div className="absolute top-0 left-0 w-32 h-32 bg-purple-600/10 blur-[80px] -z-10" />
 
-      <div className="mb-10 px-4 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center font-black text-white">
-          C
-        </div>
-        {sidebarOpen && (
-          <div className="flex flex-col">
-            <h1 className="text-xl font-black tracking-tighter text-white">
-              ADMIN <span className="text-purple-500">PULSE</span>
-            </h1>
-            <p className="text-[10px] font-medium text-white/40 uppercase tracking-widest">
-              Clubverse System
-            </p>
-          </div>
-        )}
+      <div className={cn("mb-10 flex items-center justify-center transition-all duration-500", sidebarOpen ? "px-4" : "px-1")}>
+        <img 
+          src="/clubverse_logo_1.png" 
+          alt="Clubverse Logo" 
+          className={cn(
+            "object-contain transition-all duration-500",
+            sidebarOpen ? "h-16 px-2" : "h-14 w-full"
+          )}
+        />
       </div>
 
       <nav className="flex-1 space-y-2">
@@ -87,13 +82,7 @@ export function AdminSidebar() {
       </nav>
 
       <div className="mt-auto pt-8 border-t border-white/5 space-y-2">
-        <Link
-          href="/admin/settings"
-          className="flex items-center gap-3 px-4 py-3 text-white/50 hover:text-white hover:bg-white/5 rounded-xl transition-all"
-        >
-          <Settings className="w-5 h-5" />
-          {sidebarOpen && <span className="text-sm font-medium">Cài đặt</span>}
-        </Link>
+        
         <button 
           onClick={logout}
           className="w-full flex items-center gap-3 px-4 py-3 text-white/50 hover:text-red-400 hover:bg-red-500/5 rounded-xl transition-all"
@@ -102,6 +91,6 @@ export function AdminSidebar() {
           {sidebarOpen && <span className="text-sm font-medium">Đăng xuất</span>}
         </button>
       </div>
-    </aside>
+    </aside>  
   );
 }

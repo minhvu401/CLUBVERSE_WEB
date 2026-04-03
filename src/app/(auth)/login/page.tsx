@@ -20,7 +20,7 @@ function redirectByRole(
   // ✅ bạn đổi route theo project của bạn nếu khác
   switch (role) {
     case "admin":
-      return "/admin/dashboard";
+      return "/admin/";
     case "club":
       return "/club/forum";
     case "user":

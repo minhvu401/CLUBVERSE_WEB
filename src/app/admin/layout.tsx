@@ -62,7 +62,7 @@ export default function AdminLayout({
 
         {/* Global Footer (Subtle) */}
         <footer className="p-8 border-t border-white/5 text-center text-white/20 text-xs">
-          © 2024 CLUBVERSE SYSTEM • OBSIDIAN ACADEMY DESIGN
+          © 2026 CLUBVERSE SYSTEM
         </footer>
       </main>
     </div>

@@ -15,7 +15,6 @@ import {
   Filter,
   GraduationCap,
   Mail,
-  MoreVertical,
   Search,
   Star,
   UserCheck,
@@ -271,12 +270,6 @@ export default function UserManagementPage() {
                     <td className="px-8 py-5 text-right">
                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
-                          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
-                          title="Gửi email"
-                        >
-                          <Mail className="w-4 h-4" />
-                        </button>
-                        <button 
                           onClick={() => setSelectedUserForDetail(user._id)}
                           className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-purple-400 transition-all"
                           title="Xem chi tiết"
@@ -292,9 +285,6 @@ export default function UserManagementPage() {
                           title={user.isActive ? "Vô hiệu hóa" : "Kích hoạt"}
                         >
                           {user.isActive ? <UserMinus className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                        </button>
-                        <button className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all">
-                          <MoreVertical className="w-4 h-4" />
                         </button>
                       </div>
                     </td>

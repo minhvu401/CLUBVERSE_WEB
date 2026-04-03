@@ -8,7 +8,8 @@ import {
   Clock, 
   User, 
   MessageSquare,
-  ArrowRight
+  ArrowRight,
+  ChevronDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminApplications, useApproveApplication, useRejectApplication, useAdminClubs } from "@/hooks/useAdmin";
@@ -103,20 +104,22 @@ export default function ApplicationsPage() {
           </p>
         </div>
 
-        {/* Club Selector */}
-        <div className="flex flex-col gap-2 min-w-[240px]">
+        <div className="flex flex-col gap-2 min-w-[280px]">
           <label className="text-[10px] font-black uppercase text-white/30 tracking-widest pl-1">Chọn câu lạc bộ</label>
-          <select 
-            value={selectedClubId}
-            onChange={(e) => setSelectedClubId(e.target.value)}
-            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:border-purple-500/50 outline-none transition-all cursor-pointer hover:bg-white/[0.08]"
-          >
-            {(clubs || []).map((club: any) => (
-              <option key={club._id} value={club._id} className="bg-[#030303]">
-                {club.fullName}
-              </option>
-            ))}
-          </select>
+          <div className="relative group/select">
+            <select 
+              value={selectedClubId}
+              onChange={(e) => setSelectedClubId(e.target.value)}
+              className="w-full appearance-none px-5 py-3.5 pr-12 bg-white/5 border border-white/10 rounded-2xl text-sm text-white focus:border-purple-500/50 outline-none transition-all cursor-pointer hover:bg-white/[0.08] hover:border-white/20 shadow-inner"
+            >
+              {(clubs || []).map((club: any) => (
+                <option key={club._id} value={club._id} className="bg-[#0d0d0d] py-2">
+                  {club.fullName}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-hover/select:text-purple-400 group-focus-within/select:rotate-180 transition-all pointer-events-none" />
+          </div>
         </div>
       </section>
 

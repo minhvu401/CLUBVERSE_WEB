@@ -153,6 +153,30 @@ export const adminApi = {
     return res.data;
   },
 
+  getEventDetail: async (eventId: string) => {
+    // Spec: GET /events/{id}
+    const res = await axiosInstance.get(`/events/${eventId}`);
+    return res.data;
+  },
+
+  getEventParticipants: async (eventId: string) => {
+    // Spec: GET /events/{id}/participants
+    const res = await axiosInstance.get(`/events/${eventId}/participants`);
+    return res.data;
+  },
+
+  softDeleteEvent: async (eventId: string) => {
+    // Spec: DELETE /events/{id}/soft
+    const res = await axiosInstance.delete(`/events/${eventId}/soft`);
+    return res.data;
+  },
+
+  hardDeleteEvent: async (eventId: string) => {
+    // Spec: DELETE /events/{id}/hard
+    const res = await axiosInstance.delete(`/events/${eventId}/hard`);
+    return res.data;
+  },
+
   // Posts
   getAllPosts: async () => {
     // Spec: GET /posts
@@ -163,6 +187,12 @@ export const adminApi = {
   getClubPosts: async (clubId: string) => {
     // Spec: GET /posts/club/{clubId}
     const res = await axiosInstance.get(`/posts/club/${clubId}`);
+    return res.data;
+  },
+
+  getPostDetail: async (postId: string) => {
+    // Spec: GET /posts/{id}
+    const res = await axiosInstance.get(`/posts/${postId}`);
     return res.data;
   },
 };

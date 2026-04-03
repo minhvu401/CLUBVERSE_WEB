@@ -11,10 +11,14 @@ import {
   ArrowUpRight,
   CheckCircle2,
   Clock,
-  ExternalLink
+  Calendar,
+  ExternalLink,
+  ShieldCheck,
+  Zap,
+  Activity
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAdminStats } from "@/hooks/useAdmin";
+import { useAdminUsers, useAdminClubs, useAdminEvents, useAdminPosts } from "@/hooks/useAdmin";
 
 // --- Components ---
 
@@ -86,123 +90,131 @@ const TaskItem = ({ title, status, time }: { title: string; status: string; time
 // --- Page ---
 
 export default function AdminDashboard() {
-  const { data: stats, isLoading } = useAdminStats();
+  const { data: userData, isLoading: loadingUsers } = useAdminUsers(1, 1, "", "user");
+  const { data: clubs, isLoading: loadingClubs } = useAdminClubs();
+  const { data: events, isLoading: loadingEvents } = useAdminEvents();
+  const { data: posts, isLoading: loadingPosts } = useAdminPosts();
 
-  // Mock data for fallback/demo
-  const displayStats = {
-    activeClubs: stats?.activeClubs ?? 24,
-    pendingApps: stats?.pendingApps ?? 12,
-    newReports: stats?.newReports ?? 3,
-    totalMembers: stats?.totalMembers ?? "1.2k"
-  };
+  const isLoading = loadingUsers || loadingClubs || loadingEvents || loadingPosts;
 
   return (
     <div className="space-y-12">
       {/* Header */}
       <section className="flex flex-col md:flex-row justify-between items-end gap-6">
         <div>
-          <h2 className="text-5xl font-black text-white tracking-tight mb-2 uppercase">Admin Console</h2>
+          <h2 className="text-5xl font-black text-white tracking-tight mb-2 uppercase">Dashboard</h2>
           <p className="text-white/50 text-lg max-w-xl font-medium">
-            Giám sát trung tâm hệ thống. Theo dõi chỉ số, quản lý đơn đăng ký và bảo trì trải nghiệm người dùng.
+            Chào mừng Admin. Giám sát toàn bộ hoạt động của hệ thống Clubverse từ trung tâm điều hành.
           </p>
-        </div>
-        <div className="flex gap-4">
-          <button className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-sm hover:bg-white/10 transition-all flex items-center gap-2">
-            Xuất báo cáo
-            <ArrowUpRight className="w-4 h-4" />
-          </button>
-          <button className="px-6 py-3 rounded-xl bg-gradient-to-br from-purple-600 to-blue-500 text-white font-bold text-sm shadow-lg shadow-purple-500/20 hover:scale-105 active:scale-95 transition-all">
-            Hành động nhanh
-          </button>
         </div>
       </section>
 
-      {/* Bento Grid Stats */}
+      {/* Stats Grid */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
-          label="CLB hoạt động" 
-          value={displayStats.activeClubs} 
-          change="+12% tháng này" 
+          label="Tổng Câu lạc bộ" 
+          value={loadingClubs ? "..." : (clubs?.length || 0)} 
           icon={Building2} 
           variant="primary"
         />
         <StatCard 
-          label="Đơn chờ duyệt" 
-          value={displayStats.pendingApps} 
-          change="Ưu tiên" 
-          icon={FileCheck} 
+          label="Tổng Sự kiện" 
+          value={loadingEvents ? "..." : (events?.length || 0)} 
+          icon={Calendar} 
         />
         <StatCard 
-          label="Báo cáo mới" 
-          value={displayStats.newReports} 
-          icon={AlertCircle} 
+          label="Tổng Bài viết" 
+          value={loadingPosts ? "..." : (posts?.length || 0)} 
+          icon={Activity} 
           variant="secondary"
         />
         <StatCard 
-          label="Thành viên" 
-          value={displayStats.totalMembers} 
-          change="+400" 
+          label="Tổng Sinh viên" 
+          value={loadingUsers ? "..." : (userData?.total || 0)} 
           icon={Users} 
         />
       </section>
 
-      {/* Main Grid: Checklist & Status */}
-      <section className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-        {/* Task Checklist */}
-        <div className="lg:col-span-3 rounded-[2.5rem] bg-white/5 border border-white/5 p-8 relative overflow-hidden">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="text-2xl font-black tracking-tight uppercase">Danh sách công việc</h3>
-            <button className="text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1 uppercase tracking-widest">
-              Xem tất cả
-              <ExternalLink className="w-3 h-3" />
-            </button>
-          </div>
-          
-          <div className="space-y-4">
-            <TaskItem title="Duyệt đơn đăng ký CLB Nhiếp Ảnh" status="Chờ xử lý" time="2h trước" />
-            <TaskItem title="Kiểm tra báo cáo vi phạm bài viết #9920" status="Cần xem xét" time="5h trước" />
-            <TaskItem title="Cập nhật quyền cho Admin mới" status="Hoàn thành" time="1 ngày trước" />
-            <TaskItem title="Xác minh giấy tờ CLB Robot" status="Đang thực hiện" time="2 ngày trước" />
-          </div>
+      {/* System Overview & Events */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 rounded-[2.5rem] bg-white/5 border border-white/5 p-10 relative overflow-hidden flex flex-col justify-center min-h-[350px]">
+           <div className="relative z-10">
+              <h3 className="text-3xl font-black tracking-tighter uppercase mb-2">Trung tâm điều hành</h3>
+              <p className="text-white/40 text-sm font-medium mb-10 max-w-xl leading-relaxed">
+                 Hệ thống đang được giám sát chặt chẽ. Toàn bộ thông tin được cập nhật theo thời gian thực từ các module quản trị viên. 
+                 Sử dụng thanh điều hướng bên trái để quản lý chi tiết từng hạng mục.
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                 <div className="flex items-start gap-5 group">
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                       <ShieldCheck className="w-7 h-7 text-emerald-400" />
+                    </div>
+                    <div>
+                       <p className="text-[10px] font-black uppercase text-white/20 tracking-[0.2em] mb-1">Bảo mật & Ổn định</p>
+                       <p className="text-base font-bold text-white/80 group-hover:text-emerald-400 transition-colors">Tường lửa đang kích hoạt</p>
+                       <p className="text-[10px] text-emerald-500/40 font-black uppercase mt-1">Status: Secure</p>
+                    </div>
+                 </div>
 
-          <div className="absolute -right-16 -top-16 w-64 h-64 bg-purple-600/5 blur-[100px] rounded-full pointer-events-none" />
+                 <div className="flex items-start gap-5 group">
+                    <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                       <TrendingUp className="w-7 h-7 text-blue-400" />
+                    </div>
+                    <div>
+                       <p className="text-[10px] font-black uppercase text-white/20 tracking-[0.2em] mb-1">Tính toàn vẹn dữ liệu</p>
+                       <p className="text-base font-bold text-white/80 group-hover:text-blue-400 transition-colors">Dữ liệu đã đồng bộ</p>
+                       <p className="text-[10px] text-blue-500/40 font-black uppercase mt-1">Last sync: Vừa xong</p>
+                    </div>
+                 </div>
+              </div>
+           </div>
+           
+           <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-blue-600/5 blur-[100px] rounded-full pointer-events-none" />
+           <div className="absolute -left-10 -top-10 w-40 h-40 bg-purple-600/5 blur-[60px] rounded-full pointer-events-none" />
         </div>
 
-        {/* System Status Feed */}
-        <div className="lg:col-span-2 rounded-[2.5rem] bg-gradient-to-br from-white/5 to-transparent border border-white/5 p-8">
-          <h3 className="text-2xl font-black tracking-tight uppercase mb-8">Trạng thái hệ thống</h3>
-          
-          <div className="space-y-6">
-            <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-xs font-black uppercase text-emerald-400 tracking-widest">Server ổn định</span>
-              </div>
-              <p className="text-xs text-white/50 leading-relaxed">
-                Hệ thống đang hoạt động với hiệu suất 99.9%. Không có lỗi nghiêm trọng nào được ghi nhận.
-              </p>
-            </div>
+        {/* Dynamic Events Feed instead of Quick Audit */}
+        <div className="rounded-[2.5rem] bg-gradient-to-br from-purple-600/10 to-transparent border border-purple-500/10 p-8 flex flex-col min-h-[350px]">
+           <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-black tracking-tighter uppercase text-purple-400">Sự kiện sắp diễn ra</h3>
+              <Link href="/admin/events" className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/30 hover:text-white transition-all">
+                 <ArrowUpRight className="w-4 h-4" />
+              </Link>
+           </div>
 
-            <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-2 h-2 rounded-full bg-amber-400" />
-                <span className="text-xs font-black uppercase text-amber-400 tracking-widest">Cảnh báo bảo trì</span>
-              </div>
-              <p className="text-xs text-white/50 leading-relaxed">
-                Dự kiến bảo trì hệ thống vào 2:00 AM Chủ Nhật để nâng cấp cơ sở dữ liệu.
-              </p>
-            </div>
+           <div className="space-y-4 flex-1">
+              {loadingEvents ? (
+                 [1,2,3].map(i => (
+                    <div key={i} className="h-16 w-full bg-white/5 animate-pulse rounded-2xl" />
+                 ))
+              ) : events && events.length > 0 ? (
+                 events.slice(0, 3).map((event: any) => (
+                    <div key={event._id} className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/[0.08] transition-all group/ev">
+                       <div className="flex items-center gap-3">
+                          <div className="shrink-0 w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 group-hover/ev:bg-purple-500/20 transition-colors">
+                             <Calendar className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                             <p className="text-xs font-bold text-white truncate">{event.title}</p>
+                             <p className="text-[9px] text-white/30 uppercase font-black truncate">{event.location}</p>
+                          </div>
+                       </div>
+                    </div>
+                 ))
+              ) : (
+                 <div className="flex flex-col items-center justify-center h-full text-white/20 space-y-2">
+                    <Calendar className="w-8 h-8 opacity-20" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">Không có sự kiện nào</p>
+                 </div>
+              )}
+           </div>
 
-            <div className="pt-4">
-               <div className="flex justify-between items-center mb-2">
-                  <span className="text-[10px] font-bold text-white/40 uppercase">DB Load</span>
-                  <span className="text-[10px] font-bold text-white/70">12%</span>
-               </div>
-               <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full w-[12%] bg-purple-500 rounded-full" />
-               </div>
-            </div>
-          </div>
+           <div className="mt-6 pt-4 border-t border-white/5">
+              <p className="text-[9px] font-black uppercase text-white/20 tracking-[0.3em] text-center">
+                 Tự động cập nhật 
+              </p>
+           </div>
         </div>
       </section>
 

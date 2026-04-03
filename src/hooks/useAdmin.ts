@@ -123,3 +123,69 @@ export const useAdminPosts = (clubId?: string) => {
     },
   });
 };
+
+export const useAdminEventDetail = (eventId?: string) => {
+  return useQuery({
+    queryKey: ["admin", "event-detail", eventId],
+    queryFn: () => adminApi.getEventDetail(eventId!),
+    enabled: !!eventId,
+  });
+};
+
+export const useAdminEventParticipants = (eventId?: string) => {
+  return useQuery({
+    queryKey: ["admin", "event-participants", eventId],
+    queryFn: () => adminApi.getEventParticipants(eventId!),
+    enabled: !!eventId,
+  });
+};
+
+export const useSoftDeleteEvent = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: adminApi.softDeleteEvent,
+    onSuccess: () => {
+      toast.success("Đã hủy sự kiện (Soft delete)");
+      queryClient.invalidateQueries({ queryKey: ["admin", "events"] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Không thể hủy sự kiện");
+    },
+  });
+};
+
+export const useHardDeleteEvent = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: adminApi.hardDeleteEvent,
+    onSuccess: () => {
+      toast.success("Đã xóa vĩnh viễn sự kiện");
+      queryClient.invalidateQueries({ queryKey: ["admin", "events"] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Không thể xóa vĩnh viễn sự kiện");
+    },
+  });
+};
+
+export const useRestoreEventMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: adminApi.restoreEvent,
+    onSuccess: () => {
+      toast.success("Đã khôi phục sự kiện");
+      queryClient.invalidateQueries({ queryKey: ["admin", "events"] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Không thể khôi phục sự kiện");
+    },
+  });
+};
+
+export const useAdminPostDetail = (postId?: string) => {
+  return useQuery({
+    queryKey: ["admin", "post-detail", postId],
+    queryFn: () => adminApi.getPostDetail(postId!),
+    enabled: !!postId,
+  });
+};
