@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 
 import { login } from "@/app/services/api/auth";
@@ -17,10 +17,20 @@ function normalizeRole(role: unknown): "user" | "club" | "admin" | "unknown" {
   return "unknown";
 }
 
-function redirectByRole(role: "user" | "club" | "admin" | "unknown") {
-  if (role === "admin") return "/admin/dashboard";
-  if (role === "club") return "/club/forum";
-  return "/homepage";
+function redirectByRole(
+  role: "user" | "club" | "admin" | "unknown"
+): string {
+  // ✅ bạn đổi route theo project của bạn nếu khác
+  switch (role) {
+    case "admin":
+      return "/admin/";
+    case "club":
+      return "/club/forum";
+    case "user":
+      return "/homepage"; // hoặc "/"
+    default:
+      return "/homepage";
+  }
 }
 
 export default function LoginPage() {
