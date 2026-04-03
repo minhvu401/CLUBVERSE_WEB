@@ -31,6 +31,8 @@ export const useDeactivateUser = () => {
     onSuccess: () => {
       toast.success("Đã vô hiệu hóa tài khoản");
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "clubs"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
     },
     onError: (error: any) => {
       toast.error(error.message || "Không thể vô hiệu hóa người dùng");
@@ -45,6 +47,8 @@ export const useReactivateUser = () => {
     onSuccess: () => {
       toast.success("Đã kích hoạt lại tài khoản");
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "clubs"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
     },
     onError: (error: any) => {
       toast.error(error.message || "Không thể kích hoạt lại tài khoản");
@@ -72,6 +76,9 @@ export const useApproveApplication = () => {
     onSuccess: () => {
       toast.success("Đã duyệt đơn đăng ký");
       queryClient.invalidateQueries({ queryKey: ["admin", "applications"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "clubs"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
     },
     onError: (error: any) => {
       toast.error(error.message || "Không thể duyệt đơn đăng ký");
@@ -187,5 +194,50 @@ export const useAdminPostDetail = (postId?: string) => {
     queryKey: ["admin", "post-detail", postId],
     queryFn: () => adminApi.getPostDetail(postId!),
     enabled: !!postId,
+  });
+};
+
+export const useAdminRegister = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: adminApi.registerUser,
+    onSuccess: () => {
+      toast.success("Đăng ký tài khoản thành công");
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "clubs"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || error.message || "Không thể đăng ký tài khoản");
+    },
+  });
+};
+
+export const useAdminVerifyOtp = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: adminApi.verifyOtp,
+    onSuccess: (_, variables) => {
+      toast.success(`Xác thực tài khoản ${variables.email} thành công`);
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "clubs"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "user-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || error.message || "Xác thực OTP thất bại");
+    },
+  });
+};
+
+export const useAdminResendOtp = () => {
+  return useMutation({
+    mutationFn: adminApi.resendOtp,
+    onSuccess: (_, email) => {
+      toast.success(`Đã gửi lại mã OTP tới ${email}`);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || error.message || "Gửi lại OTP thất bại");
+    },
   });
 };

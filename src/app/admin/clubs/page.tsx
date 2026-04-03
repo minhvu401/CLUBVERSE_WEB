@@ -20,26 +20,52 @@ import {
   Phone,
   Calendar,
   ChevronRight,
-  Info
+  Info,
+  UserPlus,
+  Fingerprint,
+  RefreshCcw,
+  GraduationCap,
+  Briefcase,
+  CheckCircle2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAdminClubs, useDeactivateUser, useReactivateUser } from "@/hooks/useAdmin";
+import { 
+  useAdminClubs, 
+  useDeactivateUser, 
+  useReactivateUser,
+  useAdminRegister,
+  useAdminVerifyOtp,
+  useAdminResendOtp
+} from "@/hooks/useAdmin";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { toast } from "sonner";
 
 export default function ClubManagementPage() {
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [selectedClub, setSelectedClub] = useState<any>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [viewingClub, setViewingClub] = useState<any>(null);
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [verifyOtpOpen, setVerifyOtpOpen] = useState(false);
+  const [userToVerify, setUserToVerify] = useState<{ email: string, fullName: string } | null>(null);
 
   const { data: clubs, isLoading } = useAdminClubs();
   const deactivateMutation = useDeactivateUser();
   const reactivateMutation = useReactivateUser();
 
-  const filteredClubs = (clubs || []).filter((club: any) => 
-    club.fullName?.toLowerCase().includes(search.toLowerCase()) ||
-    club.category?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredClubs = (clubs || [])
+    .filter((club: any) => 
+      club.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+      club.email?.toLowerCase().includes(search.toLowerCase()) ||
+      club.category?.toLowerCase().includes(search.toLowerCase())
+    )
+    .filter((club: any) => {
+      if (statusFilter === "all") return true;
+      if (statusFilter === "active") return club.isActive;
+      if (statusFilter === "inactive") return !club.isActive;
+      return true;
+    });
 
   const stats = {
     total: clubs?.length || 0,
@@ -73,6 +99,13 @@ export default function ClubManagementPage() {
             Giám sát danh sách, xác thực hoạt động và điều phối các câu lạc bộ trong toàn hệ thống.
           </p>
         </div>
+        <button 
+          onClick={() => setRegisterOpen(true)}
+          className="px-6 py-2.5 rounded-xl bg-gradient-to-br from-purple-600 to-blue-500 text-white font-bold text-sm shadow-lg shadow-purple-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 h-[42px]"
+        >
+          <UserPlus className="w-4 h-4" />
+          Đăng ký tài khoản
+        </button>
       </section>
 
       {/* Stats Bento */}
@@ -96,20 +129,43 @@ export default function ClubManagementPage() {
       </section>
 
       {/* Filters */}
-      <section className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1 group">
+      <section className="flex flex-wrap gap-4">
+        <div className="relative group min-w-[300px]">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 group-focus-within:text-purple-500 transition-colors" />
           <input
             type="text"
-            placeholder="Tìm kiếm câu lạc bộ theo tên hoặc danh mục..."
+            placeholder="Tìm kiếm theo tên, email hoặc danh mục..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-white/5 hover:bg-white/[0.08] focus:bg-white/[0.08] rounded-2xl text-sm text-white border border-white/5 focus:border-purple-500/50 outline-none transition-all"
+            className="w-full pl-11 pr-4 py-3 bg-white/5 hover:bg-white/[0.08] focus:bg-white/[0.08] rounded-2xl text-sm text-white border border-white/5 focus:border-purple-500/50 outline-none transition-all placeholder:text-white/20"
           />
         </div>
+
+        <div className="flex items-center gap-2 bg-white/5 p-1 rounded-2xl border border-white/5">
+          {[
+            { id: "all", label: "Tất cả", icon: Users },
+            { id: "active", label: "Hoạt động", icon: CheckCircle2 },
+            { id: "inactive", label: "Bị khóa", icon: ShieldAlert },
+          ].map((filter) => (
+            <button
+              key={filter.id}
+              onClick={() => setStatusFilter(filter.id as any)}
+              className={cn(
+                "flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                statusFilter === filter.id 
+                  ? "bg-white/10 text-white shadow-xl" 
+                  : "text-white/30 hover:text-white/60 hover:bg-white/[0.03]"
+              )}
+            >
+              <filter.icon className="w-3 h-3" />
+              {filter.label}
+            </button>
+          ))}
+        </div>
+
         <button className="px-6 py-3 rounded-2xl bg-white/5 border border-white/5 text-white/70 font-bold text-sm hover:text-white hover:bg-white/10 transition-all flex items-center gap-2">
           <Filter className="w-4 h-4" />
-          Bộ lọc
+          Bộ lọc nâng cao
         </button>
       </section>
 
@@ -181,7 +237,10 @@ export default function ClubManagementPage() {
                       Chi tiết
                    </button>
                    <button 
-                    onClick={() => handleAction(club)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAction(club);
+                    }}
                     className={cn(
                       "p-3 rounded-2xl border border-white/5 transition-all group/btn",
                       club.isActive ? "bg-white/5 hover:bg-red-500/10 text-white/30 hover:text-red-400" : "bg-emerald-500/10 text-emerald-400"
@@ -189,6 +248,19 @@ export default function ClubManagementPage() {
                    >
                       {club.isActive ? <UserMinus className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                    </button>
+                   {!club.isVerified && (
+                     <button 
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         setUserToVerify({ email: club.email, fullName: club.fullName });
+                         setVerifyOtpOpen(true);
+                       }}
+                       className="p-3 rounded-2xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20 transition-all flex items-center justify-center shrink-0"
+                       title="Xác thực OTP"
+                     >
+                       <Fingerprint className="w-4 h-4" />
+                     </button>
+                   )}
                 </div>
               </div>
 
@@ -217,6 +289,213 @@ export default function ClubManagementPage() {
         club={viewingClub} 
         onClose={() => setViewingClub(null)} 
       />
+
+      <RegisterUserModal 
+        isOpen={registerOpen}
+        onClose={() => setRegisterOpen(false)}
+      />
+
+      <VerifyOtpModal
+        isOpen={verifyOtpOpen}
+        onClose={() => setVerifyOtpOpen(false)}
+        user={userToVerify}
+      />
+    </div>
+  );
+}
+
+function RegisterUserModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+  const registerMutation = useAdminRegister();
+  const [role, setRole] = useState<"user" | "club">("club");
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    fullName: "",
+    phoneNumber: "",
+    school: "FPT University",
+    major: "",
+    year: 1,
+    category: "Cộng đồng",
+    description: ""
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.email || !formData.password || !formData.fullName) {
+      toast.error("Vui lòng điền đầy đủ các thông tin bắt buộc");
+      return;
+    }
+    try {
+      await registerMutation.mutateAsync({ ...formData, role });
+      onClose();
+      setFormData({
+        email: "", password: "", fullName: "", phoneNumber: "",
+        school: "FPT University", major: "", year: 1,
+        category: "Cộng đồng", description: ""
+      });
+    } catch (err) {}
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-[#030303]/80 backdrop-blur-md" onClick={onClose} />
+      <div className="relative w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300 flex flex-col max-h-[90vh]">
+        <div className="p-8 pb-4 flex justify-between items-center border-b border-white/5">
+          <div>
+            <h3 className="text-2xl font-black text-white uppercase tracking-tight">Đăng ký tài khoản</h3>
+            <p className="text-white/40 text-xs font-medium mt-1">Khởi tạo tài khoản câu lạc bộ hoặc thành viên mới.</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl bg-white/5 border border-white/5 text-white/30 hover:text-white transition-all">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 pt-6 space-y-8 custom-scrollbar">
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => setRole("user")}
+              className={cn("p-4 rounded-2xl border transition-all text-center group", role === "user" ? "bg-purple-500/10 border-purple-500/50 text-purple-400" : "bg-white/5 border-white/5 text-white/40 hover:bg-white/[0.08]")}
+            >
+              <GraduationCap className={cn("w-6 h-6 mx-auto mb-2", role === "user" ? "text-purple-400" : "text-white/20")} />
+              <p className="text-xs font-black uppercase tracking-widest">Sinh viên</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole("club")}
+              className={cn("p-4 rounded-2xl border transition-all text-center group", role === "club" ? "bg-blue-500/10 border-blue-500/50 text-blue-400" : "bg-white/5 border-white/5 text-white/40 hover:bg-white/[0.08]")}
+            >
+              <Briefcase className={cn("w-6 h-6 mx-auto mb-2", role === "club" ? "text-blue-400" : "text-white/20")} />
+              <p className="text-xs font-black uppercase tracking-widest">Câu lạc bộ</p>
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-white/30 uppercase">Họ và tên</label>
+                <input required value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500/50 outline-none transition-all" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-white/30 uppercase">Số điện thoại</label>
+                <input required value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500/50 outline-none transition-all" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-white/30 uppercase">Email</label>
+                <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500/50 outline-none transition-all" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-white/30 uppercase">Mật khẩu</label>
+                <input required type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500/50 outline-none transition-all" />
+              </div>
+            </div>
+          </div>
+
+          {role === "club" ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-white/30 uppercase">Lĩnh vực hoạt động</label>
+                <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white outline-none">
+                  {["Công nghệ", "Văn hóa - Nghệ thuật", "Thể thao", "Học thuật", "Cộng đồng"].map(cat => <option key={cat} value={cat} className="bg-[#0a0a0a]">{cat}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-white/30 uppercase">Mô tả tóm tắt</label>
+                <textarea required rows={4} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-blue-500/50 outline-none resize-none" />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-white/30 uppercase">Trường học</label>
+                <input required value={formData.school} onChange={e => setFormData({...formData, school: e.target.value})} className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white focus:border-blue-500/50 outline-none" />
+              </div>
+            </div>
+          )}
+        </form>
+
+        <div className="p-8 border-t border-white/5 bg-white/[0.01] flex justify-end gap-3">
+          <button onClick={onClose} className="px-6 py-2.5 rounded-xl bg-white/5 border border-white/5 text-white/70 font-bold text-sm hover:text-white hover:bg-white/10 transition-all">Hủy bỏ</button>
+          <button type="submit" onClick={handleSubmit} disabled={registerMutation.isPending} className="px-8 py-2.5 rounded-xl bg-gradient-to-br from-purple-600 to-blue-500 text-white font-bold text-sm shadow-lg shadow-purple-500/20 hover:scale-105 active:scale-95 transition-all text-center disabled:opacity-50">
+            {registerMutation.isPending ? "Đang xử lý..." : "Khởi tạo tài khoản"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VerifyOtpModal({ isOpen, onClose, user }: { isOpen: boolean, onClose: () => void, user: { email: string, fullName: string } | null }) {
+  const verifyMutation = useAdminVerifyOtp();
+  const resendMutation = useAdminResendOtp();
+  const [otpCode, setOtpCode] = useState("");
+
+  if (!isOpen || !user) return null;
+
+  const handleVerify = async () => {
+    if (!otpCode || otpCode.length < 4) {
+      toast.error("Vui lòng nhập mã OTP hợp lệ");
+      return;
+    }
+    await verifyMutation.mutateAsync({ email: user.email, otp: otpCode });
+    setOtpCode("");
+    onClose();
+  };
+
+  const handleResend = async () => {
+    await resendMutation.mutateAsync(user.email);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-[#030303]/90 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-sm bg-[#0a0a0a] border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
+        <div className="p-8">
+          <div className="flex flex-col items-center text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl bg-orange-500/20 text-orange-400 flex items-center justify-center mb-4">
+              <Fingerprint className="w-8 h-8" />
+            </div>
+            <h3 className="text-xl font-black text-white uppercase tracking-tight">Xác thực OTP</h3>
+            <p className="text-xs text-white/40 mt-2 font-medium">
+              Nhập mã OTP đã gửi tới <br/>
+              <span className="text-orange-400">{user.email}</span>
+            </p>
+          </div>
+          <div className="space-y-6">
+            <input
+              type="text" autoFocus maxLength={6} value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-3xl font-black tracking-[0.5em] text-center text-orange-400 focus:border-orange-500/50 outline-none transition-all placeholder:text-white/10"
+              placeholder="••••••"
+            />
+            <div className="grid grid-cols-1 gap-3">
+              <button 
+                onClick={handleVerify} 
+                disabled={verifyMutation.isPending || !otpCode} 
+                className="w-full py-4 rounded-2xl bg-orange-600 text-white font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-orange-500/20 hover:bg-orange-500 transition-all disabled:opacity-50"
+              >
+                {verifyMutation.isPending ? "Đang xác thực..." : "Xác nhận ngay"}
+              </button>
+              <button 
+                onClick={handleResend} 
+                disabled={resendMutation.isPending || verifyMutation.isPending} 
+                className="w-full py-3 rounded-xl hover:bg-white/5 text-white/40 font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+              >
+                <RefreshCcw className={cn("w-3 h-3", resendMutation.isPending && "animate-spin")} />
+                Gửi lại mã
+              </button>
+            </div>
+          </div>
+        </div>
+        <button 
+          onClick={onClose} 
+          className="absolute top-4 right-4 p-2 rounded-lg bg-white/5 text-white/20 hover:text-white transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -388,4 +667,3 @@ function ClubDetailModal({ club, onClose }: { club: any, onClose: () => void }) 
     </div>
   );
 }
-
