@@ -7,16 +7,13 @@ import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders";
 
 import { motion } from "framer-motion";
-import {
-  Users,
-  Search,
-  Compass,
-  Sparkles,
-  Filter,
-} from "lucide-react";
+import { Users, Search, Compass, Sparkles } from "lucide-react";
 
 import { getAllClubs, type ClubItem } from "@/app/services/api/auth";
 
+/* =========================
+   UTILS
+========================= */
 function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
 }
@@ -24,17 +21,20 @@ function cn(...classes: (string | false | null | undefined)[]) {
 const glass =
   "border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
 
+/* =========================
+   CORNER GLOW
+========================= */
 function CornerGlow({
   tone = "violet",
 }: {
   tone?: "violet" | "emerald" | "fuchsia" | "amber" | "sky";
 }) {
   const map: Record<string, string> = {
-    violet: "from-violet-500/65 to-indigo-500/0",
-    emerald: "from-emerald-400/65 to-teal-500/0",
-    fuchsia: "from-fuchsia-500/65 to-violet-500/0",
-    amber: "from-amber-400/70 to-orange-500/0",
-    sky: "from-sky-400/65 to-indigo-500/0",
+    violet: "from-violet-500/70 to-indigo-500/0",
+    emerald: "from-emerald-400/70 to-teal-500/0",
+    fuchsia: "from-fuchsia-500/70 to-violet-500/0",
+    amber: "from-amber-400/80 to-orange-500/0",
+    sky: "from-sky-400/70 to-indigo-500/0",
   };
 
   return (
@@ -44,56 +44,38 @@ function CornerGlow({
         "pointer-events-none absolute -right-10 -top-10 h-28 w-28 rotate-45",
         "bg-gradient-to-br",
         map[tone],
-        "blur-[0.3px]"
+        "blur-sm"
       )}
     />
   );
 }
 
+/* =========================
+   PAGE
+========================= */
 export default function ClubsPage() {
   const router = useRouter();
   const { token, loading } = useAuth();
 
   const [clubs, setClubs] = useState<ClubItem[]>([]);
   const [clubsLoading, setClubsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const [q, setQ] = useState("");
 
-  /* =========================
-     AUTH GUARD
-  ========================= */
+  /* AUTH */
   useEffect(() => {
     if (!loading && !token) router.push("/login");
   }, [loading, token, router]);
 
-  /* =========================
-     FETCH CLUBS
-  ========================= */
+  /* FETCH */
   useEffect(() => {
     if (!token) return;
-
     let cancelled = false;
 
     (async () => {
-      try {
-        setClubsLoading(true);
-        setError(null);
-
-        const res = await getAllClubs(token);
-
-        if (!cancelled) setClubs(res);
-      } catch (e: unknown) {
-        if (!cancelled) {
-          setError(
-            e instanceof Error
-              ? e.message
-              : "Không tải được danh sách câu lạc bộ"
-          );
-        }
-      } finally {
-        if (!cancelled) setClubsLoading(false);
-      }
+      setClubsLoading(true);
+      const res = await getAllClubs(token);
+      if (!cancelled) setClubs(res);
+      setClubsLoading(false);
     })();
 
     return () => {
@@ -101,13 +83,10 @@ export default function ClubsPage() {
     };
   }, [token]);
 
-  /* =========================
-     FILTER SEARCH
-  ========================= */
+  /* FILTER */
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
     if (!query) return clubs;
-
     return clubs.filter(
       (c) =>
         c.fullName?.toLowerCase().includes(query) ||
@@ -118,107 +97,116 @@ export default function ClubsPage() {
 
   const tones = ["violet", "emerald", "fuchsia", "amber", "sky"] as const;
 
+  const totalMembers = useMemo(
+    () => clubs.reduce((s, c) => s + (c.clubJoined?.length ?? 0), 0),
+    [clubs]
+  );
+
   return (
-    <div className="relative isolate min-h-screen overflow-hidden text-white">
-      {/* BG */}
+    <div className="relative isolate min-h-screen text-white font-sans">
+      {/* BACKGROUND */}
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-indigo-950 via-purple-900 to-violet-950" />
-      <div className="pointer-events-none absolute -top-40 left-1/2 -z-10 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-violet-500/25 blur-3xl" />
+      <div className="pointer-events-none absolute -top-40 left-1/2 -z-10 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-violet-500/30 blur-3xl" />
 
       <Header />
 
-      <main className="mx-auto max-w-6xl px-4 pb-20 pt-28">
-        {/* TITLE */}
-        <div className="mb-6">
-          <div className="text-sm text-white/60">Clubs</div>
-          <h1 className="text-2xl font-bold">Danh sách Câu lạc bộ</h1>
-          <p className="mt-1 text-sm text-white/60">
-            Khám phá và tham gia các câu lạc bộ phù hợp với bạn
-          </p>
-        </div>
+      {/* HERO */}
+      <section className="mx-auto max-w-6xl px-4 pt-32 pb-16 text-center">
+        <motion.h1
+  initial={{ opacity: 0, y: 10 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.6, ease: "easeOut" }}
+  className="
+    font-display
+    text-[2.1rem] md:text-[2.6rem]
+    font-semibold
+    tracking-[-0.01em]
+    text-white
+  "
+>
+  KHÁM PHÁ{" "}
+  <span
+    className="
+      bg-gradient-to-r from-violet-300 via-purple-400 to-fuchsia-400
+      bg-clip-text text-transparent
+      font-bold
+      tracking-tight
+    "
+  >
+CÂU LẠC BỘ
+  </span>
+</motion.h1>
 
-        {/* SEARCH */}
-        <div className={cn("mb-6 rounded-3xl p-4", glass)}>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2">
-              <Search className="h-4 w-4 text-white/60" />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Tìm câu lạc bộ theo tên, lĩnh vực..."
-                className="bg-transparent text-sm text-white outline-none placeholder:text-white/45 w-[260px]"
-              />
-            </div>
 
-            <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-semibold text-white/80 hover:bg-white/[0.10]">
-              <Filter size={14} />
-              Bộ lọc
-            </button>
+<p className="
+  mt-3
+  text-sm
+  font-sans
+  text-white/70
+  max-w-xl
+  mx-auto
+">
+  Nơi kết nối sinh viên – đam mê – kỹ năng – cộng đồng
+</p>
+
+
+        <div className="mt-8 flex justify-center">
+          <div className="flex items-center gap-3 rounded-full border border-white/15 bg-white/[0.08] px-6 py-3 w-full max-w-lg">
+            <Search className="text-white/60" size={18} />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder=" bộ bạn quan tâm..."
+              className="flex-1 bg-transparent outline-none text-sm placeholder:text-white/45"
+            />
           </div>
         </div>
+      </section>
 
-        {/* LIST */}
+  
+
+      {/* LIST */}
+      <main className="mx-auto max-w-6xl px-4 pb-24">
         {clubsLoading ? (
-          <div className={cn("rounded-3xl p-6 text-sm text-white/70", glass)}>
-            Đang tải câu lạc bộ...
-          </div>
-        ) : error ? (
-          <div className={cn("rounded-3xl p-6 text-sm text-red-200", glass)}>
-            {error}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className={cn("rounded-3xl p-6 text-sm text-white/70", glass)}>
-            Không có câu lạc bộ nào.
+          <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-[190px] rounded-3xl animate-pulse bg-white/[0.05] border border-white/10"
+              />
+            ))}
           </div>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3">
-            {filtered.map((club, idx) => (
+            {filtered.map((club, _id) => (
               <motion.article
                 key={club._id}
-                whileHover={{ y: -4 }}
-                transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                className={cn(
-                  "relative overflow-hidden rounded-3xl p-5 cursor-pointer",
-                  "border border-white/10 bg-white/[0.05]"
-                )}
+                whileHover={{ scale: 1.03 }}
                 onClick={() => router.push(`/clubs/${club._id}`)}
+                className="group relative cursor-pointer overflow-hidden rounded-3xl border border-white/10 bg-white/[0.06] p-5"
               >
-                <CornerGlow tone={tones[idx % tones.length]} />
+                <CornerGlow tone={tones[_id % tones.length]} />
 
                 <div className="relative">
                   <div className="flex items-center justify-between">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-black/20 text-base">
-                      <Compass />
+                    <div className="grid h-11 w-11 place-items-center rounded-2xl bg-white/10">
+                      <Compass className="text-violet-300" />
                     </div>
-                    <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[0.65rem] text-white/70">
+                    <span className="text-[0.65rem] text-white/70">
                       {club.category ?? "Khác"}
                     </span>
                   </div>
 
-                  <h3 className="mt-3 text-sm font-semibold">
-                    {club.fullName ?? "Câu lạc bộ"}
+                  
+
+                  <h3 className="mt-3 font-display text-sm font-semibold tracking-tight">
+                    {club.fullName}
                   </h3>
 
-                  <p className="mt-1.5 line-clamp-3 text-[0.72rem] text-white/60">
-                    {club.description ?? "Chưa có mô tả."}
+                  <p className="mt-1.5 font-sans line-clamp-3 text-[0.72rem] text-white/60">
+                    {club.description}
                   </p>
 
-                  <div className="mt-4 flex items-center justify-between text-[0.68rem] text-white/55">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Users size={14} />
-                      {(club.clubJoined?.length ?? 0).toLocaleString("vi-VN")}{" "}
-                      thành viên
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      router.push(`/clubs/${club._id}`);
-                    }}
-                    className="mt-4 w-full rounded-full bg-violet-500/90 py-2 text-[0.72rem] font-semibold text-white hover:bg-violet-500"
-                  >
-                    Xem chi tiết
-                  </button>
                 </div>
               </motion.article>
             ))}

@@ -5,10 +5,13 @@ import { Toaster } from "sonner";
 import QueryProvider from "@/app/providers/QueryProvider";
 
 export const metadata: Metadata = {
-  title: "Clubverse",
-  description: "Clubverse app",
+  title: "ClubVerse",
+  description: "ClubVerse – Kết nối câu lạc bộ sinh viên",
 };
 
+/* =========================
+   ROOT LAYOUT
+========================= */
 export default function RootLayout({
   children,
 }: {

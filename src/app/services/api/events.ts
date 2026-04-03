@@ -46,6 +46,7 @@ export type EventItem = EventCoreFields & {
   clubName?: string;
   joinedUsers?: JoinedUser[];
   cancelledUsers?: CancelledUser[];
+  participantCount?: number;
   status: string;
   isActive: boolean;
   reminderSent: boolean;
@@ -82,6 +83,7 @@ type ParticipantsResponse = {
 
 const EVENTS_URL = `${AUTH_BASE_URL}/events`;
 
+/* ================= QUERY ================= */
 function withQuery(path: string, params?: Record<string, any>) {
   if (!params) return path;
   const query = new URLSearchParams();
@@ -97,7 +99,12 @@ function withQuery(path: string, params?: Record<string, any>) {
   return qs ? `${path}?${qs}` : path;
 }
 
-async function request<T>(token: string, path: string, init: RequestInit = {}) {
+/* ================= REQUEST (FIXED) ================= */
+async function request<T>(
+  token: string,
+  path: string,
+  init: RequestInit = {}
+): Promise<T> {
   const res = await fetch(path, {
     ...init,
     headers: {
@@ -114,12 +121,20 @@ async function request<T>(token: string, path: string, init: RequestInit = {}) {
 
   if (!res.ok) {
     const message = (data as { message?: string } | undefined)?.message;
-    throw new Error(message || `Request failed with status ${res.status}`);
+
+    const error: any = new Error(
+      message || `Request failed with status ${res.status}`
+    );
+    error.status = res.status; // 👈 QUAN TRỌNG
+    error.data = data;         // 👈 bonus debug
+
+    throw error;
   }
 
   return data;
 }
 
+/* ================= HELPERS ================= */
 function extractEvents(payload?: ListResponse | EventItem[]): EventItem[] {
   if (!payload) return [];
   if (Array.isArray(payload)) return payload;
@@ -138,7 +153,7 @@ function extractParticipants(
   return [];
 }
 
-// ============ CREATE ============
+/* ================= CREATE ================= */
 export async function createEvent(
   token: string,
   body: EventCoreFields,
@@ -149,7 +164,7 @@ export async function createEvent(
   });
 }
 
-// ============ READ ============
+/* ================= READ ================= */
 export async function getAllEvents(
   token: string,
   params?: EventsQuery,
@@ -198,7 +213,7 @@ export async function getEventParticipants(
   return extractParticipants(payload);
 }
 
-// ============ UPDATE ============
+/* ================= UPDATE ================= */
 export async function updateEvent(
   token: string,
   id: string,
@@ -210,40 +225,34 @@ export async function updateEvent(
   });
 }
 
-// ============ DELETE ============
+/* ================= DELETE ================= */
 export async function softDeleteEvent(
   token: string,
   id: string,
 ): Promise<{ message?: string }> {
-  return request<{ message?: string }>(token, `${EVENTS_URL}/${id}/soft`, {
-    method: "DELETE",
-  });
+  return request(token, `${EVENTS_URL}/${id}/soft`, { method: "DELETE" });
 }
 
 export async function hardDeleteEvent(
   token: string,
   id: string,
 ): Promise<{ message?: string }> {
-  return request<{ message?: string }>(token, `${EVENTS_URL}/${id}/hard`, {
-    method: "DELETE",
-  });
+  return request(token, `${EVENTS_URL}/${id}/hard`, { method: "DELETE" });
 }
 
 export async function restoreEvent(
   token: string,
   id: string,
 ): Promise<{ message?: string }> {
-  return request<{ message?: string }>(token, `${EVENTS_URL}/${id}/restore`, {
-    method: "PATCH",
-  });
+  return request(token, `${EVENTS_URL}/${id}/restore`, { method: "PATCH" });
 }
 
-// ============ REGISTER / CANCEL ============
+/* ================= REGISTER / CANCEL ================= */
 export async function registerEvent(
   token: string,
   id: string,
 ): Promise<{ message?: string }> {
-  return request<{ message?: string }>(token, `${EVENTS_URL}/${id}/register`, {
+  return request(token, `${EVENTS_URL}/${id}/register`, {
     method: "POST",
   });
 }
@@ -253,25 +262,21 @@ export async function cancelEventRegistration(
   id: string,
   reason?: string,
 ): Promise<{ message?: string }> {
-  return request<{ message?: string }>(token, `${EVENTS_URL}/${id}/cancel`, {
+  return request(token, `${EVENTS_URL}/${id}/cancel`, {
     method: "POST",
     body: JSON.stringify({ reason }),
   });
 }
 
-// ============ CHECK-IN ============
+/* ================= CHECK-IN ================= */
 export async function checkInParticipant(
   token: string,
   eventId: string,
   userId: string,
 ): Promise<{ message?: string }> {
-  return request<{ message?: string }>(
-    token,
-    `${EVENTS_URL}/${eventId}/check-in/${userId}`,
-    {
-      method: "POST",
-    },
-  );
+  return request(token, `${EVENTS_URL}/${eventId}/check-in/${userId}`, {
+    method: "POST",
+  });
 }
 
 export async function undoCheckIn(
@@ -279,11 +284,7 @@ export async function undoCheckIn(
   eventId: string,
   userId: string,
 ): Promise<{ message?: string }> {
-  return request<{ message?: string }>(
-    token,
-    `${EVENTS_URL}/${eventId}/check-in/${userId}/undo`,
-    {
-      method: "DELETE",
-    },
-  );
+  return request(token, `${EVENTS_URL}/${eventId}/check-in/${userId}/undo`, {
+    method: "DELETE",
+  });
 }

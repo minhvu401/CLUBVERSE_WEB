@@ -221,7 +221,6 @@ function UserHeader({
   );
 }
 
-/** ====== CLUB HEADER (đổi về /homeclub) ====== */
 function ClubHeader({
   pathname,
   isAuthed,
@@ -232,9 +231,9 @@ function ClubHeader({
 }: any) {
   const navItems = [
     { label: "Dashboard", href: "/club/dashboard", match: ["/club/dashboard"] },
-    { label: "Thành viên", href: "/club/members", match: ["/club/members"] },
     { label: "Diễn đàn", href: "/club/forum", match: ["/club/forum"] },
     { label: "Sự kiện", href: "/club/events", match: ["/club/events"] },
+    { label: "Thành viên", href: "/club/members", match: ["/club/members"] },
     {
       label: "Đơn đăng ký",
       href: "/club/applications",
@@ -245,7 +244,7 @@ function ClubHeader({
   return (
     <HeaderShell>
       <div className="flex h-20 items-center justify-between bg-transparent border-0">
-        <Brand href="/club/dashboard" />
+        <Brand href={isAuthed ? "/club/forum" : "/club/forum"} />
         <NavLinks items={navItems} pathname={pathname} />
 
         {!isAuthed ? (
@@ -286,7 +285,12 @@ function AdminHeader({
   token,
 }: any) {
   const navItems = [
-    { label: "Dashboard", href: "/admin", match: ["/admin"] },
+    { label: "Tổng Quan", href: "/admin", match: ["/admin"] },
+    {
+      label: "Dashboard",
+      href: "/admin/dashboard",
+      match: ["/admin/dashboard"],
+    },
     { label: "CLB", href: "/admin/clubs", match: ["/admin/clubs"] },
     {
       label: "Đơn duyệt",
@@ -298,7 +302,7 @@ function AdminHeader({
   return (
     <HeaderShell>
       <div className="flex h-20 items-center justify-between bg-transparent border-0">
-        <Brand href={isAuthed ? "/admin" : "/"} />
+        <Brand href={isAuthed ? "/admin/dashboard" : "/"} />
         <NavLinks items={navItems} pathname={pathname} />
 
         {!isAuthed ? (

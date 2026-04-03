@@ -46,6 +46,47 @@ export type MessageResponse = {
   message?: string;
 };
 
+export type ClubMember = {
+  id: string;
+  fullName: string;
+  role: "member" | "admin";
+  joinedAt: string;
+};
+
+export type MyClubResponse = {
+  id: string;
+  name: string;
+  category: string;
+  role: "member" | "admin";
+  joinedAt: string;
+  description?: string;
+  members: ClubMember[];
+};
+
+export type MyClubsResponse = {
+  total?: number;
+  clubs?: MyClubResponse[];
+  data?: MyClubResponse[];
+};
+
+export type MyClubItem = {
+  clubId: string;
+  clubInfo: {
+    _id: string;
+    fullName: string;
+    category: string;
+    description?: string;
+    rating?: number;
+  };
+  joinedAt: string;
+  isActive?: boolean;
+};
+
+export type MyClubsApiResponse = {
+  total?: number;
+  clubs?: MyClubItem[];
+};
+
 const jsonHeaders = {
   "Content-Type": "application/json",
   accept: "application/json",
@@ -195,4 +236,10 @@ export function deleteUserAvatar(token: string): Promise<MessageResponse> {
   return requestJson<MessageResponse>(token, "/users/avatar", {
     method: "DELETE",
   });
+}
+
+export function getMyClubs(token: string, status: string = "active"): Promise<MyClubItem[]> {
+  return requestJson<MyClubsApiResponse>(token, `/club-members/my-clubs?status=${status}`, {
+    method: "GET",
+  }).then((payload) => payload.clubs ?? []);
 }

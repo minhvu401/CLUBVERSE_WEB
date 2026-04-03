@@ -7,7 +7,16 @@ import { useAuth } from "@/app/providers/AuthProviders";
 
 // ✅ chỉnh path import đúng với nơi bạn đặt posts.ts
 import { createPost } from "@/app/services/api/post";
-import { Plus, X, Hash, Image as ImageIcon, ArrowLeft, Loader2 } from "lucide-react";
+import { getClubMembers } from "@/app/services/api/clubMembers";
+import { createNotification } from "@/app/services/api/notifications";
+import {
+  Plus,
+  X,
+  Hash,
+  Image as ImageIcon,
+  ArrowLeft,
+  Loader2,
+} from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -34,7 +43,7 @@ export default function CreatePostPage() {
 
   const isClubRole = useMemo(
     () => String(user?.role || "").toLowerCase() === "club",
-    [user?.role]
+    [user?.role],
   );
 
   // Nếu muốn chặn không phải club:
@@ -87,8 +96,31 @@ export default function CreatePostPage() {
       setSubmitting(true);
       const created = await createPost(token, payload);
 
-      alert("Tạo bài viết thành công!");
-      // ✅ quay về forum (đổi đường dẫn nếu forum bạn nằm chỗ khác)
+      // Notify all club members about the new post
+      const clubId =
+        user?.clubId ||
+        user?.club?._id ||
+        user?.managedClubId ||
+        user?._id ||
+        user?.id;
+      if (clubId) {
+        getClubMembers(token, String(clubId))
+          .then(({ members }) =>
+            Promise.allSettled(
+              members.map((m: { userId: string }) =>
+                createNotification(token, {
+                  userId: m.userId,
+                  title: `Bài viết mới: ${title.trim()}`,
+                  message: `CLB vừa đăng bài viết mới "${title.trim()}". Hãy vào xem ngay!`,
+                  type: "FORUM_REPLY",
+                  metadata: { postId: created._id },
+                }),
+              ),
+            ),
+          )
+          .catch(() => null);
+      }
+
       router.push("/club/forum");
       // hoặc nếu bạn muốn mở detail:
       // router.push(`/club/forum/${created._id}`);
@@ -107,13 +139,14 @@ export default function CreatePostPage() {
       <div className="pointer-events-none absolute -top-28 left-10 -z-10 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 right-0 -z-10 h-96 w-96 rounded-full bg-indigo-400/15 blur-3xl" />
 
-
       <main className="mx-auto max-w-3xl px-4 pb-14 pt-10">
         {/* Header */}
         <div className="mb-6 flex items-start justify-between gap-3">
           <div>
             <div className="text-sm text-white/60">Forum</div>
-            <h1 className="mt-1 text-xl font-semibold text-white">Tạo bài viết</h1>
+            <h1 className="mt-1 text-xl font-semibold text-white">
+              Tạo bài viết
+            </h1>
             <p className="mt-1 text-sm text-white/60">
               Đăng bài viết mới cho cộng đồng (Club only).
             </p>
@@ -138,7 +171,9 @@ export default function CreatePostPage() {
 
           {/* Title */}
           <div>
-            <label className="text-sm font-semibold text-white/85">Tiêu đề *</label>
+            <label className="text-sm font-semibold text-white/85">
+              Tiêu đề *
+            </label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -178,7 +213,9 @@ export default function CreatePostPage() {
 
           {/* Content */}
           <div className="mt-5">
-            <label className="text-sm font-semibold text-white/85">Nội dung *</label>
+            <label className="text-sm font-semibold text-white/85">
+              Nội dung *
+            </label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -229,7 +266,9 @@ export default function CreatePostPage() {
                     className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3"
                   >
                     <div className="min-w-0">
-                      <div className="truncate text-sm text-white/80">{url}</div>
+                      <div className="truncate text-sm text-white/80">
+                        {url}
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -243,7 +282,9 @@ export default function CreatePostPage() {
                 ))}
               </div>
             ) : (
-              <div className="mt-3 text-sm text-white/50">Chưa thêm ảnh nào.</div>
+              <div className="mt-3 text-sm text-white/50">
+                Chưa thêm ảnh nào.
+              </div>
             )}
           </div>
 
@@ -264,7 +305,8 @@ export default function CreatePostPage() {
               className={cn(
                 "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-[0.78rem] font-bold text-slate-900 transition",
                 "bg-gradient-to-r from-cyan-400 to-blue-500 shadow-lg shadow-cyan-500/35 hover:shadow-cyan-500/55 hover:brightness-110 active:scale-95",
-                !canSubmit && "opacity-50 cursor-not-allowed hover:brightness-100 active:scale-100"
+                !canSubmit &&
+                  "opacity-50 cursor-not-allowed hover:brightness-100 active:scale-100",
               )}
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -274,13 +316,12 @@ export default function CreatePostPage() {
 
           {!isClubRole ? (
             <div className="mt-4 text-xs text-white/45">
-              (Gợi ý) Nếu API yêu cầu Club only, hãy đảm bảo tài khoản đang đăng nhập là role Club.
+              (Gợi ý) Nếu API yêu cầu Club only, hãy đảm bảo tài khoản đang đăng
+              nhập là role Club.
             </div>
           ) : null}
         </div>
       </main>
-
-
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   Inbox,
   Settings,
   LogOut,
+  CreditCard,
 } from "lucide-react";
 
 function cn(...classes: (string | false | null | undefined)[]) {
@@ -47,16 +48,22 @@ const NAV_ITEMS: SidebarItem[] = [
     href: "/my-events",
   },
   {
+    key: "messages",
+    icon: <MessageSquare size={16} />,
+    label: "Tin nhắn",
+    href: "/my-messages",
+  },
+  {
     key: "profile",
     icon: <User size={16} />,
     label: "Hồ sơ của tôi",
     href: "/profile",
   },
   {
-    key: "messages",
-    icon: <MessageSquare size={16} />,
-    label: "Tin nhắn",
-    href: "/my-messages",
+    key: "payments",
+    icon: <CreditCard size={16} />,
+    label: "Lịch sử thanh toán",
+    href: "/my-payment",
   },
   {
     key: "requests",
@@ -144,6 +151,7 @@ export default function AppSidebar({
       <nav className="mt-5 space-y-1.5 text-[0.78rem]">
         {NAV_ITEMS.map((it) => {
           const active = it.key === activeKey;
+          
           return (
             <Link
               key={it.key}

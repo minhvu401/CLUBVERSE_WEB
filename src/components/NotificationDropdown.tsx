@@ -60,7 +60,7 @@ export default function NotificationDropdown({
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getNotifications(token, 1, 10);
+      const data = await getNotifications(token, { page: 1, limit: 10 });
       setNotifications(data.notifications || []);
       setUnreadCount(data.unreadCount || 0);
     } catch (error) {
@@ -135,32 +135,31 @@ export default function NotificationDropdown({
   };
 
   const handleNotificationClick = (notification: NotificationItem) => {
-    // Đánh dấu là đã đọc
     if (!notification.isRead) {
       handleMarkAsRead(notification._id);
     }
 
-    // Điều hướng dựa vào type và relatedId
-    if (notification.relatedId && notification.relatedType) {
-      let path = "";
-      switch (notification.relatedType) {
-        case "event":
-          path = `/events/${notification.relatedId}`;
-          break;
-        case "club":
-          path = `/clubs/${notification.relatedId}`;
-          break;
-        case "post":
-          path = `/forum/post/${notification.relatedId}`;
-          break;
-        case "application":
-          path = `/club/applications/${notification.relatedId}`;
-          break;
-      }
-      if (path) {
-        router.push(path);
-        setIsOpen(false);
-      }
+    let path = "";
+    const meta = notification.metadata || {};
+    switch (notification.type) {
+      case "EVENT_REMINDER":
+      case "EVENT_UPDATE":
+        if (meta.eventId) path = `/events/${meta.eventId}`;
+        break;
+      case "CLUB_INVITE":
+        if (meta.clubId) path = `/clubs/${meta.clubId}`;
+        break;
+      case "FORUM_REPLY":
+        if (meta.postId) path = `/forum/post/${meta.postId}`;
+        break;
+      case "APPLICATION_STATUS":
+        if (meta.applicationId)
+          path = `/club/applications/${meta.applicationId}`;
+        break;
+    }
+    if (path) {
+      router.push(path);
+      setIsOpen(false);
     }
   };
 
@@ -182,16 +181,16 @@ export default function NotificationDropdown({
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case "event_reminder":
-      case "event_update":
+      case "EVENT_REMINDER":
+      case "EVENT_UPDATE":
         return "📅";
-      case "application_status":
+      case "APPLICATION_STATUS":
         return "📝";
-      case "club_invite":
+      case "CLUB_INVITE":
         return "🎯";
-      case "forum_reply":
+      case "FORUM_REPLY":
         return "💬";
-      case "system":
+      case "SYSTEM":
         return "🔔";
       default:
         return "📢";
