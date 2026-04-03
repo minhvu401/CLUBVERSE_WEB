@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 
 import { login } from "@/app/services/api/auth";

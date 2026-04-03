@@ -46,6 +46,19 @@ export interface AdminEvent {
   participantCount: number;
 }
 
+export interface UserRegisterPayload {
+  email: string;
+  password?: string;
+  fullName: string;
+  phoneNumber?: string;
+  role: "user" | "club";
+  school?: string;
+  major?: string;
+  year?: number;
+  category?: string;
+  description?: string;
+}
+
 // --- API Functions ---
 
 export const adminApi = {
@@ -75,6 +88,22 @@ export const adminApi = {
   reactivateUser: async (userId: string) => {
     // Spec shows PATCH /users/{id}/reactivate (Admin only)
     const res = await axiosInstance.patch(`/users/${userId}/reactivate`);
+    return res.data;
+  },
+
+  registerUser: async (payload: UserRegisterPayload) => {
+    // Uses the public registration endpoint but accessible for admin creation logic
+    const res = await axiosInstance.post("/auth/register", payload);
+    return res.data;
+  },
+
+  verifyOtp: async (payload: { email: string; otp: string }) => {
+    const res = await axiosInstance.post("/auth/verify-otp", payload);
+    return res.data;
+  },
+
+  resendOtp: async (email: string) => {
+    const res = await axiosInstance.post("/auth/resend-otp", { email });
     return res.data;
   },
 
