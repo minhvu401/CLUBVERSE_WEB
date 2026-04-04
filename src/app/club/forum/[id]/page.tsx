@@ -227,6 +227,28 @@ export default function PostDetailPage() {
               {/* Action buttons */}
               <div className="flex gap-2">
                 <button
+                  onClick={async () => {
+                     try {
+                        const { createConversation } = await import("@/app/services/api/messages");
+                        const { useChatStore } = await import("@/app/store/chatStore");
+                        // We use the club ID safely or fallback
+                        const targetId = typeof post.clubId === "object" ? post.clubId._id : post.clubId;
+                        if (!targetId) return alert("Không tìm thấy thông tin để nhắn tin");
+                        const conv = await createConversation(token, {
+                           participantIds: [user._id, targetId],
+                        });
+                        useChatStore.getState().openChat(conv._id);
+                     } catch(err: any) {
+                        alert("Không thể mở hội thoại: " + err.message);
+                     }
+                  }}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-violet-400/20 bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-500 transition shadow-lg shadow-violet-500/20"
+                  title="Nhắn tin"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span className="hidden sm:inline">Nhắn tin</span>
+                </button>
+                <button
                   onClick={() => router.push(`/club/forum/${post._id}/edit`)}
                   className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10] transition"
                   title="Chỉnh sửa"

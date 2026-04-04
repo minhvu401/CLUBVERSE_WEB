@@ -10,6 +10,7 @@ import {
   LogOut,
   Settings,
   ShieldCheck,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/app/providers/AuthProviders";
 import NotificationDropdown from "@/components/NotificationDropdown";
@@ -105,6 +106,13 @@ function RightAuthed({
           className="w-[120px] lg:w-[140px] xl:w-[200px] bg-transparent text-sm text-white outline-none placeholder:text-white/50"
         />
       </div>
+
+      {/* Messages */}
+      {token && (
+        <Link href="/club/messages" className="relative p-2 rounded-full hover:bg-white/10 transition text-white/80 hover:text-white" title="Tin nhắn">
+          <MessageSquare className="w-5 h-5" />
+        </Link>
+      )}
 
       {/* Notification Dropdown */}
       {token && <NotificationDropdown token={token} />}

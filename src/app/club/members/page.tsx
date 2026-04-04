@@ -21,6 +21,8 @@ import {
   type RemoveMemberRequest,
   type PendingActionsResponse,
 } from "@/app/services/api/clubMembers";
+import { createConversation } from "@/app/services/api/messages";
+import { useChatStore } from "@/app/store/chatStore";
 
 import {
   Users,
@@ -41,6 +43,7 @@ import {
   CheckCircle,
   XCircle,
   Bell,
+  MessageSquare,
 } from "lucide-react";
 
 import { motion, Variants } from "framer-motion";
@@ -211,8 +214,39 @@ export default function ClubMembersPage() {
   const [pendingActions, setPendingActions] =
     useState<PendingActionsResponse | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
 
   const LIMIT = 10;
+
+  const handleCreateGroupChat = async () => {
+    if (!token || !user || members.length === 0) {
+      alert("Không có thành viên nào để tạo nhóm chat.");
+      return;
+    }
+    setIsCreatingGroup(true);
+    try {
+      // Collect all unique member user IDs
+      const memberIds = members
+        .map((m) => m.userId)
+        .filter((id) => id !== user._id && id !== user.id); 
+
+      const participantIds = ([user._id || user.id, ...memberIds].filter(Boolean) as string[]);
+
+      const conv = await createConversation(token, {
+        participantIds: participantIds,
+        name: "Group Chat CLB",
+        description: "Nhóm thảo luận chung cho toàn bộ thành viên CLB",
+      });
+
+      // Mở widget chat
+      useChatStore.getState().openChat(conv._id);
+    } catch (error: any) {
+      console.error("Lỗi tạo group chat:", error);
+      alert("Không thể tạo nhóm chat: " + (error.message || "Lỗi không xác định"));
+    } finally {
+      setIsCreatingGroup(false);
+    }
+  };
 
   const isClubRole = useMemo(
     () => String(user?.role || "").toLowerCase() === "club",
@@ -474,23 +508,42 @@ export default function ClubMembersPage() {
               Quản lý và theo dõi thành viên của câu lạc bộ
             </p>
           </div>
-          <button
-            onClick={handleExportMembers}
-            disabled={isExporting || members.length === 0}
-            className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-400/15 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          >
-            {isExporting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Đang xuất...
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" />
-                Xuất danh sách
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleCreateGroupChat}
+              disabled={isCreatingGroup || members.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl border border-violet-400/30 bg-violet-400/10 px-4 py-2.5 text-sm font-semibold text-violet-200 hover:bg-violet-400/15 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              {isCreatingGroup ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang tạo...
+                </>
+              ) : (
+                <>
+                  <MessageSquare className="h-4 w-4" />
+                  Tạo Group Chat
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleExportMembers}
+              disabled={isExporting || members.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-400/15 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang xuất...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Xuất danh sách
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Statistics */}

@@ -52,7 +52,7 @@ export default function NotificationDropdown({
       const data = await getUnreadCount(token);
       setUnreadCount(data.count || 0);
     } catch (error) {
-      console.error("Error fetching unread count:", error);
+      console.warn("Lỗi tải đếm số thông báo:", error);
     }
   }, [token]);
 
@@ -64,7 +64,7 @@ export default function NotificationDropdown({
       setNotifications(data.notifications || []);
       setUnreadCount(data.unreadCount || 0);
     } catch (error) {
-      console.error("Error fetching notifications:", error);
+      console.warn("Lỗi tải thông báo:", error);
     } finally {
       setLoading(false);
     }
