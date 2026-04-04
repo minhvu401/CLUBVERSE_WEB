@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import React, { useState, useEffect } from "react";
 import AppSidebar from "@/components/AppSidebar";
 import { Search, Send, MoreVertical, Paperclip, Smile, Loader2, Plus, X } from "lucide-react";
@@ -68,9 +69,9 @@ interface Conversation {
   messages: Message[];
 }
 
-/* ================= page ================= */
+/* ================= content component with useSearchParams ================= */
 
-export default function MyMessagesPage() {
+function MyMessagesContent() {
   const searchParams = useSearchParams();
   const { loading, user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -525,48 +526,6 @@ export default function MyMessagesPage() {
                       <div
                         key={msg.id}
                         className={cn(
-                          "flex gap-2",
-                          msg.sender === "user" ? "justify-end" : "justify-start"
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "max-w-xs rounded-2xl px-4 py-2",
-                            msg.sender === "user"
-                              ? "bg-emerald-500/20 border border-emerald-500/30 text-white"
-                              : "bg-white/10 border border-white/10 text-white"
-                          )}
-                        >
-                          <p className="text-sm">{msg.content}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-white/40">
-                      Chưa có tin nhắn nào
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2 text-xs text-white/40 mb-4 text-center">
-                  {selectedConversation.messages.length > 0 && (
-                    <>
-                      <p>
-                        {selectedConversation.messages[selectedConversation.messages.length - 1].senderName}
-                      </p>
-                      <p>
-                        {fmtTime(selectedConversation.messages[selectedConversation.messages.length - 1].timestamp)}
-                      </p>
-                    </>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  {selectedConversation.messages.length > 0 &&
-                    selectedConversation.messages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={cn(
                           "flex gap-2 items-end",
                           msg.sender === "user" ? "justify-end" : "justify-start"
                         )}
@@ -591,19 +550,11 @@ export default function MyMessagesPage() {
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-xs font-bold shrink-0" />
                         )}
                       </div>
-                    ))}
-                </div>
-
-                <div className="flex flex-col items-center gap-2">
-                  {selectedConversation.messages.length > 0 && (
-                    <>
-                      <p className="text-xs text-white/40">
-                        {selectedConversation.messages[selectedConversation.messages.length - 1].senderName}
-                      </p>
-                      <p className="text-xs text-white/40">
-                        {fmtTime(selectedConversation.messages[selectedConversation.messages.length - 1].timestamp)}
-                      </p>
-                    </>
+                    ))
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-white/40">
+                      Chưa có tin nhắn nào
+                    </div>
                   )}
                 </div>
 
@@ -713,62 +664,38 @@ export default function MyMessagesPage() {
                           }}
                           className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 transition text-left"
                         >
-                          <div className="h-10 w-10 rounded-full flex items-center justify-center text-xs font-semibold bg-gradient-to-br from-indigo-500 to-purple-600 shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold shrink-0">
                             {initials(applicantInfo.fullName || "U")}
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold truncate">{applicantInfo.fullName || "Unknown User"}</p>
-                            <p className="text-xs text-white/50 truncate">Đã duyệt đơn</p>
-                          </div>
+                          <span className="text-sm">{applicantInfo.fullName || "User"}</span>
                         </button>
                       );
                     })}
                   </div>
                 ) : (
-                  <div className="py-8 text-center">
-                    <p className="text-white/40 text-sm">Chưa có người duyệt đơn</p>
-                  </div>
+                  <p className="text-sm text-white/50">Không có người nhận nào</p>
                 )}
 
-                <div className="pt-4 border-t border-white/10">
-                  <label className="text-sm text-white/70 mb-2 block">Hoặc nhập ID người nhận:</label>
+                <div className="border-t border-white/10 pt-4 space-y-2">
+                  <label className="text-xs text-white/70">Hoặc nhập ID người nhận:</label>
                   <input
                     type="text"
-                    placeholder="Nhập ID người dùng..."
+                    placeholder="Nhập ID..."
                     value={newConversationUserId}
                     onChange={(e) => setNewConversationUserId(e.target.value)}
                     onKeyPress={(e) => {
                       if (e.key === "Enter") {
-                        if (newConversationUserId.trim()) {
-                          const newConv: Conversation = {
-                            id: `temp-${newConversationUserId}`,
-                            participantId: newConversationUserId,
-                            name: `User: ${newConversationUserId}`,
-                            lastMessage: "Bắt đầu cuộc trò chuyện",
-                            lastMessageTime: new Date(),
-                            unread: 0,
-                            online: false,
-                            messages: [],
-                          };
-                          setSelectedConversation(newConv);
-                          setNewConversationUserId("");
-                          setIsNewConversationModalOpen(false);
-                        }
+                        e.preventDefault();
+                        handleStartNewConversation();
                       }
                     }}
-                    className="w-full px-4 py-2 rounded-lg bg-white/[0.06] border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-emerald-500/50"
+                    className="w-full bg-white/6 border border-white/10 rounded-lg px-3 py-2 text-sm placeholder-white/40 focus:outline-none focus:border-emerald-500/50"
                   />
-                </div>
-
-                <div className="flex gap-3 mt-6">
                   <button
-                    onClick={() => {
-                      setIsNewConversationModalOpen(false);
-                      setNewConversationUserId("");
-                    }}
-                    className="flex-1 px-4 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-sm font-semibold transition-colors"
+                    onClick={handleStartNewConversation}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-sm font-semibold py-2 rounded-lg transition-all"
                   >
-                    Hủy
+                    Bắt đầu
                   </button>
                 </div>
               </div>
@@ -777,5 +704,24 @@ export default function MyMessagesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+/* ================= page ================= */
+
+export default function MyMessagesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="relative min-h-screen text-white">
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-indigo-950 via-purple-900 to-violet-950" />
+          <div className="flex items-center justify-center h-screen">
+            <Loader2 className="animate-spin text-white/40" size={32} />
+          </div>
+        </div>
+      }
+    >
+      <MyMessagesContent />
+    </Suspense>
   );
 }
