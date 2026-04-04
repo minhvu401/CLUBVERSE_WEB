@@ -113,11 +113,11 @@ export function getMessages(
   ).then((res) => res.data ?? []);
 }
 
-/** ✉️ Send a message */
+/** ✉️ Send a message in existing conversation */
 export function sendMessage(
   token: string,
   payload: {
-    recipientId: string;
+    conversationId: string;
     content: string;
   }
 ): Promise<MessageData | undefined> {
@@ -127,6 +127,29 @@ export function sendMessage(
     {
       method: "POST",
       body: JSON.stringify(payload),
+    }
+  ).then((res) => res.data);
+}
+
+/** ✉️ Send a message to a club (create/start conversation) 
+ * 🔧 FIXED: Sử dụng POST /messages với recipientId thay vì /messages/club
+ */
+export function sendMessageToClub(
+  token: string,
+  payload: {
+    clubId: string;
+    content: string;
+  }
+): Promise<MessageData | undefined> {
+  return requestJson<SendMessageResponse>(
+    token,
+    "/messages",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        recipientId: payload.clubId,  // ✅ Dùng recipientId thay vì clubId
+        content: payload.content,
+      }),
     }
   ).then((res) => res.data);
 }
@@ -163,5 +186,59 @@ export function deleteConversation(
     token,
     `/messages/conversations/${conversationId}`,
     { method: "DELETE" }
+  );
+}
+
+/** 📄 Get a specific message */
+export function getMessageById(
+  token: string,
+  messageId: string
+): Promise<MessageData> {
+  return requestJson<MessageData>(
+    token,
+    `/messages/${messageId}`,
+    { method: "GET" }
+  );
+}
+
+/** ✏️ Update/edit a message */
+export function updateMessage(
+  token: string,
+  messageId: string,
+  payload: {
+    content: string;
+  }
+): Promise<MessageData | undefined> {
+  return requestJson<SendMessageResponse>(
+    token,
+    `/messages/${messageId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }
+  ).then((res) => res.data);
+}
+
+/** 🗑️ Delete a message */
+export function deleteMessage(
+  token: string,
+  messageId: string
+): Promise<{ message?: string }> {
+  return requestJson<{ message?: string }>(
+    token,
+    `/messages/${messageId}`,
+    { method: "DELETE" }
+  );
+}
+
+/** ✅ Mark message as read */
+export function markMessageAsRead(
+  token: string,
+  messageId: string
+): Promise<MessageData> {
+  return requestJson<MessageData>(
+    token,
+    `/messages/${messageId}/read`,
+    { method: "PATCH" }
   );
 }

@@ -27,10 +27,12 @@ const BANK_CODE_MAP: Record<string, string> = {
 };
 
 type PendingPayment = {
+  _id?: string;
   transactionRef: string;
   amount: number;
   bankName: string;
   accountNumber: string;
+  instructions?: string;
 };
 
 const PAYMENT_TIMEOUT = 600; // 10 phút

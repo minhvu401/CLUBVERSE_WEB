@@ -304,7 +304,7 @@ export default function MyPaymentPage() {
 function StatusBadge({
   status,
 }: {
-  status: "pending" | "completed";
+  status: "pending" | "completed" | "failed";
 }) {
   if (status === "completed") {
     return (

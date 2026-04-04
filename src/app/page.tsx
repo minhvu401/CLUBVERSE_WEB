@@ -30,9 +30,9 @@ export default function HomePage() {
         {/* HERO */}
         <section className="text-center animate-fade-in-up">
           <h1 className="text-3xl md:text-4xl font-semibold leading-snug animate-slide-down">
-            Find Your Club,
+            Tìm Câu Lạc Bộ Của Bạn,
             <br />
-            One Click Away
+            Chỉ Một Cú Nhấp
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-xs md:text-sm text-slate-200/85 animate-fade-in delay-100">
             Khám phá các câu lạc bộ phù hợp với sở thích, kết nối sinh viên
@@ -64,7 +64,7 @@ export default function HomePage() {
           <div className="grid gap-4 md:grid-cols-3">
             {[
               {
-                title: "AI Match",
+                title: "Gợi Ý AI",
                 desc: "Thuật toán thông minh giúp tìm ra CLB phù hợp nhất với hồ sơ cá nhân.",
                 delay: "delay-100",
               },
@@ -74,8 +74,8 @@ export default function HomePage() {
                 delay: "delay-200",
               },
               {
-                title: "Calendar Sync",
-                desc: "Đồng bộ lịch sinh hoạt với calendar cá nhân, không bỏ lỡ buổi nào.",
+                title: "Xem lịch sự kiện",
+                desc: "Luôn cập nhật lịch sự kiện của các CLB bạn quan tâm, không bỏ lỡ bất kỳ hoạt động nào.",
                 delay: "delay-300",
               },
             ].map((item) => (
@@ -101,7 +101,7 @@ export default function HomePage() {
         <section className="space-y-8 animate-fade-in-up delay-400">
           <div className="text-center">
             <h2 className="text-sm font-semibold tracking-wide animate-fade-in">
-              What Students Say
+              Sinh Viên Nói Gì
             </h2>
             <p className="mt-2 text-xs text-slate-200/80 animate-fade-in delay-100">
               Hơn 1,000+ sinh viên đã tìm được &quot;bộ lạc&quot; của mình.
@@ -186,7 +186,7 @@ export default function HomePage() {
         <section className="animate-fade-in-up delay-600 rounded-3xl bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-sky-500/90 p-[1.5px] shadow-[0_18px_60px_rgba(15,23,42,1)] transition-all duration-500 hover:shadow-[0_30px_100px_rgba(139,92,246,0.6)] hover:scale-[1.02] animate-pulse-slow">
           <div className="rounded-3xl bg-slate-950/70 px-6 py-8 text-center backdrop-blur-sm">
             <h3 className="text-sm font-semibold animate-fade-in">
-              Ready to Find Your Tribe?
+              Sẵn Sàng Tìm Bộ Lạc Của Bạn?
             </h3>
             <p className="mt-2 max-w-xl mx-auto text-[0.7rem] text-slate-200/90 animate-fade-in delay-100">
               Hãy để CLUBVERSE giúp bạn kết nối với những cộng đồng phù hợp,

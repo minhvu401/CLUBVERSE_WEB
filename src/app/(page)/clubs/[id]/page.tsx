@@ -10,7 +10,7 @@ import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders";
 import { AUTH_BASE_URL } from "@/app/services/api/auth";
 import { createApplication, getMyApplications } from "@/app/services/api/applications";
-import { sendMessage } from "@/app/services/api/messages";
+import { sendMessageToClub } from "@/app/services/api/messages";
 
 import {
   Mail,
@@ -27,8 +27,6 @@ import {
   X,
   Check,
 } from "lucide-react";
-
-
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -318,8 +316,10 @@ export default function ClubDetailPage() {
       setIsSendingMessage(true);
       setMessageError("");
 
-      await sendMessage(token, {
-        recipientId: clubId,
+      // ✅ Sử dụng hàm sendMessageToClub từ API
+      // Hàm này sẽ gọi POST /messages với recipientId
+      await sendMessageToClub(token, {
+        clubId: clubId,
         content: messageContent.trim(),
       });
 

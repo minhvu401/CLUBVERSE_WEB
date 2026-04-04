@@ -36,21 +36,14 @@ export default function CheckoutPage() {
 
       // 🔥 CALL API CREATE PAYMENT
       const payment = await createPayment(token);
+      console.log("Payment response:", payment);
 
-      // 👉 lưu tạm để trang pending dùng
-      localStorage.setItem(
-        "payment_pending",
-        JSON.stringify({
-          transactionRef: payment.transactionRef,
-          amount: payment.amount,
-          instructions: payment.paymentInfo.instructions,
-          bankName: payment.paymentInfo.bankName,
-          accountNumber: payment.paymentInfo.accountNumber,
-        })
-      );
-
-      // 👉 chuyển sang trang chờ xác nhận
-      router.push("/payment-pending");
+      // 👉 Redirect to PayOS checkout
+      if (payment.checkoutUrl) {
+        window.location.href = payment.checkoutUrl;
+      } else {
+        throw new Error("Không có checkoutUrl từ response");
+      }
     } catch (err: any) {
       setError(
         err?.message || "Không thể tạo yêu cầu thanh toán. Vui lòng thử lại."

@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { getProfile } from "@/app/services/api/auth";
+import { checkPaid } from "@/app/services/api/payments";
 
 /* ================== TYPES ================== */
 
@@ -26,6 +27,7 @@ export type User = {
   school?: string;
   major?: string;
   year?: number;
+  isPremium?: boolean;
 
   [key: string]: unknown;
 };
@@ -83,13 +85,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /* ---------- LOGIN ---------- */
-  const login = useCallback((newToken: string, newUser: User) => {
+  const login = useCallback(async (newToken: string, newUser: User) => {
     setToken(newToken);
     setUser(newUser);
 
     if (typeof window !== "undefined") {
       localStorage.setItem(TOKEN_KEY, newToken);
       localStorage.setItem(USER_KEY, JSON.stringify(newUser));
+    }
+
+    // Fetch premium status
+    try {
+      const paidStatus = await checkPaid(newToken);
+      updateUser({ isPremium: paidStatus.hasPaid });
+    } catch {
+      // Ignore errors
     }
   }, []);
 
@@ -132,6 +142,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const profile = await getProfile(token);
         if (cancelled) return;
 
+        const paidStatus = await checkPaid(token);
+        if (cancelled) return;
+
         updateUser({
           _id: profile._id,
           email: profile.email,
@@ -142,6 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           school: profile.school,
           major: profile.major,
           year: profile.year,
+          isPremium: paidStatus.hasPaid,
         });
       } catch {
         // optional: handle 401 -> logout()
