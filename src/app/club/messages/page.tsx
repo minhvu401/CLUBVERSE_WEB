@@ -38,7 +38,7 @@ import { AUTH_BASE_URL } from "@/app/services/api/auth";
 
 export default function ClubMessagesPage() {
   const router = useRouter();
-  const { user, token, loading } = useAuth() as any;
+  const { user, token, loading } = useAuth() as { user: { _id?: string; id?: string; fullName?: string; avatarUrl?: string }; token: string; loading: boolean };
 
   const [conversations, setConversations] = useState<ConversationData[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);

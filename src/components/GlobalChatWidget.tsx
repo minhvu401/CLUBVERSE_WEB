@@ -27,7 +27,7 @@ function ChatBox({
   minimized: boolean;
   onClose: () => void;
   onToggleMinimize: () => void;
-  user: any;
+  user: { _id?: string; id?: string; fullName?: string; avatarUrl?: string } | null;
   token: string;
 }) {
   const [conversation, setConversation] = useState<ConversationData | null>(null);
@@ -188,10 +188,10 @@ function ChatBox({
               messages.map((msg, idx) => {
                 const isObj = typeof msg.senderId === "object" && msg.senderId !== null;
                 const isMe = isObj 
-                  ? (msg.senderId as any)._id === user?._id 
+                  ? (msg.senderId as { _id: string; fullName: string })._id === user?._id 
                   : msg.senderId === user?._id;
 
-                const senderName = isObj ? (msg.senderId as any).fullName : "User";
+                const senderName = isObj ? (msg.senderId as { fullName: string }).fullName : "User";
                 const showAvatar = conversation.isGroup && !isMe;
 
                 return (
@@ -243,7 +243,7 @@ function ChatBox({
 
 export default function GlobalChatWidget() {
   const { activeChats, closeChat, toggleMinimize } = useChatStore();
-  const { user, token, loading } = useAuth() as any;
+  const { user, token, loading } = useAuth() as { user: { _id?: string; id?: string }; token: string; loading: boolean };
 
   if (loading || !token) return null;
   if (activeChats.length === 0) return null;

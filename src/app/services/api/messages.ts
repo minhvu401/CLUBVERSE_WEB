@@ -115,10 +115,10 @@ export function createConversation(
   token: string, 
   payload: { participantIds: string[]; name?: string; description?: string }
 ): Promise<ConversationData> {
-  return requestJson<any>(token, "/messages/conversations", {
+  return requestJson<{ data?: ConversationData; conversation?: ConversationData }>(token, "/messages/conversations", {
     method: "POST",
     body: JSON.stringify(payload),
-  }).then(res => res.data || res.conversation || res);
+  }).then(res => (res.data || res.conversation || res) as ConversationData);
 }
 
 /** 🔍 Get a specific conversation */
@@ -169,6 +169,28 @@ export function unmuteConversation(token: string, conversationId: string): Promi
   return requestJson<{ message?: string }>(token, `/messages/conversations/${conversationId}/unmute`, { method: "POST" });
 }
 
+/** ✉️ Send a message to a club (create/start conversation) 
+ * 🔧 FIXED: Sử dụng POST /messages với recipientId thay vì /messages/club
+ */
+export function sendMessageToClub(
+  token: string,
+  payload: {
+    clubId: string;
+    content: string;
+  }
+): Promise<MessageData | undefined> {
+  return requestJson<SendMessageResponse>(
+    token,
+    "/messages",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        recipientId: payload.clubId,  // ✅ Dùng recipientId thay vì clubId
+        content: payload.content,
+      }),
+    }
+  ).then((res) => res.data);
+}
 /** ✅ Mark all messages in a conversation as read */
 export function markConversationAsReadAll(token: string, conversationId: string): Promise<{ message?: string }> {
   return requestJson<{ message?: string }>(token, `/messages/conversations/${conversationId}/read-all`, { method: "PATCH" });
@@ -271,4 +293,3 @@ export function removeReaction(token: string, messageId: string, type: string): 
 export function getUnreadMessageCount(token: string): Promise<number> {
   return requestJson<{ unreadCount?: number }>(token, "/messages/unread-count", { method: "GET" }).then((res) => res.unreadCount ?? 0);
 }
-

@@ -240,9 +240,10 @@ export default function ClubMembersPage() {
 
       // Mở widget chat
       useChatStore.getState().openChat(conv._id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Lỗi tạo group chat:", error);
-      alert("Không thể tạo nhóm chat: " + (error.message || "Lỗi không xác định"));
+      const msg = error instanceof Error ? error.message : "Lỗi không xác định";
+      alert("Không thể tạo nhóm chat: " + msg);
     } finally {
       setIsCreatingGroup(false);
     }

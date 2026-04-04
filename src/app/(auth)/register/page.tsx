@@ -228,16 +228,16 @@ export default function RegisterPage() {
               </div>
 
               <select
-                className="w-full rounded-xl bg-white/10 border border-black/20 px-4 py-3 text-sm"
+                className="w-full rounded-xl bg-white/10 border border-white/20 px-4 py-3 text-sm text-white placeholder:text-zinc-400"
                 value={form.year}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, year: Number(e.target.value) }))
                 }
               >
-                <option value={1}>Năm 1</option>
-                <option value={2}>Năm 2</option>
-                <option value={3}>Năm 3</option>
-                <option value={4}>Năm 4</option>
+                <option className="bg-slate-900 text-white" value={1}>Năm 1</option>
+                <option className="bg-slate-900 text-white" value={2}>Năm 2</option>
+                <option className="bg-slate-900 text-white" value={3}>Năm 3</option>
+                <option className="bg-slate-900 text-white" value={4}>Năm 4</option>
               </select>
 
               <input

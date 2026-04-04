@@ -48,6 +48,10 @@ export default function NotificationDropdown({
 
   // Lấy số lượng thông báo chưa đọc
   const fetchUnreadCount = useCallback(async () => {
+    if (!token || !token.trim()) {
+      console.warn("Token is not available");
+      return;
+    }
     try {
       const data = await getUnreadCount(token);
       setUnreadCount(data.count || 0);
@@ -58,6 +62,10 @@ export default function NotificationDropdown({
 
   // Lấy danh sách thông báo
   const fetchNotifications = useCallback(async () => {
+    if (!token || !token.trim()) {
+      console.warn("Token is not available");
+      return;
+    }
     setLoading(true);
     try {
       const data = await getNotifications(token, { page: 1, limit: 10 });
