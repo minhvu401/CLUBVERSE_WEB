@@ -16,6 +16,8 @@ import {
   type FilterStatus,
 } from "@/app/services/api/applications";
 
+import { sendMessageToClub } from "@/app/services/api/messages";
+
 import {
   Clock3,
   CheckCircle2,
@@ -178,12 +180,14 @@ export default function MyApplicationsPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<MyApplication | null>(null);
   const [responding, setResponding] = useState<"accept" | "decline" | null>(null);
+  const [declinedClubId, setDeclinedClubId] = useState<string | null>(null);
 
   const openDetail = async (id: string) => {
     if (!token) return;
     try {
       setDetailOpen(true);
       setDetailLoading(true);
+      setDeclinedClubId(null);
       const data = await getApplicationById({ accessToken: token, id });
       setDetail(data);
     } catch (e: any) {
@@ -195,10 +199,31 @@ export default function MyApplicationsPage() {
   };
 
   const handleRespond = async (type: "accept" | "decline") => {
-    if (!detail) return;
+    if (!detail || !token) return;
 
     try {
       setResponding(type);
+
+      const clubId =
+        typeof detail.clubId === "string"
+          ? detail.clubId
+          : detail.clubId._id;
+
+      // Gửi tin nhắn tới câu lạc bộ
+      const messageContent =
+        type === "accept"
+          ? `Tôi xác nhận tham gia phỏng vấn vào ${fmtDate(detail.interviewDate)}`
+          : `Tôi xin lỗi, nhưng tôi không thể tham gia phỏng vấn vào thời gian này`;
+
+      try {
+        await sendMessageToClub(token, {
+          clubId: clubId,
+          content: messageContent,
+        });
+      } catch (err) {
+        console.warn("Failed to send message:", err);
+        // Vẫn tiếp tục ngay cả khi gửi tin nhắn thất bại
+      }
 
       // 🚧 Giả lập API (sau này thay bằng API thật)
       await new Promise((r) => setTimeout(r, 600));
@@ -209,8 +234,14 @@ export default function MyApplicationsPage() {
           : "Bạn đã từ chối lịch phỏng vấn"
       );
 
-      setDetailOpen(false);
-      setDetail(null);
+      if (type === "accept") {
+        setDetailOpen(false);
+        setDetail(null);
+        setDeclinedClubId(null);
+      } else {
+        setDeclinedClubId(clubId);
+        setDetail({ ...detail, status: "DECLINED" as ApiStatus });
+      }
 
       // ✅ REFRESH LIST + STATS
       await fetchList();
@@ -464,6 +495,21 @@ export default function MyApplicationsPage() {
                       )}
                     >
                       ✕ Từ chối lịch
+                    </button>
+                  </div>
+                )}
+
+                {detail.status === "DECLINED" && declinedClubId && (
+                  <div className="mt-5 space-y-3">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+                      Bạn đã từ chối lịch phỏng vấn. Nếu muốn trao đổi thêm với câu lạc bộ, bạn có thể nhắn tin trực tiếp.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/my-messages?clubId=${declinedClubId}&clubName=${encodeURIComponent(getClub(detail.clubId).fullName)}`)}
+                      className="w-full rounded-lg bg-sky-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"
+                    >
+                      💬 Nhắn tin cho câu lạc bộ
                     </button>
                   </div>
                 )}

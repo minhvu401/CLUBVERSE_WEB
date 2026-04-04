@@ -17,6 +17,11 @@ import {
 } from "@/app/services/api/auth";
 
 import {
+  getPaymentHistory,
+  type PaymentHistoryItem,
+} from "@/app/services/api/payments";
+
+import {
   Search,
   Bell,
   Home,
@@ -369,7 +374,6 @@ export default function ProfilePage() {
   const [year, setYear] = useState("");
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarBtnRef = useRef<HTMLButtonElement | null>(null);
-  const isPremium = Boolean((useAuth() as any)?.user?.isPremium);
 
   // ✅ avatar upload states
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -384,6 +388,16 @@ export default function ProfilePage() {
   const [snapshot, setSnapshot] = useState<ProfileDraft | null>(null);
   const [profileId, setProfileId] = useState<string>("");
 
+  // Subscription state
+  const [subscription, setSubscription] = useState<{
+    isActive: boolean;
+    packageType?: string;
+    description?: string;
+    expiresAt?: string;
+  }>({ isActive: false });
+
+  const isPremium = subscription.isActive;
+
   // ✅ url avatar hiển thị: ưu tiên preview (file vừa chọn)
   const shownAvatar = avatarPreview || avatarUrl;
 
@@ -391,6 +405,43 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!loading && !token && !loggingOut) router.push("/login");
   }, [loading, token, router, loggingOut]);
+
+  // Fetch subscription status from payments
+  useEffect(() => {
+    if (!token) return;
+
+    (async () => {
+      try {
+        const payments = await getPaymentHistory(token);
+        const completedPayment = payments.find(p => p.status === "completed");
+
+        if (completedPayment) {
+          // For now, assume monthly subscription, can be enhanced later
+          const expiresAt = new Date(completedPayment.createdAt);
+          expiresAt.setMonth(expiresAt.getMonth() + 1); // Add 1 month
+
+          setSubscription({
+            isActive: true,
+            packageType: completedPayment.packageType,
+            description: completedPayment.description,
+            expiresAt: expiresAt.toISOString(),
+          });
+
+          if (typeof updateUser === "function") {
+            updateUser({ isPremium: true });
+          }
+        } else {
+          setSubscription({ isActive: false });
+          if (typeof updateUser === "function") {
+            updateUser({ isPremium: false });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch payment history:", error);
+        setSubscription({ isActive: false });
+      }
+    })();
+  }, [token]);
 
   const handleLogout = async () => {
     try {
@@ -738,28 +789,27 @@ export default function ProfilePage() {
                     onClick={() => setAvatarMenuOpen((v) => !v)}
                     className="relative h-24 w-24 overflow-hidden rounded-2xl border-2 border-white/10 bg-white/6 transition hover:border-white/20 hover:shadow-lg"
                   >
-                    <div className="relative h-full w-full">
-                      {shownAvatar ? (
-                        <img
-                          src={shownAvatar}
-                          alt="avatar"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-2xl font-bold text-white/60">
-                          {initials(fullName || "User")}
-                        </div>
-                      )}
-
-                      {/* Premium Badge */}
-                      {isPremium && (
-                        <div className="absolute -right-2 -top-2 flex items-center gap-1 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 px-2 py-1 text-[0.6rem] font-bold text-white shadow-lg">
-                          <Sparkles size={12} />
-                          Premium
-                        </div>
-                      )}
-                    </div>
+                    {shownAvatar ? (
+                      <img
+                        src={shownAvatar}
+                        alt="avatar"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-2xl font-bold text-white/60">
+                        {initials(fullName || "User")}
+                      </div>
+                    )}
                   </button>
+
+                  {isPremium && (
+                    <div className="mt-3 flex justify-center">
+                      <div className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 px-2.5 py-1 text-[0.68rem] font-semibold text-white shadow-lg shadow-violet-950/15">
+                        <Sparkles size={12} />
+                        Premium
+                      </div>
+                    </div>
+                  )}
 
                   {avatarMenuOpen && (
                     <div className="absolute left-1/2 z-50 mt-2 w-40 -translate-x-1/2 rounded-xl border border-white/10 bg-slate-900/95 p-1 backdrop-blur-sm shadow-lg">
@@ -853,6 +903,57 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Subscription Section */}
+                  <div className="space-y-3">
+                    <p className="text-[0.7rem] font-semibold text-white/70 uppercase tracking-wide">Gói dịch vụ</p>
+                    <div className="rounded-3xl border border-white/10 bg-slate-950/60 p-4 shadow-lg shadow-violet-950/10">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-white">
+                            {subscription.isActive
+                              ? subscription.description || "Gói AI Premium"
+                              : "Gói miễn phí"}
+                          </p>
+                          <p className="mt-1 text-[0.85rem] text-white/60">
+                            {subscription.isActive
+                              ? "Gói đã được kích hoạt."
+                              : "Hiện tại bạn đang sử dụng gói miễn phí."}
+                          </p>
+                        </div>
+
+                        <span className={cn(
+                          "inline-flex items-center rounded-full px-3 py-1.5 text-[0.72rem] font-semibold",
+                          subscription.isActive
+                            ? "bg-emerald-500/15 text-emerald-200 border border-emerald-500/25"
+                            : "bg-white/10 text-white/70 border border-white/10"
+                        )}>
+                          {subscription.isActive ? "Premium" : "Free"}
+                        </span>
+                      </div>
+
+                      {subscription.isActive && (
+                        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                          <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                            <p className="text-[0.72rem] text-white/60">Thời hạn gói</p>
+                            <p className="mt-1 text-sm font-semibold text-white">1 tháng</p>
+                          </div>
+                          <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                            <p className="text-[0.72rem] text-white/60">Hết hạn vào</p>
+                            <p className="mt-1 text-sm font-semibold text-white">
+                              {subscription.expiresAt
+                                ? new Date(subscription.expiresAt).toLocaleDateString("vi-VN", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                  })
+                                : "—"}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 

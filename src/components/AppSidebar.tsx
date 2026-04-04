@@ -143,7 +143,14 @@ export default function AppSidebar({
           <p className="truncate text-xs font-semibold">
             {user?.fullName || "—"}
           </p>
-          <p className="text-[0.68rem] text-emerald-300/80">● Sinh viên</p>
+          <div className="mt-1 flex items-center gap-2">
+            <p className="text-[0.68rem] text-emerald-300/80">● Sinh viên</p>
+            {user?.isPremium && (
+              <span className="inline-flex items-center rounded-full bg-violet-500/15 px-2 py-0.5 text-[0.65rem] font-semibold text-violet-200 border border-violet-500/20">
+                Premium
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
