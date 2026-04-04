@@ -8,9 +8,6 @@ import { useRouter, usePathname } from "next/navigation";
 import {
   Search,
   LogOut,
-  LayoutDashboard,
-  FileText,
-  MessageSquare,
   Settings,
   ShieldCheck,
 } from "lucide-react";
@@ -41,8 +38,8 @@ function HeaderShell({ children }: { children: React.ReactNode }) {
 
 function Brand({ href }: { href: string }) {
   return (
-    <Link href={href} className="flex items-center gap-3 group">
-      <div className="relative h-14 w-[250px] overflow-hidden">
+    <Link href={href} className="flex items-center gap-3 group shrink-0">
+      <div className="relative h-14 w-[160px] lg:w-[200px] xl:w-[250px] overflow-hidden">
         <Image
           src="/clubverse_logo_1.png"
           alt="Clubverse"
@@ -67,14 +64,14 @@ function NavLinks({
 
   const navLinkClass = (active: boolean) =>
     cn(
-      "relative text-sm font-medium transition-colors",
+      "relative text-sm font-medium transition-colors whitespace-nowrap",
       active ? "text-amber-300" : "text-white/70 hover:text-white",
       active &&
-        "after:content-[''] after:absolute after:left-0 after:-bottom-2 after:h-[2px] after:w-full after:rounded-full after:bg-amber-300/90",
+      "after:content-[''] after:absolute after:left-0 after:-bottom-2 after:h-[2px] after:w-full after:rounded-full after:bg-amber-300/90",
     );
 
   return (
-    <nav className="hidden items-center gap-8 md:flex">
+    <nav className="hidden items-center gap-3 lg:gap-5 xl:gap-8 md:flex">
       {items.map((it) => {
         const active = isActive(it.match);
         return (
@@ -101,11 +98,11 @@ function RightAuthed({
   return (
     <div className="flex items-center gap-3">
       {/* Search (desktop) */}
-      <div className="hidden md:flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2">
-        <Search className="h-4 w-4 text-white/70" />
+      <div className="hidden md:flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2 shrink-0">
+        <Search className="h-4 w-4 text-white/70 shrink-0" />
         <input
           placeholder="Tìm kiếm..."
-          className="w-[280px] bg-transparent text-sm text-white outline-none placeholder:text-white/50"
+          className="w-[120px] lg:w-[140px] xl:w-[200px] bg-transparent text-sm text-white outline-none placeholder:text-white/50"
         />
       </div>
 
@@ -200,20 +197,25 @@ function UserHeader({
 
   return (
     <HeaderShell>
-      <div className="flex h-20 items-center justify-between bg-transparent border-0">
-        <Brand href={isAuthed ? "/homepage" : "/"} />
-        <NavLinks items={navItems} pathname={pathname} />
-
-        {!isAuthed ? (
-          <RightGuest />
-        ) : (
-          <RightAuthed
-            avatarUrl={user?.avatarUrl || user?.avatar}
-            onProfile={() => router.push("/profile")}
-            onLogout={onLogout}
-            token={token}
-          />
-        )}
+      <div className="flex h-20 items-center justify-between gap-4 lg:gap-8 bg-transparent border-0 w-full">
+        <div className="flex flex-1 justify-start">
+          <Brand href={isAuthed ? "/homepage" : "/"} />
+        </div>
+        <div className="flex justify-center shrink-0">
+          <NavLinks items={navItems} pathname={pathname} />
+        </div>
+        <div className="flex flex-1 justify-end">
+          {!isAuthed ? (
+            <RightGuest />
+          ) : (
+            <RightAuthed
+              avatarUrl={user?.avatarUrl || user?.avatar}
+              onProfile={() => router.push("/profile")}
+              onLogout={onLogout}
+              token={token}
+            />
+          )}
+        </div>
       </div>
 
       <MobileSearch show={!!isAuthed} />
@@ -243,31 +245,36 @@ function ClubHeader({
 
   return (
     <HeaderShell>
-      <div className="flex h-20 items-center justify-between bg-transparent border-0">
-        <Brand href={isAuthed ? "/club/forum" : "/club/forum"} />
-        <NavLinks items={navItems} pathname={pathname} />
+      <div className="flex h-20 items-center justify-between gap-4 lg:gap-8 bg-transparent border-0 w-full">
+        <div className="flex flex-1 justify-start">
+          <Brand href={isAuthed ? "/club/forum" : "/club/forum"} />
+        </div>
+        <div className="flex justify-center shrink-0">
+          <NavLinks items={navItems} pathname={pathname} />
+        </div>
+        <div className="flex flex-1 justify-end">
+          {!isAuthed ? (
+            <RightGuest />
+          ) : (
+            <div className="flex items-center gap-3">
+              <Link
+                href="/club/profile/edit"
+                className="hidden md:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white/85 hover:bg-white/14 transition whitespace-nowrap shrink-0"
+                title="Chỉnh sửa hồ sơ CLB"
+              >
+                <Settings className="h-4 w-4 shrink-0" />
+                <span>Quản lý</span>
+              </Link>
 
-        {!isAuthed ? (
-          <RightGuest />
-        ) : (
-          <div className="flex items-center gap-3">
-            <Link
-              href="/club/profile/edit"
-              className="hidden md:inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white/85 hover:bg-white/14 transition"
-              title="Chỉnh sửa hồ sơ CLB"
-            >
-              <Settings className="h-4 w-4" />
-              <span>Quản lý</span>
-            </Link>
-
-            <RightAuthed
-              avatarUrl={user?.avatarUrl || user?.avatar}
-              onProfile={() => router.push("/club/profile")}
-              onLogout={onLogout}
-              token={token}
-            />
-          </div>
-        )}
+              <RightAuthed
+                avatarUrl={user?.avatarUrl || user?.avatar}
+                onProfile={() => router.push("/club/profile")}
+                onLogout={onLogout}
+                token={token}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <MobileSearch show={!!isAuthed} />
@@ -301,27 +308,32 @@ function AdminHeader({
 
   return (
     <HeaderShell>
-      <div className="flex h-20 items-center justify-between bg-transparent border-0">
-        <Brand href={isAuthed ? "/admin/dashboard" : "/"} />
-        <NavLinks items={navItems} pathname={pathname} />
+      <div className="flex h-20 items-center justify-between gap-4 lg:gap-8 bg-transparent border-0 w-full">
+        <div className="flex flex-1 justify-start">
+          <Brand href={isAuthed ? "/admin/dashboard" : "/"} />
+        </div>
+        <div className="flex justify-center shrink-0">
+          <NavLinks items={navItems} pathname={pathname} />
+        </div>
+        <div className="flex flex-1 justify-end">
+          {!isAuthed ? (
+            <RightGuest />
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-100">
+                <ShieldCheck className="h-4 w-4" />
+                <span>Admin</span>
+              </div>
 
-        {!isAuthed ? (
-          <RightGuest />
-        ) : (
-          <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-100">
-              <ShieldCheck className="h-4 w-4" />
-              <span>Admin</span>
+              <RightAuthed
+                avatarUrl={user?.avatarUrl || user?.avatar}
+                onProfile={() => router.push("/profile")}
+                onLogout={onLogout}
+                token={token}
+              />
             </div>
-
-            <RightAuthed
-              avatarUrl={user?.avatarUrl || user?.avatar}
-              onProfile={() => router.push("/profile")}
-              onLogout={onLogout}
-              token={token}
-            />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <MobileSearch show={!!isAuthed} />

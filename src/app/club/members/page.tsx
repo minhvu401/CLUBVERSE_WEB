@@ -43,12 +43,30 @@ import {
   Bell,
 } from "lucide-react";
 
+import { motion, Variants } from "framer-motion";
+
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
 const glass =
   "border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { 
+    opacity: 1, y: 0, 
+    transition: { type: "spring", stiffness: 300, damping: 24 } 
+  },
+};
 
 function StatCard({
   title,
@@ -70,8 +88,12 @@ function StatCard({
   };
 
   return (
-    <div className={cn("rounded-2xl px-5 py-4", glass)}>
-      <div className="flex items-center justify-between">
+    <motion.div 
+      variants={itemVariants}
+      whileHover={{ y: -4, scale: 1.02 }}
+      className={cn("rounded-2xl px-5 py-4 cursor-pointer border border-white/5 shadow-lg transition-colors hover:border-white/20", glass)}
+    >
+      <div className="flex items-center justify-between relative z-10">
         <div className="space-y-1">
           <div className="text-xs text-white/60">{title}</div>
           <div className="text-2xl font-semibold text-white">{value}</div>
@@ -86,7 +108,7 @@ function StatCard({
           {icon}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -254,11 +276,33 @@ export default function ClubMembersPage() {
   const fetchStatistics = useCallback(async () => {
     if (!token || !clubId) return;
 
+    const computeFallback = async () => {
+      try {
+        const allMembersRes = await getClubMembers(token, clubId);
+        const allM = allMembersRes.members || [];
+        setStatistics({
+          totalMembers: allM.length,
+          activeMembers: allM.filter((m) => m.isActive).length,
+          inactiveMembers: allM.filter((m) => !m.isActive).length,
+          admins: allM.filter((m) => m.role === "admin").length,
+          moderators: allM.filter((m) => m.role === "moderator").length,
+          members: allM.filter((m) => m.role === "member" || !m.role).length,
+        });
+      } catch (e) {
+        console.error("Fallback stats failed", e);
+      }
+    };
+
     try {
       const stats = await getMemberStatistics(token, clubId);
-      setStatistics(stats);
+      if (!stats || stats.totalMembers === 0) {
+        await computeFallback();
+      } else {
+        setStatistics(stats);
+      }
     } catch (error) {
       console.error("Failed to fetch statistics:", error);
+      await computeFallback();
     }
   }, [token, clubId]);
 
@@ -389,6 +433,20 @@ export default function ClubMembersPage() {
 
   const totalPages = Math.ceil(total / LIMIT);
 
+  const statsToDisplay = useMemo(() => {
+    if (statistics && statistics.totalMembers > 0) {
+      return statistics;
+    }
+    return {
+      totalMembers: total || members.length,
+      activeMembers: members.filter((m) => m.isActive !== false).length,
+      inactiveMembers: members.filter((m) => m.isActive === false).length,
+      admins: members.filter((m) => m.role === "admin").length,
+      moderators: members.filter((m) => m.role === "moderator").length,
+      members: members.filter((m) => m.role === "member" || !m.role).length,
+    };
+  }, [statistics, members, total]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -436,36 +494,36 @@ export default function ClubMembersPage() {
         </div>
 
         {/* Statistics */}
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <motion.div variants={containerVariants} initial="hidden" animate="show" className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Tổng thành viên"
-            value={statistics?.totalMembers || 0}
+            value={statsToDisplay.totalMembers}
             icon={<Users className="h-5 w-5" />}
             tone="blue"
           />
           <StatCard
             title="Thành viên hoạt động"
-            value={statistics?.activeMembers || 0}
+            value={statsToDisplay.activeMembers}
             icon={<UserCheck className="h-5 w-5" />}
             tone="green"
           />
           <StatCard
             title="Admin"
-            value={statistics?.admins || 0}
+            value={statsToDisplay.admins}
             icon={<Crown className="h-5 w-5" />}
             tone="purple"
           />
           <StatCard
             title="Moderator"
-            value={statistics?.moderators || 0}
+            value={statsToDisplay.moderators}
             icon={<Shield className="h-5 w-5" />}
             tone="yellow"
           />
-        </div>
+        </motion.div>
 
         {/* Pending Actions */}
         {pendingActions && pendingActions.actions.length > 0 && (
-          <div className={cn("mb-6 rounded-2xl p-6", glass)}>
+          <motion.div variants={itemVariants} initial="hidden" animate="show" className={cn("mb-6 rounded-2xl p-6", glass)}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Bell className="h-5 w-5 text-amber-400" />
@@ -478,11 +536,12 @@ export default function ClubMembersPage() {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-3">
               {pendingActions.actions.map((action) => (
-                <div
+                <motion.div
+                  variants={itemVariants}
                   key={action._id}
-                  className="flex items-center justify-between rounded-xl border border-amber-400/20 bg-amber-400/5 p-4"
+                  className="flex items-center justify-between rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 hover:bg-amber-400/10 transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <Clock className="h-5 w-5 text-amber-400" />
@@ -513,14 +572,14 @@ export default function ClubMembersPage() {
                       Từ chối
                     </button>
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         )}
 
         {/* Filters and Search */}
-        <div className={cn("mb-6 rounded-2xl p-6", glass)}>
+        <motion.div variants={itemVariants} initial="hidden" animate="show" className={cn("mb-6 rounded-2xl p-6", glass)}>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             {/* Search */}
             <div className="relative flex-1 max-w-md">
@@ -578,10 +637,10 @@ export default function ClubMembersPage() {
               </select>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Members List */}
-        <div className={cn("rounded-2xl", glass)}>
+        <motion.div variants={itemVariants} initial="hidden" animate="show" className={cn("rounded-2xl", glass)}>
           <div className="p-6">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold text-white">
@@ -599,46 +658,56 @@ export default function ClubMembersPage() {
                 <p className="mt-4 text-white/60">Không có thành viên nào</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {members.map((member) => (
-                  <div
+                  <motion.div
+                    variants={itemVariants}
                     key={member._id}
-                    className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-4"
+                    className="flex flex-col relative rounded-2xl border border-white/5 bg-white/[0.03] p-5 shadow-lg shadow-black/20 hover:border-white/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-cyan-500/10 group overflow-hidden"
                   >
-                    <div className="flex items-center gap-4">
-                      <Image
-                        src={member.avatarUrl || "/default-avatar.png"}
-                        alt={member.fullName || "Avatar"}
-                        width={48}
-                        height={48}
-                        className="h-12 w-12 rounded-full object-cover"
-                      />
-                      <div>
-                        <div className="font-medium text-white">
-                          {member.fullName}
-                        </div>
-                        <div className="text-sm text-white/60">
-                          {member.email}
-                        </div>
-                        <div className="mt-1 text-xs text-white/50">
-                          Tham gia:{" "}
-                          {new Date(member.joinedAt).toLocaleDateString(
-                            "vi-VN",
-                          )}
+                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    
+                    {/* Top Row: Avatar & Roles */}
+                    <div className="flex items-start justify-between relative z-10 w-full mb-5">
+                      <div className="flex items-center gap-3">
+                        <Image
+                          src={member.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(member.fullName || member._id)}`}
+                          alt={member.fullName || "Avatar"}
+                          width={48}
+                          height={48}
+                          unoptimized
+                          className="h-12 w-12 rounded-full object-cover ring-2 ring-white/10 group-hover:ring-cyan-500/30 transition-all"
+                        />
+                        <div>
+                          <div className="font-semibold text-white truncate max-w-[150px]" title={member.fullName}>
+                            {member.fullName}
+                          </div>
+                          <div className="mt-1 flex items-center gap-2">
+                             <StatusBadge status={member.isActive ? "active" : "inactive"} />
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <StatusBadge
-                        status={member.isActive ? "active" : "inactive"}
-                      />
+                    {/* Middle Row: Details */}
+                    <div className="relative z-10 space-y-2 mb-5 flex-1">
+                      <div className="text-sm text-white/60 truncate" title={member.email}>
+                        <Clock className="w-3.5 h-3.5 inline-block mr-1.5 -translate-y-[1px]"/>
+                        {member.email}
+                      </div>
+                      <div className="text-xs text-white/50">
+                        Gia nhập: {new Date(member.joinedAt).toLocaleDateString("vi-VN")}
+                      </div>
+                    </div>
+
+                    {/* Bottom Row: Actions */}
+                    <div className="flex items-center justify-between relative z-10 pt-4 border-t border-white/5">
                       <RoleBadge role={member.role} />
 
                       <div className="relative">
                         <button
                           onClick={() => setSelectedMember(member)}
-                          className="rounded-lg p-2 text-white/70 hover:bg-white/10 hover:text-white"
+                          className="rounded-lg p-2 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white transition"
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </button>
@@ -646,7 +715,7 @@ export default function ClubMembersPage() {
                         {selectedMember?._id === member._id && (
                           <div
                             className={cn(
-                              "absolute right-0 top-full z-10 mt-2 w-48 rounded-xl border border-white/10 bg-slate-800 p-2 shadow-xl",
+                              "absolute right-0 bottom-full z-20 mb-2 w-48 rounded-xl border border-white/10 bg-slate-800 p-2 shadow-2xl",
                               glass,
                             )}
                           >
@@ -671,9 +740,9 @@ export default function ClubMembersPage() {
                         )}
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
 
             {/* Pagination */}
@@ -701,7 +770,7 @@ export default function ClubMembersPage() {
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Role Update Modal */}
