@@ -3,6 +3,7 @@
 import React from "react";
 import { X, AlertCircle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAdminStore } from "@/store/adminStore";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -29,18 +30,20 @@ export function ConfirmDialog({
   isLoading = false,
   children,
 }: ConfirmDialogProps) {
+  const { theme } = useAdminStore();
+  
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+        className={cn("absolute inset-0 backdrop-blur-sm", theme === "dark" ? "bg-black/60" : "bg-zinc-900/40")} 
         onClick={onClose}
       />
       
       {/* Dialog */}
-      <div className="relative w-full max-w-md bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] p-8 shadow-2xl overflow-hidden group">
+      <div className={cn("relative w-full max-w-md border rounded-[2.5rem] p-8 shadow-2xl overflow-hidden group", theme === "dark" ? "bg-[#0a0a0a] border-white/10" : "bg-white border-zinc-200")}>
         {/* Decorative Glow */}
         <div className={cn(
           "absolute -top-24 -right-24 w-48 h-48 blur-[80px] rounded-full opacity-20",
@@ -49,16 +52,18 @@ export function ConfirmDialog({
 
         <div className="flex flex-col items-center text-center">
           <div className={cn(
-            "w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border border-white/5",
-            variant === "danger" ? "bg-red-500/10 text-red-500" : variant === "success" ? "bg-emerald-500/10 text-emerald-500" : "bg-purple-500/10 text-purple-400"
+            "w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border",
+            theme === "dark" 
+              ? (variant === "danger" ? "bg-red-500/10 text-red-500 border-white/5" : variant === "success" ? "bg-emerald-500/10 text-emerald-500 border-white/5" : "bg-purple-500/10 text-purple-400 border-white/5")
+              : (variant === "danger" ? "bg-red-50 text-red-600 border-red-100" : variant === "success" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-purple-50 text-purple-600 border-purple-100")
           )}>
             {variant === "danger" ? <AlertCircle className="w-8 h-8" /> : <CheckCircle2 className="w-8 h-8" />}
           </div>
 
-          <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-3">
+          <h3 className={cn("text-2xl font-black uppercase tracking-tight mb-3", theme === "dark" ? "text-white" : "text-zinc-900")}>
             {title}
           </h3>
-          <p className="text-white/50 text-sm font-medium leading-relaxed mb-6">
+          <p className={cn("text-sm font-medium leading-relaxed mb-6", theme === "dark" ? "text-white/50" : "text-zinc-500")}>
             {description}
           </p>
 
@@ -72,7 +77,7 @@ export function ConfirmDialog({
             <button
               onClick={onClose}
               disabled={isLoading}
-              className="flex-1 px-6 py-4 rounded-2xl bg-white/5 border border-white/5 text-white/50 font-bold text-sm hover:bg-white/10 hover:text-white transition-all order-2 sm:order-1"
+              className={cn("flex-1 px-6 py-4 rounded-2xl border font-bold text-sm transition-all order-2 sm:order-1", theme === "dark" ? "bg-white/5 border-white/5 text-white/50 hover:bg-white/10 hover:text-white" : "bg-white border-zinc-200 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 shadow-sm")}
             >
               {cancelText}
             </button>
