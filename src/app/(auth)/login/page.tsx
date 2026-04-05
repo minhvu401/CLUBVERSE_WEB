@@ -151,14 +151,11 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-sm text-zinc-300">
+              <div className="flex items-center text-sm text-zinc-300">
                 <label className="flex items-center gap-2">
                   <input type="checkbox" className="h-4 w-4" />
                   Ghi nhớ đăng nhập
                 </label>
-                <Link href="/forgot-password" className="text-violet-300 hover:text-violet-200">
-                  Quên mật khẩu?
-                </Link>
               </div>
 
               <button

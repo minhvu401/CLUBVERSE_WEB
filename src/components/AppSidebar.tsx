@@ -47,12 +47,7 @@ const NAV_ITEMS: SidebarItem[] = [
     label: "Sự kiện",
     href: "/my-events",
   },
-  {
-    key: "messages",
-    icon: <MessageSquare size={16} />,
-    label: "Tin nhắn",
-    href: "/my-messages",
-  },
+
   {
     key: "profile",
     icon: <User size={16} />,
