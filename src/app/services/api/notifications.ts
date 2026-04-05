@@ -1,3 +1,4 @@
+import { parseApiError } from "@/utils/apiError";
 import { AUTH_BASE_URL } from "./auth";
 
 export type NotificationType =
@@ -51,25 +52,31 @@ function getAuthHeaders(token: string) {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${AUTH_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      accept: "application/json",
-      ...(options.headers || {}),
-    },
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `Request failed with status ${res.status}`);
-  }
-
   try {
-    return (await res.json()) as T;
-  } catch {
-    return undefined as unknown as T;
+    const res = await fetch(`${AUTH_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        accept: "application/json",
+        ...(options.headers || {}),
+      },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+    throw new Error(parseApiError(text, `Request failed with status ${res.status}`));
+    }
+
+    try {
+      return (await res.json()) as T;
+    } catch {
+      return undefined as unknown as T;
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error occurred";
+    console.error(`Fetch error at ${AUTH_BASE_URL}${path}:`, message);
+    throw error;
   }
 }
 

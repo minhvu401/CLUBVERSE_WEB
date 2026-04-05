@@ -1,4 +1,5 @@
 import { AUTH_BASE_URL } from "./auth";
+import { parseApiError } from "@/utils/apiError";
 
 export type EventFilter = "all" | "upcoming" | "past" | "ongoing";
 export type MyEventFilter = "all" | "upcoming" | "past";
@@ -84,7 +85,7 @@ type ParticipantsResponse = {
 const EVENTS_URL = `${AUTH_BASE_URL}/events`;
 
 /* ================= QUERY ================= */
-function withQuery(path: string, params?: Record<string, any>) {
+function withQuery(path: string, params?: Record<string, unknown>) {
   if (!params) return path;
   const query = new URLSearchParams();
 
@@ -120,14 +121,9 @@ async function request<T>(
   const data = text ? (JSON.parse(text) as T) : (undefined as T);
 
   if (!res.ok) {
-    const message = (data as { message?: string } | undefined)?.message;
-
-    const error: any = new Error(
-      message || `Request failed with status ${res.status}`
-    );
-    error.status = res.status; // 👈 QUAN TRỌNG
-    error.data = data;         // 👈 bonus debug
-
+    const error: Error & { status?: number; data?: unknown } = new Error(parseApiError(data, `Request failed with status ${res.status}`));
+    error.status = res.status;
+    error.data = data;
     throw error;
   }
 

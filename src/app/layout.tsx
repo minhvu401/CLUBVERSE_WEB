@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/app/providers/AuthProviders";
 import { Toaster } from "sonner";
 import QueryProvider from "@/app/providers/QueryProvider";
+import GlobalChatWidget from "@/components/GlobalChatWidget";
 
 export const metadata: Metadata = {
   title: "ClubVerse",
@@ -21,7 +22,10 @@ export default function RootLayout({
     <html lang="vi">
       <body>
         <QueryProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            {children}
+            <GlobalChatWidget />
+          </AuthProvider>
         </QueryProvider>
         <Toaster position="top-center" richColors closeButton duration={4200} />
       </body>

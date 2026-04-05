@@ -1,3 +1,4 @@
+import { parseApiError } from "@/utils/apiError";
 import { AUTH_BASE_URL } from "./auth";
 
 export type PostSort = "newest" | "oldest" | "popular";
@@ -76,7 +77,7 @@ async function request<T>(token: string, path: string, init: RequestInit = {}) {
 
   if (!res.ok) {
     const message = (data as { message?: string } | undefined)?.message;
-    throw new Error(message || `Request failed with status ${res.status}`);
+    throw new Error(parseApiError(data, `Request failed with status ${res.status}`));
   }
 
   return data;

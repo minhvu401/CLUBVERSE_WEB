@@ -25,6 +25,7 @@ import {
   Mail,
   Star,
 } from "lucide-react";
+import { toast } from "sonner";
 
 /* ================= UTILS ================= */
 function cn(...classes: (string | false | null | undefined)[]) {
@@ -84,19 +85,35 @@ export default function EventDetailPage() {
   /* ===== ACTIONS ===== */
   const handleRegister = async () => {
     if (!token || isRegistered || isFull) return;
-    setIsActioning(true);
-    await registerEvent(token, event._id);
-    setEvent(await getEventById(token, event._id));
-    setIsActioning(false);
+    try {
+      setIsActioning(true);
+      await registerEvent(token, event._id);
+      setEvent(await getEventById(token, event._id));
+      toast.success("Đăng ký tham gia thành công!");
+    } catch (error: any) {
+      toast.error(error.message || "Có lỗi xảy ra khi đăng ký");
+    } finally {
+      setIsActioning(false);
+    }
   };
 
   const handleCancel = async () => {
-    const reason = prompt("Lý do hủy (không bắt buộc):");
+    const reason = prompt("Lý do hủy (bắt buộc, ít nhất 10 ký tự):");
     if (reason === null) return;
-    setIsActioning(true);
-    await cancelEventRegistration(token, event._id, reason);
-    setEvent(await getEventById(token, event._id));
-    setIsActioning(false);
+    if (reason.trim().length < 10) {
+      toast.error("Lý do hủy phải có ít nhất 10 ký tự!");
+      return;
+    }
+    try {
+      setIsActioning(true);
+      await cancelEventRegistration(token, event._id, reason);
+      setEvent(await getEventById(token, event._id));
+      toast.success("Hủy đăng ký thành công!");
+    } catch (error: any) {
+      toast.error(error.message || "Có lỗi xảy ra khi hủy đăng ký");
+    } finally {
+      setIsActioning(false);
+    }
   };
 
   /* ================= UI ================= */
@@ -158,7 +175,7 @@ export default function EventDetailPage() {
 
             {/* CTA */}
             <div className="flex flex-wrap gap-3 mb-6">
-              {!isRegistered && status === "upcoming" && !isFull && (
+              {!isRegistered && status === "upcoming" && !isFull && new Date(event.time) >= new Date() && (
                 <button
                   onClick={handleRegister}
                   disabled={isActioning}
@@ -168,7 +185,7 @@ export default function EventDetailPage() {
                 </button>
               )}
 
-              {isRegistered && status === "upcoming" && (
+              {isRegistered && status === "upcoming" && new Date(event.time) >= new Date() && (
                 <button
                   onClick={handleCancel}
                   disabled={isActioning}

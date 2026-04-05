@@ -10,7 +10,8 @@ import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders";
 import { AUTH_BASE_URL } from "@/app/services/api/auth";
 import { createApplication, getMyApplications } from "@/app/services/api/applications";
-import { sendMessage } from "@/app/services/api/messages";
+import { createConversation, getConversations } from "@/app/services/api/messages";
+import { useChatStore } from "@/app/store/chatStore";
 
 import {
   Mail,
@@ -27,8 +28,6 @@ import {
   X,
   Check,
 } from "lucide-react";
-
-
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -61,7 +60,8 @@ export default function ClubDetailPage() {
   const params = useParams<{ id: string }>();
   const clubId = params?.id;
 
-  const { token, loading } = useAuth() as any;
+  const { token, user, loading } = useAuth() as any;
+  const openChat = useChatStore((s) => s.openChat);
 
   const [club, setClub] = useState<ClubDetail | null>(null);
   const [loadingPage, setLoadingPage] = useState(true);
@@ -79,11 +79,7 @@ export default function ClubDetailPage() {
   const [submitError, setSubmitError] = useState("");
 
   // Message state
-  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
-  const [messageContent, setMessageContent] = useState("");
   const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const [messageError, setMessageError] = useState("");
-  const [messageSent, setMessageSent] = useState(false);
 
   /* ================= FETCH CLUB DETAIL ================= */
   useEffect(() => {
@@ -296,53 +292,32 @@ export default function ClubDetailPage() {
   };
 
   /* ================= HANDLE MESSAGE ================= */
-  const handleMessageClick = () => {
-    setIsMessageModalOpen(true);
-    setMessageContent("");
-    setMessageError("");
-    setMessageSent(false);
-  };
-
-  const handleSendMessage = async () => {
-    if (!messageContent.trim()) {
-      setMessageError("Vui lòng nhập nội dung tin nhắn");
-      return;
-    }
-
-    if (!clubId || !token) {
-      setMessageError("Thông tin không đủ để gửi tin nhắn");
-      return;
-    }
-
+  const handleMessageClick = async () => {
+    if (!clubId || !token || !user) return;
+    setIsSendingMessage(true);
     try {
-      setIsSendingMessage(true);
-      setMessageError("");
-
-      await sendMessage(token, {
-        recipientId: clubId,
-        content: messageContent.trim(),
+      // First check if conversation with this club already exists
+      const existingConvs = await getConversations(token);
+      const existing = existingConvs.find(c => {
+        if (c.isGroup) return false;
+        return c.participants?.some(p => p._id === clubId);
       });
 
-      setMessageSent(true);
-      setMessageContent("");
-
-      setTimeout(() => {
-        setIsMessageModalOpen(false);
-        setMessageSent(false);
-      }, 2000);
-    } catch (err: any) {
-      setMessageError(err.message || "Lỗi khi gửi tin nhắn");
+      if (existing) {
+        openChat(existing._id);
+      } else {
+        const currentUserId = user._id || user.id;
+        const conv = await createConversation(token, {
+          participantIds: [currentUserId, clubId],
+          name: club?.fullName || "Hội thoại CLB",
+        });
+        openChat(conv._id);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Lỗi không xác định";
+      console.warn("Không thể tạo hội thoại:", msg);
     } finally {
       setIsSendingMessage(false);
-    }
-  };
-
-  const handleCloseMessageModal = () => {
-    if (!isSendingMessage) {
-      setIsMessageModalOpen(false);
-      setMessageContent("");
-      setMessageError("");
-      setMessageSent(false);
     }
   };
 
@@ -449,16 +424,17 @@ export default function ClubDetailPage() {
                   </button>
                 )}
 
-                {/* MESSAGE BUTTON - Show when user has sent application or is approved/accepted */}
-                {applicationStatus === "PENDING" || applicationStatus === "APPROVED" || applicationStatus === "ACCEPTED" ? (
+                {/* MESSAGE BUTTON - Always visible for logged-in users */}
+                {token && (
                   <button
                     onClick={handleMessageClick}
-                    className="px-6 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-2 bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30 hover:border-blue-500/50"
+                    disabled={isSendingMessage}
+                    className="px-6 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-2 bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-wait"
                   >
                     <Mail className="h-4 w-4" />
-                    Nhắn tin
+                    {isSendingMessage ? "Đang mở..." : "Nhắn tin"}
                   </button>
-                ) : null}
+                )}
               </div>
             </div>
 
@@ -663,77 +639,6 @@ export default function ClubDetailPage() {
         </div>
       )}
 
-      {/* MESSAGE MODAL */}
-      {isMessageModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className={cn("rounded-2xl w-full max-w-md p-6", glass)}>
-            {/* HEADER */}
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Nhắn tin tới {club?.fullName}</h3>
-              <button
-                onClick={handleCloseMessageModal}
-                disabled={isSendingMessage}
-                className="p-1 hover:bg-white/10 rounded-full transition-colors disabled:opacity-50"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* CONTENT */}
-            {!messageSent && (
-              <>
-                <p className="text-sm text-white/70 mb-4">
-                  Gửi tin nhắn đến câu lạc bộ này
-                </p>
-
-                <textarea
-                  value={messageContent}
-                  onChange={(e) => setMessageContent(e.target.value)}
-                  placeholder="Nhập nội dung tin nhắn..."
-                  disabled={isSendingMessage}
-                  className="w-full px-4 py-3 rounded-lg bg-white/[0.06] border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none h-32 disabled:opacity-50"
-                />
-
-                {messageError && (
-                  <p className="mt-3 text-xs text-rose-300 bg-rose-500/15 px-3 py-2 rounded-lg">
-                    {messageError}
-                  </p>
-                )}
-
-                {/* BUTTONS */}
-                <div className="flex gap-3 mt-6">
-                  <button
-                    onClick={handleCloseMessageModal}
-                    disabled={isSendingMessage}
-                    className="flex-1 px-4 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-sm font-semibold transition-colors disabled:opacity-50"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={isSendingMessage}
-                    className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-sm font-semibold transition-all disabled:opacity-50"
-                  >
-                    {isSendingMessage ? "Đang gửi..." : "Gửi"}
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* SUCCESS MESSAGE */}
-            {messageSent && (
-              <div className="flex flex-col items-center justify-center py-6">
-                <div className="h-12 w-12 rounded-full bg-emerald-500/20 flex items-center justify-center mb-3">
-                  <div className="h-6 w-6 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin" />
-                </div>
-                <p className="text-sm font-semibold text-emerald-300 text-center">
-                  Tin nhắn đã được gửi thành công!
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       <Footer />
     </div>

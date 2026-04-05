@@ -51,9 +51,9 @@ export default function EventsPage() {
   const { user, token, loading } = useAuth() as any;
 
   const [events, setEvents] = useState<EventItem[]>([]);
-  const [filter, setFilter] = useState<FilterType>("all");
+  const [filter, setFilter] = useState<FilterType>("upcoming");
   const [monthOffset, setMonthOffset] = useState(0);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   /* BANNERS */
   const [banners, setBanners] = useState<BannerItem[]>([]);
@@ -120,7 +120,7 @@ export default function EventsPage() {
     return events.filter((e) => {
       if (!e.time) return false;
       const time = new Date(e.time);
-      if (!sameDay(time, selectedDate)) return false;
+      if (selectedDate && !sameDay(time, selectedDate)) return false;
 
       if (filter === "all") return true;
       if (filter === "upcoming") return time > now;
@@ -163,7 +163,10 @@ export default function EventsPage() {
             ].map((f) => (
               <button
                 key={f.key}
-                onClick={() => setFilter(f.key as FilterType)}
+                onClick={() => {
+                  setFilter(f.key as FilterType);
+                  setSelectedDate(null);
+                }}
                 className={cn(
                   "px-4 py-1.5 text-xs font-semibold rounded-full transition",
                   filter === f.key
@@ -207,10 +210,13 @@ export default function EventsPage() {
                 day ? (
                   <button
                     key={i}
-                    onClick={() => setSelectedDate(day)}
+                    onClick={() => {
+                      setSelectedDate(day);
+                      setFilter("all");
+                    }}
                     className={cn(
                       "h-9 rounded-lg text-xs flex flex-col items-center justify-center",
-                      sameDay(day, selectedDate) &&
+                      selectedDate && sameDay(day, selectedDate) &&
                         "bg-violet-500/30 text-violet-200",
                       sameDay(day, new Date()) &&
                         "ring-1 ring-violet-400/40",
@@ -286,58 +292,70 @@ export default function EventsPage() {
               Không có sự kiện phù hợp
             </div>
           ) : (
-            eventsOfDay.map((event) => (
-              <div
-                key={event._id}
-                className={cn(
-                  "rounded-3xl p-4 flex items-center gap-4",
-                  glass
-                )}
-              >
-                <img
-                  src={event.images?.[0] || "/placeholder-event.jpg"}
-                  className="h-20 w-20 rounded-xl object-cover"
-                />
+            eventsOfDay.map((event) => {
+              const isEventRegistered = event.isRegistered || event.joinedUsers?.some((u: any) => u.userId === (user?._id || user?.id));
 
-                <div className="flex-1">
-                  <h3 className="font-display font-semibold">
-                    {event.title}
-                  </h3>
-                  <div className="mt-1 text-sm text-white/65 flex gap-4">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {new Date(event.time!).toLocaleTimeString("vi-VN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MapPin className="h-4 w-4" />
-                      {event.location}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      {event.joinedUsers?.length || 0}
-                    </span>
+              return (
+                <div
+                  key={event._id}
+                  className={cn(
+                    "rounded-3xl p-4 flex items-center gap-4",
+                    glass
+                  )}
+                >
+                  <img
+                    src={event.images?.[0] || "/placeholder-event.jpg"}
+                    className="h-20 w-20 rounded-xl object-cover"
+                  />
+
+                  <div className="flex-1">
+                    <h3 className="font-display font-semibold">
+                      {event.title}
+                    </h3>
+                    <div className="mt-1 text-sm text-white/65 flex gap-4">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        {new Date(event.time!).toLocaleTimeString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        {event.location}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Users className="h-4 w-4" />
+                        {event.joinedUsers?.length || 0}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => router.push(`/events/${event._id}`)}
+                      className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm"
+                    >
+                      Chi tiết
+                    </button>
+                    {new Date(event.time!) >= new Date() && (
+                      <button
+                        onClick={() => !isEventRegistered && registerEvent(token, event._id)}
+                        disabled={isEventRegistered}
+                        className={cn(
+                          "rounded-full px-3 py-2 text-sm font-semibold text-white transition",
+                          isEventRegistered 
+                            ? "bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 cursor-not-allowed" 
+                            : "bg-violet-500 hover:bg-violet-600"
+                        )}
+                      >
+                        {isEventRegistered ? "Đã đăng ký" : "Đăng ký"}
+                      </button>
+                    )}
                   </div>
                 </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => router.push(`/events/${event._id}`)}
-                    className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm"
-                  >
-                    Chi tiết
-                  </button>
-                  <button
-                    onClick={() => registerEvent(token, event._id)}
-                    className="rounded-full bg-violet-500 px-3 py-2 text-sm font-semibold text-white"
-                  >
-                    Đăng ký
-                  </button>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </main>

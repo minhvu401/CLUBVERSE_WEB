@@ -33,6 +33,8 @@ import {
   XCircle,
 } from "lucide-react";
 
+import { motion, Variants } from "framer-motion";
+
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
@@ -41,6 +43,22 @@ const glass =
   "border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
 
 type TabType = "active" | "deleted";
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 30 },
+  show: { 
+    opacity: 1, y: 0, 
+    transition: { type: "spring", stiffness: 300, damping: 24 } 
+  },
+};
 
 function TabButton({
   active,
@@ -228,11 +246,16 @@ export default function ClubEventsPage() {
 
       <Header />
 
-      <main className="mx-auto max-w-7xl px-4 py-10 pb-20">
+      <motion.main 
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="mx-auto max-w-7xl px-4 py-10 pb-20"
+      >
         {/* Header */}
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <motion.div variants={itemVariants} className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white">Quản lý sự kiện</h1>
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">Quản lý sự kiện</h1>
             <p className="mt-2 text-white/60">
               Tạo và quản lý các sự kiện của câu lạc bộ
             </p>
@@ -240,15 +263,15 @@ export default function ClubEventsPage() {
 
           <button
             onClick={() => router.push("/club/events/create")}
-            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-6 py-3 text-sm font-bold text-slate-900 shadow-lg hover:brightness-110 transition"
+            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-6 py-3 text-sm font-bold text-slate-900 shadow-xl shadow-cyan-500/20 hover:shadow-cyan-500/40 hover:scale-105 active:scale-95 transition-all"
           >
             <Plus className="h-5 w-5" />
             Tạo sự kiện mới
           </button>
-        </div>
+        </motion.div>
 
         {/* Tabs */}
-        <div className="mb-6 flex items-center gap-3">
+        <motion.div variants={itemVariants} className="mb-6 flex items-center gap-3">
           <TabButton
             active={activeTab === "active"}
             onClick={() => setActiveTab("active")}
@@ -263,11 +286,11 @@ export default function ClubEventsPage() {
           >
             Đã xóa ({deletedEvents.length})
           </TabButton>
-        </div>
+        </motion.div>
 
         {/* Filter by status (only for active tab) */}
         {activeTab === "active" && (
-          <div className={cn("rounded-3xl p-4 mb-6", glass)}>
+          <motion.div variants={itemVariants} className={cn("rounded-3xl p-4 mb-6", glass)}>
             <div className="flex items-center gap-2 mb-3">
               <Filter className="h-4 w-4 text-white/60" />
               <span className="text-sm text-white/60">
@@ -323,11 +346,11 @@ export default function ClubEventsPage() {
                 Đã kết thúc
               </button>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Search */}
-        <div className={cn("rounded-3xl p-4 mb-6", glass)}>
+        <motion.div variants={itemVariants} className={cn("rounded-3xl p-4 mb-6", glass)}>
           <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
             <Search className="h-4 w-4 text-white/60" />
             <input
@@ -337,9 +360,10 @@ export default function ClubEventsPage() {
               className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/40"
             />
           </div>
-        </div>
+        </motion.div>
 
         {/* Events List */}
+        <motion.div variants={itemVariants}>
         {isLoading ? (
           <div className={cn("rounded-3xl p-12 text-center", glass)}>
             <Loader2 className="h-8 w-8 animate-spin text-white/60 mx-auto mb-4" />
@@ -364,32 +388,40 @@ export default function ClubEventsPage() {
             )}
           </div>
         ) : (
-          <div className="space-y-4">
+          <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredEvents.map((event) => (
-              <article
+              <motion.article
+                variants={itemVariants}
                 key={event._id}
                 className={cn(
-                  "relative overflow-hidden rounded-3xl p-6",
+                  "relative flex flex-col overflow-hidden rounded-3xl p-5 border border-white/5 transition-all duration-300 hover:shadow-cyan-500/20 group hover:-translate-y-1 hover:border-white/20",
                   glass,
                 )}
               >
-                <div className="flex flex-col md:flex-row gap-6">
-                  {/* Event Image */}
-                  {event.images && event.images.length > 0 && (
-                    <div className="w-full md:w-48 h-48 rounded-2xl overflow-hidden flex-shrink-0">
-                      <img
-                        src={event.images[0]}
-                        alt={event.title}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  )}
+                {/* Glowing Outline */}
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
-                  {/* Event Info */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-bold text-white mb-2">
-                      {event.title}
-                    </h3>
+                {/* Event Image Banner */}
+                {event.images && event.images.length > 0 ? (
+                  <div className="w-full h-48 rounded-2xl overflow-hidden mb-5 flex-shrink-0 relative">
+                    <img
+                      src={event.images[0]}
+                      alt={event.title}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"/>
+                  </div>
+                ) : (
+                  <div className="w-full h-48 rounded-2xl overflow-hidden mb-5 bg-white/5 flex items-center justify-center flex-shrink-0 relative group-hover:bg-white/10 transition-colors">
+                     <Calendar className="w-12 h-12 text-white/20 group-hover:scale-110 transition-transform duration-700"/>
+                  </div>
+                )}
+
+                {/* Event Info */}
+                <div className="flex-1 flex flex-col relative z-10 min-w-0">
+                  <h3 className="text-[1.3rem] leading-tight font-bold text-white mb-2 line-clamp-2">
+                    {event.title}
+                  </h3>
 
                     <p className="text-sm text-white/60 mb-4 line-clamp-2">
                       {event.description}
@@ -419,26 +451,26 @@ export default function ClubEventsPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2 mt-auto pt-4 border-t border-white/5">
                       {activeTab === "active" ? (
                         <>
                           <button
                             onClick={() =>
                               router.push(`/club/events/${event._id}`)
                             }
-                            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/85 hover:bg-white/10 transition"
+                            className="inline-flex items-center justify-center p-2 rounded-xl bg-white/5 text-white/70 hover:bg-white/10 hover:text-white transition title-tooltip"
+                            title="Xem chi tiết"
                           >
-                            <Eye className="h-4 w-4" />
-                            Xem chi tiết
+                            <Eye className="h-5 w-5" />
                           </button>
                           <button
                             onClick={() =>
                               router.push(`/club/events/${event._id}/edit`)
                             }
-                            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/85 hover:bg-white/10 transition"
+                            className="inline-flex items-center justify-center p-2 rounded-xl bg-white/5 text-white/70 hover:bg-white/10 hover:text-white transition"
+                            title="Chỉnh sửa"
                           >
-                            <Edit className="h-4 w-4" />
-                            Chỉnh sửa
+                            <Edit className="h-5 w-5" />
                           </button>
                           <button
                             onClick={() =>
@@ -446,22 +478,22 @@ export default function ClubEventsPage() {
                                 `/club/events/${event._id}/participants`,
                               )
                             }
-                            className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/20 transition"
+                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-400/20 transition"
                           >
                             <Users className="h-4 w-4" />
-                            Quản lý người tham gia
+                            <span className="truncate">Người tham gia</span>
                           </button>
                           <button
                             onClick={() => handleDelete(event._id)}
                             disabled={actioningId === event._id}
-                            className="inline-flex items-center gap-2 rounded-full border border-red-400/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/20 transition disabled:opacity-50"
+                            className="inline-flex items-center justify-center p-2 rounded-xl bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 transition disabled:opacity-50"
+                            title="Xóa"
                           >
                             {actioningId === event._id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="h-5 w-5 animate-spin" />
                             ) : (
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-5 w-5" />
                             )}
-                            Xóa
                           </button>
                         </>
                       ) : (
@@ -469,7 +501,7 @@ export default function ClubEventsPage() {
                           <button
                             onClick={() => handleRestore(event._id)}
                             disabled={actioningId === event._id}
-                            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-4 py-2 text-sm font-bold text-slate-900 hover:brightness-110 transition disabled:opacity-50"
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 px-4 py-2 text-sm font-bold text-slate-900 shadow-md hover:brightness-110 transition disabled:opacity-50"
                           >
                             {actioningId === event._id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -482,11 +514,11 @@ export default function ClubEventsPage() {
                       )}
                     </div>
                   </div>
-                </div>
-              </article>
+              </motion.article>
             ))}
-          </div>
+          </motion.div>
         )}
+        </motion.div>
 
         {/* Pagination */}
         {activeTab === "active" && !isLoading && filteredEvents.length > 0 && (
@@ -514,7 +546,7 @@ export default function ClubEventsPage() {
             </div>
           </div>
         )}
-      </main>
+      </motion.main>
 
       <Footer />
     </div>

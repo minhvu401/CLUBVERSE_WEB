@@ -7,6 +7,8 @@ import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders";
 import { getAllClubs, type ClubItem } from "@/app/services/api/auth";
+import { getMyClubs } from "@/app/services/api/users";
+import { getAllEvents, type EventItem } from "@/app/services/api/events";
 
 import { motion } from "framer-motion";
 import {
@@ -16,7 +18,6 @@ import {
   SlidersHorizontal,
   ChevronDown,
   Star,
-  Plus,
   Palette,
   Cpu,
   Trophy,
@@ -24,10 +25,8 @@ import {
   BookOpen,
   Gamepad2,
   Shapes,
-  Activity,
   CalendarDays,
   UserRound,
-  Crown,
 } from "lucide-react";
 
 function cn(...classes: (string | false | null | undefined)[]) {
@@ -206,17 +205,17 @@ export default function FindingClubsPage() {
   const [sort, setSort] = useState("");
   const [clubs, setClubs] = useState<ClubItem[]>([]);
   const [clubsLoading, setClubsLoading] = useState(false);
-  const [clubsError, setClubsError] = useState<string | null>(null);
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [joinedClubIds, setJoinedClubIds] = useState<Set<string>>(new Set());
 
-  const tagOptions = [
-    "Tất cả",
-    "Nghệ thuật",
-    "Công nghệ",
-    "Thể thao",
-    "Âm nhạc",
-    "Học tập",
-    "Game",
-  ];
+  const tagOptions = useMemo(() => {
+    const apiTags = clubs.map((c) => c.category).filter((t): t is string => !!t);
+    const uniqueTags = Array.from(
+      new Set(["Tất cả", "Nghệ thuật", "Công nghệ", "Thể thao", "Âm nhạc", "Học tập", "Game", ...apiTags])
+    );
+    return uniqueTags;
+  }, [clubs]);
 
   useEffect(() => {
     if (!token) return;
@@ -226,16 +225,22 @@ export default function FindingClubsPage() {
     (async () => {
       try {
         setClubsLoading(true);
-        setClubsError(null);
-        const res = await getAllClubs(token);
-        if (!cancelled) setClubs(res);
-      } catch (error: unknown) {
+        const [res, myClubsRes] = await Promise.all([
+          getAllClubs(token),
+          getMyClubs(token).catch(() => [])
+        ]);
         if (!cancelled) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : "Không tải được danh sách câu lạc bộ";
-          setClubsError(message);
+          setClubs(res);
+          const joined = new Set<string>();
+          myClubsRes.forEach((c: Record<string, any>) => {
+            const id = c.clubId || c.club?._id || (c.clubInfo && c.clubInfo._id) || c._id;
+            if (id) joined.add(id);
+          });
+          setJoinedClubIds(joined);
+        }
+      } catch {
+        if (!cancelled) {
+          // Handle error silently
         }
       } finally {
         if (!cancelled) setClubsLoading(false);
@@ -247,6 +252,52 @@ export default function FindingClubsPage() {
     };
   }, [token]);
 
+  useEffect(() => {
+    if (!token) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setEventsLoading(true);
+        const res = await getAllEvents(token);
+        if (!cancelled) setEvents(res);
+      } catch {
+        if (!cancelled) setEvents([]);
+      } finally {
+        if (!cancelled) setEventsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  const stats = useMemo(() => {
+    const totalClubs = clubs.length;
+    const totalEvents = events.length;
+
+    const fmtCompact = (n: number) =>
+      new Intl.NumberFormat("vi-VN", {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(n);
+
+    return [
+      {
+        label: "Tổng CLB",
+        value: fmtCompact(totalClubs),
+        icon: <Sparkles className="h-5 w-5 text-violet-200" />,
+      },
+      {
+        label: "Sự kiện",
+        value: eventsLoading ? "…" : fmtCompact(totalEvents),
+        icon: <CalendarDays className="h-5 w-5 text-amber-200" />,
+      },
+    ];
+  }, [clubs, events, eventsLoading]);
+
   const clubCards = useMemo<ClubCard[]>(() => {
     const tones: ClubCard["tone"][] = [
       "violet",
@@ -256,14 +307,20 @@ export default function FindingClubsPage() {
       "fuchsia",
     ];
     return clubs.map((club, idx) => {
-      const fallbackRating = Math.min(5, 4 + ((idx % tones.length) + 1) * 0.1);
+      // Try multiple fields for member count
+      const memberCount = 
+        club.memberCount ?? 
+        club.totalMembers ?? 
+        club.members?.length ?? 
+        club.clubJoined?.length ?? 
+        0;
       return {
         id: club._id ?? `club-${idx}`,
         name: club.fullName ?? "Câu lạc bộ",
         tag: club.category ?? "Khác",
         desc: club.description ?? "Chưa có mô tả.",
-        memberCount: club.clubJoined?.length ?? 0,
-        rating: typeof club.rating === "number" ? club.rating : fallbackRating,
+        memberCount,
+        rating: typeof club.rating === "number" ? club.rating : 0,
         tone: tones[idx % tones.length],
       };
     });
@@ -407,29 +464,8 @@ export default function FindingClubsPage() {
           </section>
 
           {/* STATS (có icon bên phải giống ảnh) */}
-          <section className="grid gap-4 md:grid-cols-4">
-            {[
-              {
-                label: "Tổng CLB",
-                value: "156",
-                icon: <Sparkles className="h-5 w-5 text-violet-200" />,
-              },
-              {
-                label: "Hoạt động",
-                value: "89",
-                icon: <Activity className="h-5 w-5 text-emerald-200" />,
-              },
-              {
-                label: "Thành viên",
-                value: "2.4k",
-                icon: <UserRound className="h-5 w-5 text-sky-200" />,
-              },
-              {
-                label: "Sự kiện",
-                value: "47",
-                icon: <CalendarDays className="h-5 w-5 text-amber-200" />,
-              },
-            ].map((s) => (
+          <section className="grid gap-4 md:grid-cols-2">
+            {stats.map((s) => (
               <div
                 key={s.label}
                 className={cn(
@@ -451,8 +487,220 @@ export default function FindingClubsPage() {
             ))}
           </section>
 
-          
+          {/* CLUBS GRID */}
+          <section>
+            <SectionHeader
+              icon={<Users className="h-4 w-4" />}
+              title="Câu lạc bộ"
+              subtitle={`${filtered.length} câu lạc bộ phù hợp`}
+              actionHref="/clubs"
+              actionText="Xem tất cả"
+            />
 
+            {clubsLoading ? (
+              <div
+                className={cn(
+                  "mt-4 rounded-2xl p-6 text-center text-white/60",
+                  glass
+                )}
+              >
+                Đang tải câu lạc bộ...
+              </div>
+            ) : filtered.length === 0 ? (
+              <div
+                className={cn(
+                  "mt-4 rounded-2xl p-6 text-center text-white/60",
+                  glass
+                )}
+              >
+                Không tìm thấy câu lạc bộ nào phù hợp
+              </div>
+            ) : (
+              <motion.div
+                className="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: { opacity: 0 },
+                  visible: {
+                    opacity: 1,
+                    transition: {
+                      staggerChildren: 0.05,
+                    },
+                  },
+                }}
+              >
+                {filtered.map((club) => {
+                  const isJoined = joinedClubIds.has(club.id);
+                  return (
+                  <motion.div
+                    key={club.id}
+                    variants={{
+                      hidden: { opacity: 0, y: 20 },
+                      visible: { opacity: 1, y: 0 },
+                    }}
+                  >
+                    <Link href={`/clubs/${club.id}`}>
+                      <div
+                        className={cn(
+                          "group relative overflow-hidden rounded-2xl p-5 transition hover:scale-105 h-full flex flex-col",
+                          glass
+                        )}
+                      >
+                        <CornerGlow tone={club.tone} />
+
+                        <div className="relative space-y-4 flex flex-col flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-bold text-sm line-clamp-2 text-white">
+                                {club.name}
+                              </h3>
+                              <p className="mt-1.5 text-xs text-white/60 line-clamp-1">
+                                {club.desc}
+                              </p>
+                            </div>
+                            <div className="shrink-0">
+                              <ToneBadge tone={club.tone} />
+                            </div>
+                          </div>
+
+                          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 flex items-center gap-2">
+                            <TagIcon tag={club.tag} />
+                            <span className="text-xs text-white/70 line-clamp-1">{club.tag}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between border-t border-white/10 pt-3 mt-auto text-xs">
+                            <div className={cn("flex items-center gap-1.5", isJoined ? "text-emerald-400 font-semibold" : "text-white/70")}>
+                              {isJoined ? <UserRound size={14} /> : <Users size={14} />}
+                              <span>{isJoined ? "Đã tham gia" : `${club.memberCount} thành viên`}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-amber-300">
+                              <Star size={14} fill="currentColor" />
+                              <span className="font-semibold">{club.rating.toFixed(1)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  </motion.div>
+                  );
+                })}
+              </motion.div>
+            )}
+          </section>
+
+          {/* EVENTS GRID */}
+          {events.length > 0 && (
+            <section>
+              <SectionHeader
+                icon={<CalendarDays className="h-4 w-4" />}
+                title="Sự kiện sắp tới"
+                subtitle={`${events.length} sự kiện`}
+                actionHref="/events"
+                actionText="Xem tất cả"
+              />
+
+              {eventsLoading ? (
+                <div
+                  className={cn(
+                    "mt-4 rounded-2xl p-6 text-center text-white/60",
+                    glass
+                  )}
+                >
+                  Đang tải sự kiện...
+                </div>
+              ) : (
+                <motion.div
+                  className="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3"
+                  initial="hidden"
+                  animate="visible"
+                  variants={{
+                    hidden: { opacity: 0 },
+                    visible: {
+                      opacity: 1,
+                      transition: {
+                        staggerChildren: 0.05,
+                      },
+                    },
+                  }}
+                >
+                  {events.slice(0, 6).map((event, idx) => {
+                    const tones: ClubCard["tone"][] = [
+                      "violet",
+                      "sky",
+                      "emerald",
+                      "amber",
+                      "fuchsia",
+                    ];
+                    const tone = tones[idx % tones.length];
+                    const clubName =
+                      typeof event.clubId === "object"
+                        ? event.clubId.fullName
+                        : event.clubName ?? "CLB";
+
+                    return (
+                      <motion.div
+                        key={event._id}
+                        variants={{
+                          hidden: { opacity: 0, y: 20 },
+                          visible: { opacity: 1, y: 0 },
+                        }}
+                      >
+                        <Link href={`/events/${event._id}`}>
+                          <div
+                            className={cn(
+                              "group relative overflow-hidden rounded-2xl p-5 transition hover:scale-105 h-full flex flex-col",
+                              glass
+                            )}
+                          >
+                            <CornerGlow tone={tone} />
+
+                            <div className="relative space-y-4 flex flex-col flex-1">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-bold text-sm line-clamp-2 text-white">
+                                    {event.title}
+                                  </h3>
+                                  <p className="mt-1.5 text-xs text-white/60">
+                                    {clubName}
+                                  </p>
+                                </div>
+                                <div className="shrink-0">
+                                  <ToneBadge tone={tone} />
+                                </div>
+                              </div>
+
+                              <div className="space-y-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70">
+                                <div className="flex items-center gap-2">
+                                  <CalendarDays size={14} />
+                                  <span>{new Date(event.time).toLocaleDateString(
+                                    "vi-VN"
+                                  )}</span>
+                                </div>
+                                {event.location && (
+                                  <div className="flex items-center gap-2 line-clamp-1">
+                                    <span>📍</span>
+                                    <span className="line-clamp-1">{event.location}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex items-center justify-between border-t border-white/10 pt-3 mt-auto text-xs text-white/70">
+                                <span className="flex items-center gap-1.5">
+                                  <Users size={14} />
+                                  <span>{event.participantCount ?? event.joinedUsers?.length ?? 0} người</span>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </section>
+          )}
       
         </main>
       )}

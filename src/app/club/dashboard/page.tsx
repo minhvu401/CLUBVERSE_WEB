@@ -4,6 +4,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion, Variants } from "framer-motion";
 import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders";
@@ -24,6 +25,12 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+import { getCurrentProfile } from "@/app/services/api/users";
+import { getMemberStatistics, getClubMembers, type ClubMember } from "@/app/services/api/clubMembers";
+import { getAllEvents, type EventItem } from "@/app/services/api/events";
+import { getClubPosts, type PostItem } from "@/app/services/api/post";
+import { AUTH_BASE_URL } from "@/app/services/api/auth";
+
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
@@ -31,15 +38,37 @@ function cn(...classes: Array<string | false | null | undefined>) {
 const glass =
   "border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.45)]";
 
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { 
+    opacity: 1, 
+    y: 0, 
+    transition: { type: "spring", stiffness: 300, damping: 24 } 
+  },
+};
+
 function Card({
   className,
   children,
+  ...props
 }: {
   className?: string;
   children: React.ReactNode;
-}) {
+} & React.ComponentProps<typeof motion.div>) {
   return (
-    <div className={cn("rounded-2xl", glass, className)}>{children}</div>
+    <motion.div className={cn("rounded-2xl", glass, className)} {...props}>
+      {children}
+    </motion.div>
   );
 }
 
@@ -55,9 +84,14 @@ function StatCard({
   trend: string;
 }) {
   return (
-    <Card className="relative overflow-hidden p-4">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(168,85,247,0.18),transparent_55%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_95%_15%,rgba(59,130,246,0.14),transparent_55%)]" />
+    <Card 
+      variants={itemVariants}
+      whileHover={{ y: -4, scale: 1.01 }}
+      className="relative overflow-hidden p-4 group cursor-pointer border border-white/5 hover:border-white/15 transition-all duration-300 shadow-lg hover:shadow-purple-500/20"
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(168,85,247,0.18),transparent_55%)] group-hover:scale-110 transition-transform duration-500" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_95%_15%,rgba(59,130,246,0.14),transparent_55%)] group-hover:scale-110 transition-transform duration-500" />
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 -translate-x-full group-hover:translate-x-full transition-all duration-1000 ease-in-out" />
 
       <div className="relative flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -124,113 +158,139 @@ export default function ClubDashboardPage() {
     if (!isClubRole) return router.replace("/");
   }, [loading, token, isClubRole, router]);
 
-  // ===== Mock data =====
-  const stats = [
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
+  // States cho Dữ liệu thật
+  const [statsData, setStatsData] = useState({
+    members: 0,
+    posts: 0,
+    events: 0,
+    interactions: 0
+  });
+  
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [posts, setPosts] = useState<PostItem[]>([]);
+  const [members, setMembers] = useState<ClubMember[]>([]);
+  const [weekPoints, setWeekPoints] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+
+  // Derived arrays cho UI
+  const week = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+
+  useEffect(() => {
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) setCurrentTime(Date.now());
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!token) return;
+
+    let cancelled = false;
+
+    const fetchAllData = async () => {
+      try {
+        const profileData = await getCurrentProfile(token);
+        const clubId = profileData?._id || user?._id;
+        
+        if (!clubId) return;
+
+        // Gọi APIs đồng thời
+        const [memberStats, realPosts, allEvents, realMembers] = await Promise.all([
+          getMemberStatistics(token, clubId).catch(() => ({ totalMembers: 0, activeMembers: 0, inactiveMembers: 0, admins: 0, moderators: 0, members: 0 })),
+          getClubPosts(token, clubId, { sortBy: "newest", limit: 3 }).catch(() => []),
+          getAllEvents(token, { limit: 3 }).catch(() => []),
+          getClubMembers(token, clubId).then(res => ({ ...res, members: res.members?.slice(0, 4) || [] })).catch(() => ({ members: [], total: 0 })),
+        ]);
+
+        if (cancelled) return;
+
+        // Fallback members array
+        const memberList = Array.isArray(realMembers) ? realMembers : (realMembers?.members || []);
+
+        // Tính tương tác (Tổng số Likes)
+        const totalInteractions = realPosts.reduce((acc, p) => acc + (p.like || 0), 0);
+
+        // Tính đồ thị 7 ngày qua từ các bài post
+        const counts = [0, 0, 0, 0, 0, 0, 0];
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        
+        realPosts.forEach(post => {
+          if (!post.createdAt) return;
+          const pDate = new Date(post.createdAt).getTime();
+          const diffDays = Math.floor((startOfDay - pDate) / (1000 * 60 * 60 * 24));
+          // Nếu post nằm trong 7 ngày qua
+          if (diffDays >= 0 && diffDays < 7) {
+             const dayIndex = new Date(post.createdAt).getDay(); // 0(CN) -> 6(T7)
+             counts[dayIndex] += 1;
+          }
+        });
+
+        // Bổ sung các event vào đồ thị
+        allEvents.forEach(evt => {
+           if (!evt.time) return;
+           const eDate = new Date(evt.time).getTime();
+           const diffDays = Math.floor((startOfDay - eDate) / (1000 * 60 * 60 * 24));
+           if (diffDays >= 0 && diffDays < 7) {
+             const dayIndex = new Date(evt.time).getDay();
+             counts[dayIndex] += 1;
+           }
+        });
+        
+        setWeekPoints(counts);
+
+        setStatsData({
+          members: memberStats.totalMembers || memberList.length,
+          posts: realPosts.length,
+          events: allEvents.length,
+          interactions: totalInteractions
+        });
+
+        setEvents(allEvents);
+        setPosts(realPosts);
+        setMembers(memberList);
+
+      } catch (err) {
+        console.error("Dashboard fetch error", err);
+      }
+    };
+
+    fetchAllData();
+    return () => { cancelled = true; };
+  }, [token, user?._id]);
+
+  // Cấu hình stats
+  const statsConfig = [
     {
       title: "Thành viên",
-      value: "500+",
-      trend: "+12%",
+      value: statsData.members.toString(),
+      trend: "+Mới",
       icon: <Users className="h-5 w-5 text-sky-200" />,
     },
     {
       title: "Bài đăng",
-      value: "2,400+",
-      trend: "+8%",
+      value: statsData.posts.toString(),
+      trend: "Hoạt động",
       icon: <FileText className="h-5 w-5 text-violet-200" />,
     },
     {
       title: "Sự kiện",
-      value: "300+",
-      trend: "+15%",
+      value: statsData.events.toString(),
+      trend: "Sắp tới",
       icon: <CalendarDays className="h-5 w-5 text-fuchsia-200" />,
     },
     {
       title: "Lượt tương tác",
-      value: "30K+",
-      trend: "+21%",
+      value: statsData.interactions.toString(),
+      trend: "+Real",
       icon: <MessageSquare className="h-5 w-5 text-emerald-200" />,
     },
   ];
-
-  const week = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-  const points = [10, 12, 9, 15, 14, 18, 16]; // fake
-
-  const events = [
-    {
-      title: "Họp CLB hằng tuần",
-      time: "19:30 - 21:00",
-      place: "Phòng A101",
-      tone: "violet",
-    },
-    {
-      title: "Workshop Coding",
-      time: "14:00 - 16:30",
-      place: "Online",
-      tone: "fuchsia",
-    },
-    {
-      title: "Team Building",
-      time: "09:00 - 12:00",
-      place: "Khu thể thao",
-      tone: "sky",
-    },
-  ] as const;
-
-  const posts = [
-    {
-      name: "Nguyễn Văn A",
-      time: "1 ngày trước",
-      content:
-        "Bài workshop hôm nay rất hay và bổ ích! Cảm ơn mọi người đã tham gia nhiệt tình.",
-      likes: 12,
-      comments: 8,
-      shares: 2,
-      avatar:
-        "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?auto=format&fit=crop&w=96&q=80",
-    },
-    {
-      name: "Trần Thị B",
-      time: "2 ngày trước",
-      content:
-        "Đăng ký tham gia sự kiện Team Building ngày 22/11 nhé các bạn!",
-      likes: 30,
-      comments: 15,
-      shares: 7,
-      avatar:
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=96&q=80",
-    },
-    {
-      name: "Lê Văn C",
-      time: "3 ngày trước",
-      content:
-        "Chia sẻ tài liệu học tập cho các thành viên mới. Link trong comment.",
-      likes: 19,
-      comments: 6,
-      shares: 4,
-      avatar:
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=96&q=80",
-    },
-  ];
-
-  const members = [
-    { name: "Nguyễn Văn A", role: "Chủ nhiệm", tone: "violet", avatar: posts[0].avatar },
-    { name: "Trần Thị B", role: "Phó chủ nhiệm", tone: "fuchsia", avatar: posts[1].avatar },
-    { name: "Lê Văn C", role: "Thành viên", tone: "sky", avatar: posts[2].avatar },
-    {
-      name: "Phạm Thị D",
-      role: "Thành viên",
-      tone: "emerald",
-      avatar:
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=96&q=80",
-    },
-    {
-      name: "Hoàng Văn E",
-      role: "Thành viên",
-      tone: "amber",
-      avatar:
-        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=96&q=80",
-    },
-  ] as const;
 
   const toneBadge: Record<string, string> = {
     violet: "bg-violet-400/12 text-violet-200 border-violet-400/25",
@@ -240,7 +300,20 @@ export default function ClubDashboardPage() {
     amber: "bg-amber-400/12 text-amber-200 border-amber-400/25",
   };
 
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const getAvatarUrl = (url?: string, fallbackName?: string) => {
+    if (!url) return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(fallbackName || "user")}`;
+    if (url.startsWith("http")) return url;
+    return `${AUTH_BASE_URL}${url}`;
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "Không rõ";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    if (diff < 1000 * 60 * 60 * 24) return "Hôm nay";
+    return date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+  };
 
   if (loading) {
     return (
@@ -272,15 +345,23 @@ export default function ClubDashboardPage() {
 
       <Header />
 
-      <main className="mx-auto max-w-6xl px-4 pb-14 pt-10">
+      <motion.main 
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="mx-auto max-w-6xl px-4 pb-14 pt-10"
+      >
         {/* Page title */}
-        <div className="mb-5">
-          <div className="text-sm text-white/60">Club Dashboard</div>
-        </div>
+        <motion.div variants={itemVariants} className="mb-5">
+          <div className="text-sm font-medium tracking-wider text-white/50 uppercase">Bảng điều khiển CLB</div>
+          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 mt-1">
+            Tổng quan hoạt động
+          </h1>
+        </motion.div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          {stats.map((s) => (
+        <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          {statsConfig.map((s) => (
             <StatCard
               key={s.title}
               title={s.title}
@@ -289,12 +370,12 @@ export default function ClubDashboardPage() {
               icon={s.icon}
             />
           ))}
-        </div>
+        </motion.div>
 
         {/* Middle row */}
-        <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <motion.div variants={itemVariants} className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
           {/* Activity chart */}
-          <Card className="relative overflow-hidden p-5 lg:col-span-2">
+          <Card className="relative overflow-hidden p-5 lg:col-span-2 shadow-lg hover:shadow-purple-500/10 transition-shadow">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_35%_10%,rgba(168,85,247,0.14),transparent_55%)]" />
             <div className="relative">
               <SectionTitle
@@ -334,13 +415,13 @@ export default function ClubDashboardPage() {
 
                     {/* area */}
                     {(() => {
-                      const max = Math.max(...points) || 1;
-                      const min = Math.min(...points) || 0;
+                      const max = Math.max(...weekPoints) || 1;
+                      const min = Math.min(...weekPoints) || 0;
                       const norm = (v: number) =>
                         180 - ((v - min) / (max - min || 1)) * 140;
 
-                      const xs = points.map((_, i) => 30 + i * 90);
-                      const ys = points.map((v) => 20 + norm(v));
+                      const xs = weekPoints.map((_, i) => 30 + i * 90);
+                      const ys = weekPoints.map((v) => 20 + norm(v));
 
                       const d = xs
                         .map((x, i) => `${i === 0 ? "M" : "L"} ${x} ${ys[i]}`)
@@ -351,26 +432,40 @@ export default function ClubDashboardPage() {
 
                       return (
                         <>
-                          <path
+                          <motion.path
                             d={area}
-                            fill="rgba(168,85,247,0.14)"
+                            fill="url(#gradient-area)"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 1, delay: 0.5 }}
                           />
-                          <path
+                          <defs>
+                            <linearGradient id="gradient-area" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="rgba(168,85,247,0.3)" />
+                              <stop offset="100%" stopColor="rgba(168,85,247,0)" />
+                            </linearGradient>
+                          </defs>
+                          <motion.path
                             d={d}
                             fill="none"
                             stroke="rgba(168,85,247,0.9)"
                             strokeWidth="3"
                             strokeLinejoin="round"
                             strokeLinecap="round"
+                            initial={{ pathLength: 0 }}
+                            animate={{ pathLength: 1 }}
+                            transition={{ duration: 1.5, ease: "easeInOut" }}
                           />
                           {xs.map((x, i) => (
-                            <circle
+                            <motion.circle
                               key={i}
                               cx={x}
                               cy={ys[i]}
                               r={hoverIndex === i ? 6 : 4}
                               fill="rgba(255,255,255,0.95)"
-                              opacity={0.9}
+                              initial={{ scale: 0, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 0.9 }}
+                              transition={{ delay: 1 + i * 0.1, type: "spring" }}
                               onMouseEnter={() => setHoverIndex(i)}
                               onMouseLeave={() => setHoverIndex(null)}
                             />
@@ -410,9 +505,15 @@ export default function ClubDashboardPage() {
               />
 
               <div className="mt-4 space-y-3">
-                {events.map((e) => (
+                {events.length === 0 && <div className="text-white/60 text-sm">Chưa có sự kiện nào</div>}
+                {events.map((e, index) => {
+                  // Fallback deterministically to match aesthetic if mapping real places
+                  const tones = ["violet", "fuchsia", "sky", "emerald", "amber"];
+                  const evtTone = tones[index % tones.length];
+                  
+                  return (
                   <div
-                    key={e.title}
+                    key={e._id}
                     className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -424,12 +525,12 @@ export default function ClubDashboardPage() {
                         <div className="mt-2 flex flex-wrap gap-2">
                           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[0.72rem] text-white/70">
                             <Clock className="h-4 w-4 text-white/60" />
-                            {e.time}
+                            {formatDate(e.time)}
                           </span>
 
                           <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[0.72rem] text-white/70">
                             <MapPin className="h-4 w-4 text-white/60" />
-                            {e.place}
+                            {e.location || "Trực tuyến"}
                           </span>
                         </div>
                       </div>
@@ -437,14 +538,14 @@ export default function ClubDashboardPage() {
                       <span
                         className={cn(
                           "shrink-0 rounded-full border px-3 py-1 text-[0.72rem] font-semibold",
-                          toneBadge[e.tone]
+                          new Date(e.time).getTime() > currentTime ? toneBadge[evtTone] : "border-gray-400/25 bg-gray-400/12 text-gray-200"
                         )}
                       >
-                        Sắp diễn ra
+                        {new Date(e.time).getTime() > currentTime ? "Sắp diễn ra" : "Đã kết thúc"}
                       </span>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
 
               <button
@@ -454,12 +555,12 @@ export default function ClubDashboardPage() {
               </button>
             </div>
           </Card>
-        </div>
+        </motion.div>
 
         {/* Bottom row */}
-        <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <motion.div variants={itemVariants} className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
           {/* Recent posts */}
-          <Card className="relative overflow-hidden p-5 lg:col-span-2">
+          <Card className="relative overflow-hidden p-5 lg:col-span-2 shadow-lg hover:shadow-violet-500/10 transition-shadow">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(168,85,247,0.12),transparent_60%)]" />
             <div className="relative">
               <SectionTitle
@@ -476,16 +577,21 @@ export default function ClubDashboardPage() {
               />
 
               <div className="mt-4 space-y-3">
-                {posts.map((p, idx) => (
+                {posts.length === 0 && <div className="text-white/60 text-sm">Chưa có bài đăng nào</div>}
+                {posts.map((p) => {
+                  const authorAvatar = getAvatarUrl(undefined, typeof p.clubId === "object" ? p.clubId.fullName : "Thành viên");
+                  const authorName = typeof p.clubId === "object" ? p.clubId.fullName : "Quản trị CLB";
+                  
+                  return (
                   <div
-                    key={idx}
+                    key={p._id}
                     className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3">
                         <div className="h-10 w-10 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15">
                           <img
-                            src={p.avatar}
+                            src={authorAvatar}
                             alt="avatar"
                             className="h-full w-full object-cover"
                           />
@@ -494,29 +600,29 @@ export default function ClubDashboardPage() {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <div className="text-sm font-semibold text-white">
-                              {p.name}
+                              {authorName}
                             </div>
                             <div className="text-xs text-white/50">
-                              • {p.time}
+                              • {formatDate(p.createdAt)}
                             </div>
                           </div>
 
-                          <p className="mt-2 text-sm text-white/70 leading-relaxed">
+                          <p className="mt-2 text-sm text-white/70 leading-relaxed max-w-sm line-clamp-2">
                             {p.content}
                           </p>
 
                           <div className="mt-3 flex flex-wrap gap-3 text-xs text-white/55">
-                            <span className="inline-flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1.5 cursor-pointer hover:text-red-400">
                               <Heart className="h-4 w-4" />
-                              {p.likes}
+                              {p.like || 0}
                             </span>
-                            <span className="inline-flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1.5 cursor-pointer hover:text-white/90">
                               <MessageCircle className="h-4 w-4" />
-                              {p.comments}
+                              0
                             </span>
-                            <span className="inline-flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1.5 cursor-pointer hover:text-white/90">
                               <Share2 className="h-4 w-4" />
-                              {p.shares}
+                              0
                             </span>
                           </div>
                         </div>
@@ -525,12 +631,13 @@ export default function ClubDashboardPage() {
                       <button
                         className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10]"
                         title="Khác"
+                        onClick={() => router.push(`/club/forum/${p._id}`)}
                       >
-                        <MoreHorizontal className="h-4 w-4" />
+                        <ChevronRight className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           </Card>
@@ -553,15 +660,20 @@ export default function ClubDashboardPage() {
               />
 
               <div className="mt-4 space-y-3">
-                {members.map((m) => (
+                {members.length === 0 && <div className="text-white/60 text-sm">Chưa có thành viên nào</div>}
+                {members.map((m) => {
+                  const roleColors = { admin: "violet", moderator: "fuchsia", member: "sky" };
+                  const mTone = roleColors[m.role as keyof typeof roleColors] || "emerald";
+
+                  return (
                   <div
-                    key={m.name}
+                    key={m._id}
                     className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="h-10 w-10 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15">
                         <img
-                          src={m.avatar}
+                          src={getAvatarUrl(m.avatarUrl, m.fullName)}
                           alt="avatar"
                           className="h-full w-full object-cover"
                         />
@@ -569,22 +681,22 @@ export default function ClubDashboardPage() {
 
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-white">
-                          {m.name}
+                          {m.fullName}
                         </div>
-                        <div className="mt-1 text-xs text-white/55">{m.role}</div>
+                        <div className="mt-1 text-xs text-white/55 capitalize">{m.role}</div>
                       </div>
                     </div>
 
                     <span
                       className={cn(
                         "shrink-0 rounded-full border px-3 py-1 text-[0.7rem] font-semibold",
-                        toneBadge[m.tone]
+                        m.isActive ? toneBadge[mTone] : "border-gray-400/25 bg-gray-400/12 text-gray-200"
                       )}
                     >
-                      Active
+                      {m.isActive ? "Hoạt động" : "Ngừng HĐ"}
                     </span>
                   </div>
-                ))}
+                )})}
               </div>
 
               <button
@@ -596,8 +708,8 @@ export default function ClubDashboardPage() {
               </button>
             </div>
           </Card>
-        </div>
-      </main>
+        </motion.div>
+      </motion.main>
 
       <Footer />
     </div>

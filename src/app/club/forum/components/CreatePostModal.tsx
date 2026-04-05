@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { X, Hash, Loader2, Sparkles, Upload, Trash2 } from "lucide-react";
 import { createPost, type PostCoreFields } from "@/app/services/api/post";
 import { useAuth } from "@/app/providers/AuthProviders";
@@ -51,43 +52,44 @@ export default function CreatePostModal({
     setTags(tags.filter((t) => t !== tagToRemove));
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setImageError("");
     const files = e.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
 
-    const newImages: { url: string; file: File }[] = [];
-    let error = false;
+    const fileArray = Array.from(files);
+    let hasError = false;
 
-    Array.from(files).forEach((file) => {
-      // Validate file size (max 5MB)
+    for (const file of fileArray) {
       if (file.size > 5 * 1024 * 1024) {
         setImageError("Kích thước file không được vượt quá 5MB");
-        error = true;
-        return;
+        hasError = true;
       }
-
-      // Validate file type
       if (!file.type.startsWith("image/")) {
         setImageError("Chỉ chấp nhận file hình ảnh");
-        error = true;
-        return;
+        hasError = true;
       }
+    }
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        if (result) {
-          newImages.push({ url: result, file });
-          if (newImages.length === Array.from(files).length && !error) {
-            setImages([...images, ...newImages].slice(0, 5)); // Max 5 images
-          }
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    if (hasError) {
+      e.target.value = "";
+      return;
+    }
 
-    // Reset input
+    const newImagesList = await Promise.all(
+      fileArray.map((file) => {
+        return new Promise<{ url: string; file: File }>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            resolve({ url: event.target?.result as string, file });
+          };
+          reader.onerror = () => reject(new Error("Không thể đọc file"));
+          reader.readAsDataURL(file);
+        });
+      })
+    );
+
+    setImages((prev) => [...prev, ...newImagesList].slice(0, 5));
     e.target.value = "";
   };
 
@@ -380,10 +382,11 @@ export default function CreatePostModal({
                     key={idx}
                     className="relative rounded-xl overflow-hidden border border-white/10 bg-white/[0.04] aspect-square"
                   >
-                    <img
+                    <Image
+                      fill
                       src={img.url}
                       alt={`preview-${idx}`}
-                      className="h-full w-full object-cover"
+                      className="object-cover"
                     />
                     <button
                       type="button"

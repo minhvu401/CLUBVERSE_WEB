@@ -7,6 +7,8 @@ import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
 import { useAuth } from "@/app/providers/AuthProviders";
 import { getAllEvents } from "@/app/services/api/events";
+import { recommendClubs, type RecommendationClubItem } from "@/app/services/api/payments";
+import { getAllClubs, getProfile, type ClubItem } from "@/app/services/api/auth";
 import { motion } from "framer-motion";
 import {
   Sparkles,
@@ -20,7 +22,6 @@ import {
   Stars,
   Zap,
 } from "lucide-react";
-import { getAllClubs, type ClubItem } from "@/app/services/api/auth";
 
 /* ================= UTILS ================= */
 function cn(...classes: (string | false | null | undefined)[]) {
@@ -58,9 +59,11 @@ export default function HomeDashboardPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
 
-  const [clubs, setClubs] = useState<ClubItem[]>([]);
+  const [clubs, setClubs] = useState<Array<ClubItem | RecommendationClubItem>>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
+  const [recommendLoading, setRecommendLoading] = useState(false);
+  const [recommendError, setRecommendError] = useState<string | null>(null);
 
   const isPremiumUser = Boolean((user as any)?.isPremium);
   const displayName = user?.fullName || "Bạn";
@@ -71,16 +74,123 @@ export default function HomeDashboardPage() {
 
   useEffect(() => {
     if (!token) return;
-    getAllClubs(token).then(setClubs);
-    setEventsLoading(true);
-    getAllEvents(token, { filter: "upcoming", limit: 4 })
-      .then(setEvents)
-      .finally(() => setEventsLoading(false));
-  }, [token]);
+
+    let cancelled = false;
+
+    const loadRecommendedClubs = async () => {
+      if (!isPremiumUser) {
+        getAllClubs(token)
+          .then((data) => {
+            if (!cancelled) setClubs(data);
+          })
+          .catch(() => {
+            if (!cancelled) setClubs([]);
+          });
+        return;
+      }
+
+      setRecommendError(null);
+      setRecommendLoading(true);
+      setClubs([]);
+
+      try {
+        const profile = await getProfile(token);
+        if (cancelled) return;
+
+        const skills = profile.skills ?? [];
+        const interests = profile.interests ?? [];
+
+        if (skills.length === 0 || interests.length === 0) {
+          if (!cancelled) {
+            setRecommendError(
+              "Vui lòng cập nhật kỹ năng và sở thích trong hồ sơ để nhận gợi ý câu lạc bộ."
+            );
+          }
+          return;
+        }
+
+        const recommended = await recommendClubs(token, {
+          skills,
+          interests,
+          limit: 5,
+          additionalInfo:
+            "Tôi là sinh viên CNTT và muốn tìm câu lạc bộ về công nghệ",
+        });
+
+        if (cancelled) return;
+        setClubs(recommended);
+      } catch (error) {
+        if (!cancelled) {
+          let errorMsg = "Không lấy được đề xuất câu lạc bộ";
+          if (error instanceof Error) {
+            if (error.message.includes("500") || error.message.includes("Internal server error")) {
+              errorMsg = "Hệ thống AI gợi ý hiện đang quá tải hoặc gặp sự cố. Xin vui lòng thử lại sau.";
+            } else {
+              try {
+                const parsed = JSON.parse(error.message);
+                errorMsg = parsed.message || errorMsg;
+              } catch {
+                errorMsg = error.message;
+              }
+            }
+          }
+          setRecommendError(errorMsg);
+        }
+      } finally {
+        if (!cancelled) setRecommendLoading(false);
+      }
+    };
+
+    const loadEvents = async () => {
+      setEventsLoading(true);
+      try {
+        const eventsData = await getAllEvents(token);
+        if (!cancelled) {
+          // Sort by time and get top 4
+          const sorted = eventsData
+            .filter((e) => new Date(e.time).getTime() > Date.now())
+            .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+          setEvents(sorted.slice(0, 4));
+        }
+      } catch (error) {
+        if (!cancelled) setEvents([]);
+      } finally {
+        if (!cancelled) setEventsLoading(false);
+      }
+    };
+
+    loadRecommendedClubs();
+    loadEvents();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, isPremiumUser]);
 
   const clubCards = useMemo(() => {
     const tones = ["violet", "emerald", "fuchsia", "amber", "sky"];
-    return clubs.map((c, i) => ({ ...c, tone: tones[i % tones.length] }));
+
+    return clubs.map((c, i) => {
+      const tone = tones[i % tones.length];
+
+      if ("clubName" in c) {
+        return {
+          id: c._id ?? `recommend-${i}`,
+          title: c.clubName,
+          subtitle: c.reason,
+          score: c.matchScore,
+          tone,
+        };
+      }
+
+      return {
+        id: c._id ?? `club-${i}`,
+        title: c.fullName ?? "Câu lạc bộ",
+        subtitle: c.description,
+        members: c.clubJoined?.length ?? 0,
+        tone,
+      };
+    });
   }, [clubs]);
 
   return (
@@ -134,7 +244,9 @@ export default function HomeDashboardPage() {
           )}
         >
           <p className="text-[0.72rem] text-white/55 mb-4">
-            Dựa trên hoạt động, sự kiện đã tham gia và sở thích của bạn
+            {isPremiumUser
+              ? "Dựa trên kỹ năng và sở thích của bạn"
+              : "Dựa trên hoạt động, sự kiện đã tham gia và sở thích của bạn"}
           </p>
 
           {!isPremiumUser && (
@@ -155,29 +267,45 @@ export default function HomeDashboardPage() {
             </div>
           )}
 
-          <div className="grid gap-4 md:grid-cols-4">
-            {clubCards.map((club) => (
-              <motion.article
-                key={club._id}
-                whileHover={{ y: -6 }}
-                className={cn(
-                  "relative rounded-2xl p-4 bg-white/5 border border-white/10",
-                  !isPremiumUser &&
-                    "opacity-30 grayscale pointer-events-none"
-                )}
-              >
-                <CornerGlow tone={club.tone} />
-                <h3 className="text-sm font-semibold">{club.fullName}</h3>
-                <p className="mt-1.5 line-clamp-3 text-[0.72rem] text-white/60">
-                  {club.description}
-                </p>
-                <div className="mt-3 text-[0.68rem] text-white/55">
-                  <Users size={14} className="inline mr-1" />
-                  {club.clubJoined?.length ?? 0} thành viên
-                </div>
-              </motion.article>
-            ))}
-          </div>
+          {recommendLoading ? (
+            <div className="text-sm text-white/60">Đang lấy gợi ý câu lạc bộ...</div>
+          ) : recommendError ? (
+            <div className="text-sm text-rose-300">{recommendError}</div>
+          ) : clubs.length === 0 ? (
+            <div className="text-sm text-white/60">
+              Không có câu lạc bộ phù hợp để hiển thị.
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-4">
+              {clubCards.map((club) => (
+                <motion.article
+                  key={club.id}
+                  whileHover={{ y: -6 }}
+                  className={cn(
+                    "relative rounded-2xl p-4 bg-white/5 border border-white/10",
+                    !isPremiumUser &&
+                      "opacity-30 grayscale pointer-events-none"
+                  )}
+                >
+                  <CornerGlow tone={club.tone} />
+                  <h3 className="text-sm font-semibold">{club.title}</h3>
+                  <p className="mt-1.5 line-clamp-3 text-[0.72rem] text-white/60">
+                    {club.subtitle}
+                  </p>
+                  <div className="mt-3 text-[0.68rem] text-white/55">
+                    {club.score != null ? (
+                      <span>Độ phù hợp: {club.score}%</span>
+                    ) : (
+                      <>
+                        <Users size={14} className="inline mr-1" />
+                        {club.members ?? 0} thành viên
+                      </>
+                    )}
+                  </div>
+                </motion.article>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* EVENTS */}
@@ -195,6 +323,8 @@ export default function HomeDashboardPage() {
           <div className="grid gap-4 md:grid-cols-2">
             {eventsLoading ? (
               <div className="text-sm text-white/60">Đang tải sự kiện...</div>
+            ) : events.length === 0 ? (
+              <div className="text-sm text-white/60">Chưa có sự kiện nào sắp tới.</div>
             ) : (
               events.map((e: any) => (
                 <motion.article

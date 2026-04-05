@@ -15,6 +15,7 @@ import {
   type PostItem,
   type PostSort,
 } from "@/app/services/api/post";
+import { AUTH_BASE_URL } from "@/app/services/api/auth";
 import CreatePostModal from "./components/CreatePostModal";
 
 import {
@@ -137,6 +138,9 @@ export default function ForumPage() {
   const [sortBy, setSortBy] = useState<PostSort>("newest");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+
   // Fetch posts from API
   useEffect(() => {
     if (!token) return;
@@ -225,6 +229,16 @@ export default function ForumPage() {
       );
     });
   }, [posts, cat, q]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [q, cat]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const currentItems = filtered.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const tagStats = useMemo(() => {
     const map = new Map<string, number>();
@@ -341,7 +355,7 @@ export default function ForumPage() {
             )}
 
             {!isLoadingPosts &&
-              filtered.map((p) => {
+              currentItems.map((p) => {
                 const isLiked = p.isLiked || false;
 
                 return (
@@ -403,14 +417,16 @@ export default function ForumPage() {
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(p._id)}
-                          className="grid h-9 w-9 place-items-center rounded-xl border border-red-400/20 bg-red-500/10 text-red-200 hover:bg-red-500/20 transition"
-                          title="Xóa"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        {user && (user.id === (typeof p.clubId === 'object' ? p.clubId._id : p.clubId) || user._id === (typeof p.clubId === 'object' ? p.clubId._id : p.clubId)) && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(p._id)}
+                            className="grid h-9 w-9 place-items-center rounded-xl border border-red-400/20 bg-red-500/10 text-red-200 hover:bg-red-500/20 transition shrink-0"
+                            title="Xóa"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
 
                       {/* footer row */}
@@ -418,7 +434,13 @@ export default function ForumPage() {
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="h-10 w-10 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15">
                             <img
-                              src="https://images.unsplash.com/photo-1502685104226-ee32379fefbe?auto=format&fit=crop&w=96&q=80"
+                              src={
+                                (typeof p.clubId === "object" && (p.clubId as any).avatarUrl)
+                                  ? (p.clubId as any).avatarUrl.startsWith("http")
+                                    ? (p.clubId as any).avatarUrl
+                                    : `${AUTH_BASE_URL}${(p.clubId as any).avatarUrl}`
+                                  : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(typeof p.clubId === "object" ? p.clubId.fullName : "User")}`
+                              }
                               alt="avatar"
                               className="h-full w-full object-cover"
                             />
@@ -467,17 +489,26 @@ export default function ForumPage() {
             {/* Pagination */}
             <div className={cn("rounded-3xl p-4", glass)}>
               <div className="flex items-center justify-between">
-                <div className="text-xs text-white/55">Trang 1 / 3</div>
+                <div className="text-xs text-white/55">
+                  Trang {currentPage} / {totalPages}
+                </div>
                 <div className="flex items-center gap-2">
-                  <button className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10]">
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10] disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
-                  {[1, 2, 3].map((p) => (
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                     <button
+                      type="button"
                       key={p}
+                      onClick={() => setCurrentPage(p)}
                       className={cn(
                         "h-9 w-9 rounded-xl border text-xs font-semibold transition",
-                        p === 1
+                        p === currentPage
                           ? "border-white/15 bg-white/[0.10] text-white"
                           : "border-white/10 bg-white/[0.06] text-white/75 hover:bg-white/[0.10]"
                       )}
@@ -485,7 +516,12 @@ export default function ForumPage() {
                       {p}
                     </button>
                   ))}
-                  <button className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10]">
+                  <button
+                    type="button"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10] disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>

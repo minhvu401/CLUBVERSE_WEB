@@ -1,3 +1,4 @@
+import { parseApiError } from "@/utils/apiError";
 import { AUTH_BASE_URL } from "@/app/services/api/auth";
 
 export type EventFilter = "all" | "upcoming" | "past" | "ongoing";
@@ -78,7 +79,7 @@ export async function getEvents({
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(data?.message || `Không lấy được sự kiện (HTTP ${res.status})`);
+    throw new Error(parseApiError(data, `Không lấy được sự kiện (HTTP ${res.status})`));
   }
 
   // backend có thể trả:

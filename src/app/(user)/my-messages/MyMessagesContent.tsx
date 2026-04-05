@@ -1,17 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import AppSidebar from "@/components/AppSidebar";
-import { Search, Send, MoreVertical, Paperclip, Smile, Loader2 } from "lucide-react";
+import { Search, Send, MoreVertical, Paperclip, Smile, Loader2, Plus, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import {
   getConversations,
   getMessages,
   sendMessage,
   markConversationAsRead,
-  type ConversationData,
-  type MessageData,
 } from "@/app/services/api/messages";
+import { getMyClubs } from "@/app/services/api/users";
+import { getClubApplications, type MyApplication } from "@/app/services/api/applications";
 import { useAuth } from "@/app/providers/AuthProviders";
 
 /* ================= utils ================= */
@@ -70,13 +71,16 @@ export default function MyMessagesContent() {
   const { loading, user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messageInput, setMessageInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
+  const [newConversationUserId, setNewConversationUserId] = useState("");
+  const [approvedApplicants, setApprovedApplicants] = useState<MyApplication[]>([]);
+  const [isLoadingApplicants, setIsLoadingApplicants] = useState(false);
 
   // Get token on mount
   useEffect(() => {
@@ -129,10 +133,13 @@ export default function MyMessagesContent() {
         // Map API data to UI format
         const mappedConversations: Conversation[] = data.map((conv) => ({
           id: conv._id,
-          participantId: conv.participantId,
+          participantId: conv.participantId ?? conv.participantInfo?._id ?? "",
           name: conv.participantInfo?.fullName || "Unknown",
           avatar: conv.participantInfo?.avatarUrl,
-          lastMessage: conv.lastMessage || "No messages yet",
+          lastMessage:
+            typeof conv.lastMessage === "string"
+              ? conv.lastMessage
+              : conv.lastMessage?.content || "No messages yet",
           lastMessageTime: conv.lastMessageTime
             ? new Date(conv.lastMessageTime)
             : new Date(),
@@ -148,7 +155,7 @@ export default function MyMessagesContent() {
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Failed to fetch conversations";
-        setError(message);
+        console.error(message);
       } finally {
         setIsLoading(false);
       }
@@ -162,11 +169,20 @@ export default function MyMessagesContent() {
   // Fetch messages when conversation is selected
   useEffect(() => {
     const fetchMessages = async () => {
-      if (!selectedConversation || !token) return;
+      const selectedConversationId = selectedConversation?.id;
+      const selectedConversationUnread = selectedConversation?.unread ?? 0;
+      const selectedConversationName = selectedConversation?.name;
+
+      if (!selectedConversationId || !token) return;
 
       setMessagesLoading(true);
       try {
-        const messagesData = await getMessages(token, selectedConversation.id);
+        // Skip fetching for temp conversations
+        if (selectedConversationId.startsWith("temp-")) {
+          setMessagesLoading(false);
+          return;
+        }
+        const messagesData = await getMessages(token, selectedConversationId);
 
         // Map API messages to UI format
         const mappedMessages: Message[] = messagesData.map((msg) => ({
@@ -174,7 +190,7 @@ export default function MyMessagesContent() {
           content: msg.content,
           sender: msg.senderId === user?._id ? "user" : "other",
           timestamp: new Date(msg.createdAt),
-          senderName: selectedConversation.name,
+          senderName: selectedConversationName,
         }));
 
         // Update the selected conversation with messages
@@ -187,12 +203,12 @@ export default function MyMessagesContent() {
         });
 
         // Mark conversation as read
-        if (token && selectedConversation.unread > 0) {
-          await markConversationAsRead(token, selectedConversation.id);
+        if (token && selectedConversationUnread > 0) {
+          await markConversationAsRead(token, selectedConversationId);
           // Update unread count
           setConversations((prev) =>
             prev.map((conv) =>
-              conv.id === selectedConversation.id
+              conv.id === selectedConversationId
                 ? { ...conv, unread: 0 }
                 : conv
             )
@@ -206,7 +222,42 @@ export default function MyMessagesContent() {
     };
 
     fetchMessages();
-  }, [selectedConversation?.id, token, user?._id]);
+  }, [selectedConversation?.id, selectedConversation?.unread, selectedConversation?.name, token, user?._id]);
+
+  // Fetch user's clubs and approved applicants when modal opens
+  useEffect(() => {
+    const fetchApplicants = async () => {
+      if (!isNewConversationModalOpen || !token) return;
+
+      setIsLoadingApplicants(true);
+      try {
+        // Get user's clubs
+        const clubs = await getMyClubs(token, "active");
+
+        // Get approved applicants from all user's clubs
+        const allApplicants: MyApplication[] = [];
+        for (const club of clubs) {
+          try {
+            const applicants = await getClubApplications({
+              accessToken: token,
+              clubId: club.clubId,
+              status: "APPROVED",
+            });
+            allApplicants.push(...applicants);
+          } catch (err) {
+            console.warn(`Failed to fetch applicants for club ${club.clubId}:`, err);
+          }
+        }
+        setApprovedApplicants(allApplicants);
+      } catch (err) {
+        console.error("Error fetching clubs/applicants:", err);
+      } finally {
+        setIsLoadingApplicants(false);
+      }
+    };
+
+    fetchApplicants();
+  }, [isNewConversationModalOpen, token]);
 
   // Handle sending message
   const handleSendMessage = async () => {
@@ -214,11 +265,11 @@ export default function MyMessagesContent() {
 
     setIsSendingMessage(true);
     try {
-      console.log("Sending message to:", selectedConversation.participantId);
+      console.log("Sending message to:", selectedConversation.id);
       console.log("Message content:", messageInput);
       
       const newMessage = await sendMessage(token, {
-        recipientId: selectedConversation.participantId,
+        conversationId: selectedConversation.id,
         content: messageInput,
       });
 
@@ -267,10 +318,13 @@ export default function MyMessagesContent() {
           
           const mappedConversations: Conversation[] = updatedConvs.map((conv) => ({
             id: conv._id,
-            participantId: conv.participantId,
+            participantId: conv.participantId ?? conv.participantInfo?._id ?? "",
             name: conv.participantInfo?.fullName || "Unknown",
             avatar: conv.participantInfo?.avatarUrl,
-            lastMessage: conv.lastMessage || "No messages yet",
+            lastMessage:
+              typeof conv.lastMessage === "string"
+                ? conv.lastMessage
+                : conv.lastMessage?.content || "No messages yet",
             lastMessageTime: conv.lastMessageTime
               ? new Date(conv.lastMessageTime)
               : new Date(),
@@ -373,7 +427,16 @@ export default function MyMessagesContent() {
           <main className="flex-1 flex flex-col overflow-hidden">
             {/* Header with Search */}
             <div className={cn("rounded-3xl p-4 mb-4", glass)}>
-              <h1 className="text-lg font-semibold mb-3">Tin nhắn</h1>
+              <div className="flex items-center justify-between mb-3">
+                <h1 className="text-lg font-semibold">Tin nhắn</h1>
+                <button
+                  onClick={() => setIsNewConversationModalOpen(true)}
+                  className="p-2 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 transition"
+                  title="Bắt đầu trò chuyện mới"
+                >
+                  <Plus size={20} className="text-emerald-400" />
+                </button>
+              </div>
 
               {/* Search */}
               <div className="relative">
@@ -403,10 +466,13 @@ export default function MyMessagesContent() {
                     )}
                   >
                     {conv.avatar && (
-                      <img
+                      <Image
                         src={conv.avatar}
                         alt={conv.name}
+                        width={32}
+                        height={32}
                         className="h-8 w-8 rounded-full object-cover"
+                        unoptimized
                       />
                     )}
                     {!conv.avatar && (
@@ -437,10 +503,13 @@ export default function MyMessagesContent() {
                 <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
                   <div className="flex items-center gap-3">
                     {selectedConversation.avatar && (
-                      <img
+                      <Image
                         src={selectedConversation.avatar}
                         alt={selectedConversation.name}
+                        width={48}
+                        height={48}
                         className="h-12 w-12 rounded-full object-cover"
+                        unoptimized
                       />
                     )}
                     {!selectedConversation.avatar && (
@@ -600,12 +669,142 @@ export default function MyMessagesContent() {
                 </div>
               </div>
             ) : (
-              <div className={cn("rounded-3xl p-5 flex items-center justify-center flex-1", glass)}>
-                <p className="text-white/40">Chọn cuộc trò chuyện để bắt đầu</p>
+              <div className={cn("rounded-3xl p-5 flex flex-col items-center justify-center flex-1", glass)}>
+                <div className="text-center space-y-4">
+                  <p className="text-white/60 text-lg">Chưa có cuộc trò chuyện nào</p>
+                  <button
+                    onClick={() => setIsNewConversationModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-sm font-semibold transition-all"
+                  >
+                    <Plus size={18} />
+                    Bắt đầu trò chuyện mới
+                  </button>
+                </div>
               </div>
             )}
           </main>
         </div>
+
+        {/* New Conversation Modal */}
+        {isNewConversationModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className={cn("rounded-2xl w-full max-w-md p-6", glass)}>
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Bắt đầu trò chuyện mới</h3>
+                <button
+                  onClick={() => {
+                    setIsNewConversationModalOpen(false);
+                    setNewConversationUserId("");
+                  }}
+                  className="p-1 hover:bg-white/10 rounded-full transition"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="space-y-4">
+                <p className="text-sm text-white/70">Chọn người nhận:</p>
+
+                {isLoadingApplicants ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="animate-spin text-white/40" size={24} />
+                  </div>
+                ) : approvedApplicants.length > 0 ? (
+                  <div className="max-h-64 overflow-y-auto space-y-2">
+                    {approvedApplicants.map((applicant) => {
+                      const applicantInfo = typeof applicant.userId === "string" 
+                        ? { _id: applicant.userId, fullName: applicant.userId }
+                        : applicant.userId || { _id: "", fullName: "Unknown" };
+                      
+                      return (
+                        <button
+                          key={applicant._id}
+                          onClick={() => {
+                            const userId = typeof applicant.userId === "string" 
+                              ? applicant.userId 
+                              : applicant.userId?._id || "";
+                            const newConv: Conversation = {
+                              id: `temp-${userId}`,
+                              participantId: userId,
+                              name: applicantInfo.fullName || "User",
+                              lastMessage: "Bắt đầu cuộc trò chuyện",
+                              lastMessageTime: new Date(),
+                              unread: 0,
+                              online: false,
+                              messages: [],
+                            };
+                            setSelectedConversation(newConv);
+                            setNewConversationUserId("");
+                            setIsNewConversationModalOpen(false);
+                          }}
+                          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 transition text-left"
+                        >
+                          <div className="h-10 w-10 rounded-full flex items-center justify-center text-xs font-semibold bg-gradient-to-br from-indigo-500 to-purple-600 shrink-0">
+                            {initials(applicantInfo.fullName || "U")}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold truncate">{applicantInfo.fullName || "Unknown User"}</p>
+                            <p className="text-xs text-white/50 truncate">Đã duyệt đơn</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center">
+                    <p className="text-white/40 text-sm">Chưa có người duyệt đơn</p>
+                  </div>
+                )}
+
+                {/* Manual input as fallback */}
+                <div className="pt-4 border-t border-white/10">
+                  <label className="text-sm text-white/70 mb-2 block">Hoặc nhập ID người nhận:</label>
+                  <input
+                    type="text"
+                    placeholder="Nhập ID người dùng..."
+                    value={newConversationUserId}
+                    onChange={(e) => setNewConversationUserId(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        if (newConversationUserId.trim()) {
+                          const newConv: Conversation = {
+                            id: `temp-${newConversationUserId}`,
+                            participantId: newConversationUserId,
+                            name: `User: ${newConversationUserId}`,
+                            lastMessage: "Bắt đầu cuộc trò chuyện",
+                            lastMessageTime: new Date(),
+                            unread: 0,
+                            online: false,
+                            messages: [],
+                          };
+                          setSelectedConversation(newConv);
+                          setNewConversationUserId("");
+                          setIsNewConversationModalOpen(false);
+                        }
+                      }
+                    }}
+                    className="w-full px-4 py-2 rounded-lg bg-white/[0.06] border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-emerald-500/50"
+                  />
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setIsNewConversationModalOpen(false);
+                      setNewConversationUserId("");
+                    }}
+                    className="flex-1 px-4 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-sm font-semibold transition-colors"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

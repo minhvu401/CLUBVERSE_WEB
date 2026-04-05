@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import Header from "@/app/layout/header/page";
 import Footer from "@/app/layout/footer/page";
@@ -71,13 +71,26 @@ export default function PostDetailPage() {
     fetchPost();
   }, [token, postId]);
 
+  // Helper to determine if user liked the post
+  const checkIsLiked = (p: PostItem) => {
+    if (typeof p.isLiked === 'boolean') return p.isLiked;
+    const uid = user?._id || user?.id;
+    if (p.likedBy && Array.isArray(p.likedBy)) {
+      return p.likedBy.some(l => l.userId === uid);
+    }
+    if (p.likes && Array.isArray(p.likes)) {
+      return p.likes.includes(uid);
+    }
+    return false;
+  };
+
   const handleLike = async () => {
     if (!token || !post) return;
 
-    const isLiked = post.likes?.includes(user?._id);
+    const isCurrentlyLiked = checkIsLiked(post);
 
     try {
-      if (isLiked) {
+      if (isCurrentlyLiked) {
         await unlikePost(token, post._id);
       } else {
         await likePost(token, post._id);
@@ -85,13 +98,11 @@ export default function PostDetailPage() {
 
       setPost({
         ...post,
-        likes: isLiked
-          ? post.likes?.filter((id) => id !== user?._id)
-          : [...(post.likes || []), user?._id],
-        likeCount: (post.likeCount || 0) + (isLiked ? -1 : 1),
+        isLiked: !isCurrentlyLiked,
+        likeCount: (post.likeCount || 0) + (isCurrentlyLiked ? -1 : 1),
       });
     } catch (err: any) {
-      console.error("Error toggling like:", err);
+      alert(err.message || "Có lỗi xảy ra khi thích bài viết");
     }
   };
 
@@ -165,7 +176,7 @@ export default function PostDetailPage() {
     );
   }
 
-  const isLiked = post.likes?.includes(user?._id);
+  const isCurrentlyLiked = checkIsLiked(post);
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden text-white">
@@ -208,13 +219,35 @@ export default function PostDetailPage() {
                   </div>
                   <div className="inline-flex items-center gap-2">
                     <User className="h-4 w-4" />
-                    Club Member
+                    Thành viên CLB
                   </div>
                 </div>
               </div>
 
               {/* Action buttons */}
               <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                     try {
+                        const { createConversation } = await import("@/app/services/api/messages");
+                        const { useChatStore } = await import("@/app/store/chatStore");
+                        // We use the club ID safely or fallback
+                        const targetId = typeof post.clubId === "object" ? post.clubId._id : post.clubId;
+                        if (!targetId) return alert("Không tìm thấy thông tin để nhắn tin");
+                        const conv = await createConversation(token, {
+                           participantIds: [user._id, targetId],
+                        });
+                        useChatStore.getState().openChat(conv._id);
+                     } catch(err: any) {
+                        alert("Không thể mở hội thoại: " + err.message);
+                     }
+                  }}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-violet-400/20 bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-500 transition shadow-lg shadow-violet-500/20"
+                  title="Nhắn tin"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span className="hidden sm:inline">Nhắn tin</span>
+                </button>
                 <button
                   onClick={() => router.push(`/club/forum/${post._id}/edit`)}
                   className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-white/80 hover:bg-white/[0.10] transition"
@@ -268,16 +301,29 @@ export default function PostDetailPage() {
 
             {/* Images (if any) */}
             {post.images && post.images.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <div
+                className={cn(
+                  "grid gap-4 mb-8",
+                  post.images.length === 1
+                    ? "grid-cols-1" // Full width when 1 image
+                    : "grid-cols-1 md:grid-cols-2" // 2 columns when multiple images
+                )}
+              >
                 {post.images.map((img, idx) => (
                   <div
                     key={idx}
                     className="rounded-2xl overflow-hidden border border-white/10"
                   >
-                    <img
+                    <Image
                       src={img}
+                      unoptimized={img.includes("127.0.0.1")}
                       alt={`Image ${idx + 1}`}
-                      className="w-full h-auto"
+                      width={1200}
+                      height={800}
+                      className={cn(
+                        "w-full h-auto object-cover",
+                        post.images?.length === 1 ? "max-h-[600px]" : "max-h-[300px]"
+                      )}
                     />
                   </div>
                 ))}
@@ -294,10 +340,10 @@ export default function PostDetailPage() {
                   <Heart
                     className={cn(
                       "h-5 w-5 transition",
-                      isLiked && "fill-red-500 text-red-500"
+                      isCurrentlyLiked && "fill-red-500 text-red-500"
                     )}
                   />
-                  <span className="font-semibold">{post.likeCount || 0}</span>
+                  <span className="font-semibold">{Math.max(post.likeCount || 0, post.likes?.length || 0, post.likedBy?.length || 0) || (isCurrentlyLiked ? 1 : 0)}</span>
                   <span className="text-sm">Lượt thích</span>
                 </button>
 

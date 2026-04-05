@@ -1,3 +1,4 @@
+import { parseApiError } from "@/utils/apiError";
 export const AUTH_BASE_URL = "https://clubverse.onrender.com";
 
 export type ApiStatus =
@@ -145,9 +146,7 @@ export async function getMyApplications(params: {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    const msg =
-      data?.message || `Không lấy được danh sách đơn (HTTP ${res.status})`;
-    throw new Error(msg);
+    throw new Error(parseApiError(data, `Không lấy được danh sách đơn (HTTP ${res.status})`));
   }
 
   // backend có thể trả [] hoặc { applications: [] } hoặc { data: [] }
@@ -186,8 +185,7 @@ export async function createApplication(params: {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    const msg = data?.message || `Không thể đăng ký (HTTP ${res.status})`;
-    throw new Error(msg);
+    throw new Error(parseApiError(data, `Không thể đăng ký (HTTP ${res.status})`));
   }
 
   return data;
@@ -220,9 +218,7 @@ export async function getClubApplications(params: {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    const msg =
-      data?.message || `Không lấy được danh sách đơn (HTTP ${res.status})`;
-    throw new Error(msg);
+    throw new Error(parseApiError(data, `Không lấy được danh sách đơn (HTTP ${res.status})`));
   }
 
   const list = Array.isArray(data)
@@ -258,9 +254,7 @@ export async function getApplicationById(params: {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    const msg =
-      data?.message || `Không lấy được thông tin đơn (HTTP ${res.status})`;
-    throw new Error(msg);
+    throw new Error(parseApiError(data, `Không lấy được thông tin đơn (HTTP ${res.status})`));
   }
 
   return data as MyApplication;
@@ -293,8 +287,7 @@ export async function approveApplication(params: {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    const msg = data?.message || `Không thể duyệt đơn (HTTP ${res.status})`;
-    throw new Error(msg);
+    throw new Error(parseApiError(data, `Không thể duyệt đơn (HTTP ${res.status})`));
   }
 
   return data;
@@ -324,8 +317,7 @@ export async function rejectApplication(params: {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    const msg = data?.message || `Không thể từ chối đơn (HTTP ${res.status})`;
-    throw new Error(msg);
+    throw new Error(parseApiError(data, `Không thể từ chối đơn (HTTP ${res.status})`));
   }
 
   return data;
@@ -359,9 +351,7 @@ export async function finalDecision(params: {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    const msg =
-      data?.message || `Không thể thực hiện quyết định (HTTP ${res.status})`;
-    throw new Error(msg);
+    throw new Error(parseApiError(data, `Không thể thực hiện quyết định (HTTP ${res.status})`));
   }
 
   return data;
@@ -388,8 +378,7 @@ export async function cancelApplication(params: {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    const msg = data?.message || `Không thể hủy đơn (HTTP ${res.status})`;
-    throw new Error(msg);
+    throw new Error(parseApiError(data, `Không thể hủy đơn (HTTP ${res.status})`));
   }
 
   return data;

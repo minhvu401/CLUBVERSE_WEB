@@ -87,7 +87,7 @@ export default function LoginPage() {
                         bg-gradient-to-r from-cyan-300 via-purple-300 to-pink-300
                         bg-clip-text text-transparent
                         animate-[fadeUp_0.9s_ease-out]">
-            Connect the right clubs. Build your universe.
+            Kết nối đúng câu lạc bộ. Kiến tạo vũ trụ của bạn.
           </p>
 
           {/* subtle glow */}
@@ -126,7 +126,7 @@ export default function LoginPage() {
               {/* PASSWORD */}
               <div>
                 <label className="block text-sm font-medium mb-1.5">
-                  Password
+                  Mật khẩu
                 </label>
                 <div className="relative">
                   <input
@@ -154,10 +154,10 @@ export default function LoginPage() {
               <div className="flex items-center justify-between text-sm text-zinc-300">
                 <label className="flex items-center gap-2">
                   <input type="checkbox" className="h-4 w-4" />
-                  Remember me
+                  Ghi nhớ đăng nhập
                 </label>
-                <Link href="/forgot-password" className="text-violet-300">
-                  Forgot?
+                <Link href="/forgot-password" className="text-violet-300 hover:text-violet-200">
+                  Quên mật khẩu?
                 </Link>
               </div>
 

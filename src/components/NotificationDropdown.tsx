@@ -48,23 +48,31 @@ export default function NotificationDropdown({
 
   // Lấy số lượng thông báo chưa đọc
   const fetchUnreadCount = useCallback(async () => {
+    if (!token || !token.trim()) {
+      console.warn("Token is not available");
+      return;
+    }
     try {
       const data = await getUnreadCount(token);
       setUnreadCount(data.count || 0);
     } catch (error) {
-      console.error("Error fetching unread count:", error);
+      console.warn("Lỗi tải đếm số thông báo:", error);
     }
   }, [token]);
 
   // Lấy danh sách thông báo
   const fetchNotifications = useCallback(async () => {
+    if (!token || !token.trim()) {
+      console.warn("Token is not available");
+      return;
+    }
     setLoading(true);
     try {
       const data = await getNotifications(token, { page: 1, limit: 10 });
       setNotifications(data.notifications || []);
       setUnreadCount(data.unreadCount || 0);
     } catch (error) {
-      console.error("Error fetching notifications:", error);
+      console.warn("Lỗi tải thông báo:", error);
     } finally {
       setLoading(false);
     }

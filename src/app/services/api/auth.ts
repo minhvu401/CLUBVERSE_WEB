@@ -1,5 +1,6 @@
 import { MyApplication } from "./applications";
 import { PostItem } from "./post";
+import { parseApiError } from "@/utils/apiError";
 
 export const AUTH_BASE_URL = "https://clubverse.onrender.com";
 
@@ -60,7 +61,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(text || `Request failed with status ${res.status}`);
+    throw new Error(parseApiError(text, `Request failed with status ${res.status}`));
   }
 
   try {
@@ -159,7 +160,7 @@ export const updateStudentProfile = (
   });
 };
 
-async function uploadAvatar(token: string, file: File): Promise<string> {
+export async function uploadAvatar(token: string, file: File): Promise<string> {
   const fd = new FormData();
   fd.append("file", file);
 
@@ -172,7 +173,7 @@ async function uploadAvatar(token: string, file: File): Promise<string> {
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data?.message || "Upload avatar thất bại");
+  if (!res.ok) throw new Error(parseApiError(data, "Upload avatar thất bại"));
 
   return data.url as string;
 }
@@ -183,6 +184,9 @@ export type ClubItem = {
   category?: string;
   description?: string;
   clubJoined?: Array<{ _id?: string } | string>;
+  members?: Array<{ _id?: string } | string>;
+  memberCount?: number;
+  totalMembers?: number;
   rating?: number;
 };
 
@@ -227,11 +231,12 @@ export const applyToClub = async (
 
   if (!res.ok) {
     // cố lấy message backend trả về
-    const msg =
-      data?.message ||
+    const msg = parseApiError(
+      data,
       (res.status === 400
         ? "Đã đăng ký hoặc đã là thành viên"
-        : `Gửi đơn thất bại (HTTP ${res.status})`);
+        : `Gửi đơn thất bại (HTTP ${res.status})`)
+    );
     throw new Error(msg);
   }
 

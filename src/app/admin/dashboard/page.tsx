@@ -116,10 +116,10 @@ export default function AdminDashboardPage() {
           <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-xs uppercase tracking-widest text-white/50">
-                Admin Control Center
+                Trung tâm điều khiển Admin
               </p>
               <h1 className="mt-2 text-4xl font-bold tracking-tight">
-                {user?.fullName || "Administrator"}
+                {user?.fullName || "Quản trị viên"}
               </h1>
               <p className="mt-4 max-w-2xl text-sm text-white/70 leading-relaxed">
                 Trung tâm điều phối hệ thống ClubVerse – giám sát hoạt động,
@@ -132,7 +132,7 @@ export default function AdminDashboardPage() {
                 label="Ngày"
                 value={new Date().toLocaleDateString("vi-VN")}
               />
-              <InfoRow label="Quyền hạn" value="System Administrator" />
+              <InfoRow label="Quyền hạn" value="Quản trị viên hệ thống" />
             </div>
           </div>
 
@@ -199,7 +199,7 @@ function ActionCard({ title, desc, href, icon: Icon, accent, badge }: any) {
       <div className="relative z-10 flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs font-medium text-white/60">
           <ShieldCheck className="h-4 w-4" />
-          Admin Module
+          Phân hệ Admin
         </div>
         {badge && (
           <span className="rounded-full bg-rose-500/20 px-3 py-1 text-[0.65rem] font-semibold text-rose-200">
