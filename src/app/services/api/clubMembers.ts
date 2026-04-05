@@ -1,3 +1,4 @@
+import { parseApiError } from "@/utils/apiError";
 import { AUTH_BASE_URL } from "./auth";
 
 // ===== CLUB MEMBERS INTERFACES =====
@@ -113,7 +114,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(text || `Request failed with status ${res.status}`);
+    throw new Error(parseApiError(text, `Request failed with status ${res.status}`));
   }
 
   try {
@@ -232,7 +233,7 @@ export const exportMemberList = async (
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(text || `Export failed with status ${res.status}`);
+    throw new Error(parseApiError(text, `Export failed with status ${res.status}`));
   }
 
   return res.blob();

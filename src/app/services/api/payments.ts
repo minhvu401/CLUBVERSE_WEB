@@ -1,3 +1,4 @@
+import { parseApiError } from "@/utils/apiError";
 export const AUTH_BASE_URL = "https://clubverse.onrender.com";
 
 export type CreatePaymentResponse = {
@@ -114,8 +115,8 @@ export async function checkPaymentStatus(
   );
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Không kiểm tra được trạng thái thanh toán");
+    const text = await res.text().catch(() => "");
+    throw new Error(parseApiError(text, "Không kiểm tra được trạng thái thanh toán"));
   }
 
   return res.json();
@@ -132,8 +133,8 @@ export async function getPaymentHistory(
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Không tải được lịch sử thanh toán");
+    const text = await res.text().catch(() => "");
+    throw new Error(parseApiError(text, "Không tải được lịch sử thanh toán"));
   }
 
   const data = await res.json();
@@ -157,8 +158,8 @@ export async function getPaymentDetail(
   );
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Không tải được chi tiết thanh toán");
+    const text = await res.text().catch(() => "");
+    throw new Error(parseApiError(text, "Không tải được chi tiết thanh toán"));
   }
 
   return res.json();
@@ -178,8 +179,8 @@ export async function recommendClubs(
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Không lấy được đề xuất câu lạc bộ");
+    const text = await res.text().catch(() => "");
+    throw new Error(parseApiError(text, "Không lấy được đề xuất câu lạc bộ"));
   }
 
   const data = await res.json();
@@ -199,8 +200,8 @@ export async function checkPaid(
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Không kiểm tra được trạng thái thanh toán");
+    const text = await res.text().catch(() => "");
+    throw new Error(parseApiError(text, "Không kiểm tra được trạng thái thanh toán"));
   }
 
   return res.json();

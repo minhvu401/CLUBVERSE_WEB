@@ -1,3 +1,4 @@
+import { parseApiError } from "@/utils/apiError";
 export const AUTH_BASE_URL = "https://clubverse.onrender.com";
 
 /* =======================
@@ -95,7 +96,7 @@ async function requestJson<T>(
 
   if (!res.ok) {
     const message = (data as { message?: string } | undefined)?.message;
-    throw new Error(message || `Request failed with status ${res.status}`);
+    throw new Error(parseApiError(data, `Request failed with status ${res.status}`));
   }
 
   return data;
@@ -123,7 +124,7 @@ export function createConversation(
 
 /** 🔍 Get a specific conversation */
 export function getConversationById(token: string, conversationId: string): Promise<ConversationData> {
-  return requestJson<{ data: ConversationData }>(token, `/messages/conversations/${conversationId}`, { method: "GET" }).then(res => res.data);
+  return requestJson<{ data?: ConversationData; conversation?: ConversationData }>(token, `/messages/conversations/${conversationId}`, { method: "GET" }).then(res => (res.data || res.conversation || res) as ConversationData);
 }
 
 /** ✏️ Update conversation info (name, description) */
@@ -196,6 +197,8 @@ export function markConversationAsReadAll(token: string, conversationId: string)
   return requestJson<{ message?: string }>(token, `/messages/conversations/${conversationId}/read-all`, { method: "PATCH" });
 }
 
+export const markConversationAsRead = markConversationAsReadAll;
+
 /** 🔎 Search messages in a conversation */
 export function searchMessages(
   token: string, 
@@ -216,7 +219,7 @@ export function getPinnedMessages(token: string, conversationId: string): Promis
 
 /** 📩 Get messages in a conversation */
 export function getMessages(token: string, conversationId: string): Promise<MessageData[]> {
-  return requestJson<GetMessagesResponse>(token, `/messages/conversations/${conversationId}/messages`, { method: "GET" }).then((res) => res.data ?? []);
+  return requestJson<GetMessagesResponse | MessageData[]>(token, `/messages/conversations/${conversationId}/messages`, { method: "GET" }).then((res) => Array.isArray(res) ? res : (res.data ?? []));
 }
 
 /** ✉️ Send a message (or reply) */

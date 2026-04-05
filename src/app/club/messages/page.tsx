@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/providers/AuthProviders";
 import Header from "@/app/layout/header/page";
-import { cn } from "@/lib/utils"; // Fallback to raw if not exists
 import {
   MessageSquare,
   Search,
@@ -16,7 +16,6 @@ import {
   Paperclip,
   Smile,
   Mic,
-  Users,
   BellOff,
   UserPlus,
   Trash2,
@@ -28,6 +27,7 @@ import {
   getConversations,
   getMessages,
   sendMessage,
+  deleteMessage,
   markConversationAsReadAll,
   muteConversation,
   unmuteConversation,
@@ -70,8 +70,8 @@ export default function ClubMessagesPage() {
         }
         const deduped = Array.from(seen.values());
         setConversations(deduped);
-        if (deduped.length > 0 && !activeConvId) {
-          setActiveConvId(deduped[0]._id);
+        if (deduped.length > 0) {
+          setActiveConvId((prev) => prev || deduped[0]._id);
         }
       } catch (err) {
         console.warn("Khởi tạo cuộc trò chuyện thất bại (Server có thể đang ngủ):", err);
@@ -82,7 +82,7 @@ export default function ClubMessagesPage() {
     // Poll conversations list to keep sidebar up to date  
     const convInterval = setInterval(fetchConvs, 8000);
     return () => clearInterval(convInterval);
-  }, [loading, token]);
+  }, [loading, token, router]);
 
   useEffect(() => {
     if (!token || !activeConvId) return;
@@ -137,6 +137,16 @@ export default function ClubMessagesPage() {
     } catch (err) {
       console.error("Send error", err);
       setSendError("Không thể gửi tin nhắn. Vui lòng thử lại.");
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!token) return;
+    try {
+      await deleteMessage(token, messageId);
+      setMessages((prev) => prev.filter((m) => m?._id !== messageId));
+    } catch (err) {
+      console.warn("Delete message error:", err);
     }
   };
 
@@ -232,7 +242,14 @@ export default function ClubMessagesPage() {
                   className={`w-full text-left p-4 flex items-center gap-3 transition hover:bg-white/5 border-l-4 ${activeConvId === conv._id ? "bg-white/10 border-violet-500" : "border-transparent"}`}
                 >
                   <div className="relative">
-                    <img src={getAvatar(conv)} alt="avatar" className="w-12 h-12 rounded-full object-cover bg-white/10" />
+                    <Image
+                      src={getAvatar(conv)}
+                      alt="avatar"
+                      width={48}
+                      height={48}
+                      className="w-12 h-12 rounded-full object-cover bg-white/10"
+                      unoptimized
+                    />
                     {conv.unreadCount ? (
                       <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-slate-900">
                         {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
@@ -268,11 +285,19 @@ export default function ClubMessagesPage() {
                   <button className="lg:hidden p-2 -ml-2 rounded-full hover:bg-white/10" onClick={() => setActiveConvId(null)}>
                     <ChevronLeft className="h-5 w-5" />
                   </button>
-                  <img src={getAvatar(activeConv)} alt="avatar" className="w-10 h-10 rounded-full object-cover bg-white/10" />
+                  <Image
+                    src={getAvatar(activeConv)}
+                    alt="avatar"
+                    width={40}
+                    height={40}
+                    className="w-10 h-10 rounded-full object-cover bg-white/10"
+                    unoptimized
+                  />
                   <div>
                     <h2 className="font-semibold text-sm lg:text-base">{getConvName(activeConv)}</h2>
                     <p className="text-[11px] text-emerald-400 font-medium tracking-wide">
-                      {activeConv.isGroup ? `${activeConv.participants?.length || 0} thành viên` : "Đang hoạt động"}
+                      {activeConv.isGroup ? "Nhóm" : "Trực tiếp"}
+                      {/* {activeConv.isGroup ? `${activeConv.participants?.length || 0} thành viên` : "Đang hoạt động"} */}
                     </p>
                   </div>
                 </div>
@@ -309,20 +334,30 @@ export default function ClubMessagesPage() {
                      return (
                        <div key={msg._id || index} className={`flex gap-3 max-w-[85%] ${isMe ? "ml-auto flex-row-reverse" : "mr-auto"}`}>
                           {showAvatar && (
-                            <img 
-                              src={senderAva ? (senderAva.startsWith("http") ? senderAva : `${AUTH_BASE_URL}${senderAva}`) : `https://api.dicebear.com/7.x/avataaars/svg?seed=${senderName}`} 
-                              alt="ava" 
+                            <Image
+                              src={senderAva ? (senderAva.startsWith("http") ? senderAva : `${AUTH_BASE_URL}${senderAva}`) : `https://api.dicebear.com/7.x/avataaars/svg?seed=${senderName}`}
+                              alt="ava"
+                              width={32}
+                              height={32}
                               className="w-8 h-8 rounded-full shrink-0 self-end mb-1 bg-white/10"
+                              unoptimized
                             />
                           )}
                           <div className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
                             {showAvatar && <span className="text-[10px] text-white/40 ml-1 mb-1">{senderName}</span>}
-                            <div className={`p-3 rounded-2xl text-sm leading-relaxed shadow-sm
-                              ${isMe 
-                                ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white rounded-br-sm" 
-                                : "bg-white/10 border border-white/5 text-white/90 rounded-bl-sm"}`
-                            }>
-                              {msg.content}
+                            <div className="flex items-center gap-2">
+                              <div className={`p-3 rounded-2xl text-sm leading-relaxed shadow-sm
+                                ${isMe 
+                                  ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white rounded-br-sm" 
+                                  : "bg-white/10 border border-white/5 text-white/90 rounded-bl-sm"}`
+                              }>
+                                {msg.content}
+                              </div>
+                              {isMe && msg._id && (
+                                <button title="Xóa tin nhắn" onClick={() => handleDeleteMessage(msg._id)} className="opacity-0 group-hover:opacity-100 transition p-1.5 hover:bg-white/10 rounded-full text-white/40 hover:text-red-400">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </div>
                             <span className="text-[10px] text-white/30 mt-1 mx-1">
                               {new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -381,7 +416,14 @@ export default function ClubMessagesPage() {
         {activeConv && isInfoOpen && (
           <aside className={`w-[280px] hidden xl:flex flex-col rounded-3xl ${glass} overflow-hidden shrink-0`}>
             <div className="p-6 flex flex-col items-center border-b border-white/10">
-              <img src={getAvatar(activeConv)} alt="avatar" className="w-24 h-24 rounded-full object-cover bg-white/10 ring-4 ring-white/5 mb-4 shadow-xl" />
+              <Image
+                src={getAvatar(activeConv)}
+                alt="avatar"
+                width={96}
+                height={96}
+                className="w-24 h-24 rounded-full object-cover bg-white/10 ring-4 ring-white/5 mb-4 shadow-xl"
+                unoptimized
+              />
               <h2 className="font-bold text-lg text-center leading-tight mb-1">{getConvName(activeConv)}</h2>
               <p className="text-xs text-white/50">{activeConv.isGroup ? "Hội thoại nhóm CLB" : "Trò chuyện cá nhân"}</p>
               
@@ -409,7 +451,14 @@ export default function ClubMessagesPage() {
                    <div className="space-y-3">
                       {activeConv.participants?.map(p => (
                         <div key={p._id} className="flex items-center gap-3">
-                           <img src={p.avatarUrl ? (p.avatarUrl.startsWith("http") ? p.avatarUrl : `${AUTH_BASE_URL}${p.avatarUrl}`) : `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.fullName}`} className="w-8 h-8 rounded-full bg-white/10" alt=""/>
+                           <Image
+                             src={p.avatarUrl ? (p.avatarUrl.startsWith("http") ? p.avatarUrl : `${AUTH_BASE_URL}${p.avatarUrl}`) : `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.fullName}`}
+                             alt=""
+                             width={32}
+                             height={32}
+                             className="w-8 h-8 rounded-full bg-white/10"
+                             unoptimized
+                           />
                            <div className="flex-1 min-w-0">
                              <p className="text-sm font-medium truncate text-white/90">{p.fullName}</p>
                              <p className="text-[10px] text-white/40">{p.isActive ? "Đang hoạt động" : "Offline"}</p>

@@ -1,3 +1,4 @@
+import { parseApiError } from "@/utils/apiError";
 import { AUTH_BASE_URL } from "./auth";
 
 export type NotificationType =
@@ -64,7 +65,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(text || `Request failed with status ${res.status}`);
+    throw new Error(parseApiError(text, `Request failed with status ${res.status}`));
     }
 
     try {

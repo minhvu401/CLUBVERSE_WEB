@@ -10,7 +10,7 @@ import {
   getMessages,
   sendMessage,
   sendMessageToClub,
-  markConversationAsRead,
+  markConversationAsReadAll,
   getMessageById,
   updateMessage,
   deleteMessage,
@@ -137,10 +137,13 @@ function MyMessagesContent() {
 
         const mappedConversations: Conversation[] = data.map((conv) => ({
           id: conv._id,
-          participantId: conv.participantId,
+          participantId: conv.participantId ?? conv.participantInfo?._id ?? "",
           name: conv.participantInfo?.fullName || "Unknown",
           avatar: conv.participantInfo?.avatarUrl,
-          lastMessage: conv.lastMessage || "No messages yet",
+          lastMessage:
+            typeof conv.lastMessage === "string"
+              ? conv.lastMessage
+              : conv.lastMessage?.content || "No messages yet",
           lastMessageTime: conv.lastMessageTime
             ? new Date(conv.lastMessageTime)
             : new Date(),
@@ -197,7 +200,7 @@ function MyMessagesContent() {
         });
 
         if (token && selectedConversation.unread > 0) {
-          await markConversationAsRead(token, selectedConversation.id);
+          await markConversationAsReadAll(token, selectedConversation.id);
           setConversations((prev) =>
             prev.map((conv) =>
               conv.id === selectedConversation.id
@@ -299,10 +302,13 @@ function MyMessagesContent() {
           
           const mappedConversations: Conversation[] = updatedConvs.map((conv) => ({
             id: conv._id,
-            participantId: conv.participantId,
+            participantId: conv.participantId ?? conv.participantInfo?._id ?? "",
             name: conv.participantInfo?.fullName || "Unknown",
             avatar: conv.participantInfo?.avatarUrl,
-            lastMessage: conv.lastMessage || "No messages yet",
+            lastMessage:
+              typeof conv.lastMessage === "string"
+                ? conv.lastMessage
+                : conv.lastMessage?.content || "No messages yet",
             lastMessageTime: conv.lastMessageTime
               ? new Date(conv.lastMessageTime)
               : new Date(),

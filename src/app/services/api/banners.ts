@@ -1,3 +1,4 @@
+import { parseApiError } from "@/utils/apiError";
 export type BannerItem = {
   _id: string;
   title: string;

@@ -121,18 +121,46 @@ export default function HomeDashboardPage() {
         setClubs(recommended);
       } catch (error) {
         if (!cancelled) {
-          setRecommendError(
-            error instanceof Error
-              ? error.message
-              : "Không lấy được đề xuất câu lạc bộ"
-          );
+          let errorMsg = "Không lấy được đề xuất câu lạc bộ";
+          if (error instanceof Error) {
+            if (error.message.includes("500") || error.message.includes("Internal server error")) {
+              errorMsg = "Hệ thống AI gợi ý hiện đang quá tải hoặc gặp sự cố. Xin vui lòng thử lại sau.";
+            } else {
+              try {
+                const parsed = JSON.parse(error.message);
+                errorMsg = parsed.message || errorMsg;
+              } catch {
+                errorMsg = error.message;
+              }
+            }
+          }
+          setRecommendError(errorMsg);
         }
       } finally {
         if (!cancelled) setRecommendLoading(false);
       }
     };
 
+    const loadEvents = async () => {
+      setEventsLoading(true);
+      try {
+        const eventsData = await getAllEvents(token);
+        if (!cancelled) {
+          // Sort by time and get top 4
+          const sorted = eventsData
+            .filter((e) => new Date(e.time).getTime() > Date.now())
+            .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+          setEvents(sorted.slice(0, 4));
+        }
+      } catch (error) {
+        if (!cancelled) setEvents([]);
+      } finally {
+        if (!cancelled) setEventsLoading(false);
+      }
+    };
+
     loadRecommendedClubs();
+    loadEvents();
 
     return () => {
       cancelled = true;
@@ -266,7 +294,7 @@ export default function HomeDashboardPage() {
                   </p>
                   <div className="mt-3 text-[0.68rem] text-white/55">
                     {club.score != null ? (
-                      <span>Match: {club.score}%</span>
+                      <span>Độ phù hợp: {club.score}%</span>
                     ) : (
                       <>
                         <Users size={14} className="inline mr-1" />
@@ -295,6 +323,8 @@ export default function HomeDashboardPage() {
           <div className="grid gap-4 md:grid-cols-2">
             {eventsLoading ? (
               <div className="text-sm text-white/60">Đang tải sự kiện...</div>
+            ) : events.length === 0 ? (
+              <div className="text-sm text-white/60">Chưa có sự kiện nào sắp tới.</div>
             ) : (
               events.map((e: any) => (
                 <motion.article

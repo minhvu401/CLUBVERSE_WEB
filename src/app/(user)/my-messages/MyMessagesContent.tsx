@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import AppSidebar from "@/components/AppSidebar";
 import { Search, Send, MoreVertical, Paperclip, Smile, Loader2, Plus, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -8,16 +9,9 @@ import {
   getConversations,
   getMessages,
   sendMessage,
-  sendMessageToClub,
   markConversationAsRead,
-  getMessageById,
-  updateMessage,
-  deleteMessage,
-  markMessageAsRead,
-  type ConversationData,
-  type MessageData,
 } from "@/app/services/api/messages";
-import { getMyClubs, type MyClubItem } from "@/app/services/api/users";
+import { getMyClubs } from "@/app/services/api/users";
 import { getClubApplications, type MyApplication } from "@/app/services/api/applications";
 import { useAuth } from "@/app/providers/AuthProviders";
 
@@ -77,7 +71,6 @@ export default function MyMessagesContent() {
   const { loading, user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messageInput, setMessageInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -86,7 +79,6 @@ export default function MyMessagesContent() {
   const [token, setToken] = useState<string | null>(null);
   const [isNewConversationModalOpen, setIsNewConversationModalOpen] = useState(false);
   const [newConversationUserId, setNewConversationUserId] = useState("");
-  const [myClubs, setMyClubs] = useState<MyClubItem[]>([]);
   const [approvedApplicants, setApprovedApplicants] = useState<MyApplication[]>([]);
   const [isLoadingApplicants, setIsLoadingApplicants] = useState(false);
 
@@ -141,10 +133,13 @@ export default function MyMessagesContent() {
         // Map API data to UI format
         const mappedConversations: Conversation[] = data.map((conv) => ({
           id: conv._id,
-          participantId: conv.participantId,
+          participantId: conv.participantId ?? conv.participantInfo?._id ?? "",
           name: conv.participantInfo?.fullName || "Unknown",
           avatar: conv.participantInfo?.avatarUrl,
-          lastMessage: conv.lastMessage || "No messages yet",
+          lastMessage:
+            typeof conv.lastMessage === "string"
+              ? conv.lastMessage
+              : conv.lastMessage?.content || "No messages yet",
           lastMessageTime: conv.lastMessageTime
             ? new Date(conv.lastMessageTime)
             : new Date(),
@@ -160,7 +155,7 @@ export default function MyMessagesContent() {
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Failed to fetch conversations";
-        setError(message);
+        console.error(message);
       } finally {
         setIsLoading(false);
       }
@@ -174,16 +169,20 @@ export default function MyMessagesContent() {
   // Fetch messages when conversation is selected
   useEffect(() => {
     const fetchMessages = async () => {
-      if (!selectedConversation || !token) return;
+      const selectedConversationId = selectedConversation?.id;
+      const selectedConversationUnread = selectedConversation?.unread ?? 0;
+      const selectedConversationName = selectedConversation?.name;
+
+      if (!selectedConversationId || !token) return;
 
       setMessagesLoading(true);
       try {
         // Skip fetching for temp conversations
-        if (selectedConversation.id.startsWith("temp-")) {
+        if (selectedConversationId.startsWith("temp-")) {
           setMessagesLoading(false);
           return;
         }
-        const messagesData = await getMessages(token, selectedConversation.id);
+        const messagesData = await getMessages(token, selectedConversationId);
 
         // Map API messages to UI format
         const mappedMessages: Message[] = messagesData.map((msg) => ({
@@ -191,7 +190,7 @@ export default function MyMessagesContent() {
           content: msg.content,
           sender: msg.senderId === user?._id ? "user" : "other",
           timestamp: new Date(msg.createdAt),
-          senderName: selectedConversation.name,
+          senderName: selectedConversationName,
         }));
 
         // Update the selected conversation with messages
@@ -204,12 +203,12 @@ export default function MyMessagesContent() {
         });
 
         // Mark conversation as read
-        if (token && selectedConversation.unread > 0) {
-          await markConversationAsRead(token, selectedConversation.id);
+        if (token && selectedConversationUnread > 0) {
+          await markConversationAsRead(token, selectedConversationId);
           // Update unread count
           setConversations((prev) =>
             prev.map((conv) =>
-              conv.id === selectedConversation.id
+              conv.id === selectedConversationId
                 ? { ...conv, unread: 0 }
                 : conv
             )
@@ -223,7 +222,7 @@ export default function MyMessagesContent() {
     };
 
     fetchMessages();
-  }, [selectedConversation?.id, token, user?._id]);
+  }, [selectedConversation?.id, selectedConversation?.unread, selectedConversation?.name, token, user?._id]);
 
   // Fetch user's clubs and approved applicants when modal opens
   useEffect(() => {
@@ -234,7 +233,6 @@ export default function MyMessagesContent() {
       try {
         // Get user's clubs
         const clubs = await getMyClubs(token, "active");
-        setMyClubs(clubs);
 
         // Get approved applicants from all user's clubs
         const allApplicants: MyApplication[] = [];
@@ -320,10 +318,13 @@ export default function MyMessagesContent() {
           
           const mappedConversations: Conversation[] = updatedConvs.map((conv) => ({
             id: conv._id,
-            participantId: conv.participantId,
+            participantId: conv.participantId ?? conv.participantInfo?._id ?? "",
             name: conv.participantInfo?.fullName || "Unknown",
             avatar: conv.participantInfo?.avatarUrl,
-            lastMessage: conv.lastMessage || "No messages yet",
+            lastMessage:
+              typeof conv.lastMessage === "string"
+                ? conv.lastMessage
+                : conv.lastMessage?.content || "No messages yet",
             lastMessageTime: conv.lastMessageTime
               ? new Date(conv.lastMessageTime)
               : new Date(),
@@ -353,29 +354,6 @@ export default function MyMessagesContent() {
     } finally {
       setIsSendingMessage(false);
     }
-  };
-
-  // Handle starting new conversation
-  const handleStartNewConversation = () => {
-    if (!newConversationUserId.trim()) {
-      alert("Vui lòng nhập ID người nhận");
-      return;
-    }
-
-    const newConv: Conversation = {
-      id: `temp-${newConversationUserId}`,
-      participantId: newConversationUserId,
-      name: `User: ${newConversationUserId}`,
-      lastMessage: "Bắt đầu cuộc trò chuyện",
-      lastMessageTime: new Date(),
-      unread: 0,
-      online: false,
-      messages: [],
-    };
-
-    setSelectedConversation(newConv);
-    setNewConversationUserId("");
-    setIsNewConversationModalOpen(false);
   };
 
   if (loading || isLoading) {
@@ -488,10 +466,13 @@ export default function MyMessagesContent() {
                     )}
                   >
                     {conv.avatar && (
-                      <img
+                      <Image
                         src={conv.avatar}
                         alt={conv.name}
+                        width={32}
+                        height={32}
                         className="h-8 w-8 rounded-full object-cover"
+                        unoptimized
                       />
                     )}
                     {!conv.avatar && (
@@ -522,10 +503,13 @@ export default function MyMessagesContent() {
                 <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
                   <div className="flex items-center gap-3">
                     {selectedConversation.avatar && (
-                      <img
+                      <Image
                         src={selectedConversation.avatar}
                         alt={selectedConversation.name}
+                        width={48}
+                        height={48}
                         className="h-12 w-12 rounded-full object-cover"
+                        unoptimized
                       />
                     )}
                     {!selectedConversation.avatar && (

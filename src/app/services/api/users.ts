@@ -1,3 +1,4 @@
+import { parseApiError } from "@/utils/apiError";
 import {
   AUTH_BASE_URL,
   type ProfileResponse,
@@ -116,7 +117,7 @@ async function requestJson<T>(
 
   if (!res.ok) {
     const message = (data as { message?: string } | undefined)?.message;
-    throw new Error(message || `Request failed with status ${res.status}`);
+    throw new Error(parseApiError(data, `Request failed with status ${res.status}`));
   }
 
   return data;
@@ -141,7 +142,7 @@ async function requestForm<T>(
 
   if (!res.ok) {
     const message = (data as { message?: string } | undefined)?.message;
-    throw new Error(message || `Request failed with status ${res.status}`);
+    throw new Error(parseApiError(data, `Request failed with status ${res.status}`));
   }
 
   return data;

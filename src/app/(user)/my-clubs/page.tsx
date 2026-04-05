@@ -48,23 +48,6 @@ interface MyClub {
   members?: any[];
 }
 
-/* ================= mock data ================= */
-
-const MOCK_CLUBS: MyClub[] = [
-  {
-    clubId: "club-1",
-    clubInfo: {
-      _id: "club-1",
-      fullName: "CLB Công nghệ",
-      category: "Học thuật",
-      description: "Nơi giao lưu và học tập về công nghệ, lập trình",
-      rating: 4.5,
-    },
-    joinedAt: "2025-10-12",
-    isActive: true,
-  },
-];
-
 /* ================= page ================= */
 
 export default function MyClubsPage() {
@@ -90,7 +73,6 @@ export default function MyClubsPage() {
         setError(
           err instanceof Error ? err.message : "Failed to fetch clubs"
         );
-        setClubs(MOCK_CLUBS);
       } finally {
         setIsLoading(false);
       }

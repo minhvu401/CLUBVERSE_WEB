@@ -1,3 +1,4 @@
+import { parseApiError } from "@/utils/apiError";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 export const AUTH_BASE_URL = "https://clubverse.onrender.com";

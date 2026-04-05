@@ -1,3 +1,4 @@
+import { parseApiError } from "@/utils/apiError";
 import axiosInstance from "@/lib/axios";
 import { ProfileResponse } from "./auth";
 
