@@ -102,12 +102,14 @@ const TaskItem = ({ title, status, time }: { title: string; status: string; time
 
 export default function AdminDashboard() {
   const { theme } = useAdminStore();
-  const { data: userData, isLoading: loadingUsers } = useAdminUsers(1, 1, "", "user");
+  const { data: userData, isLoading: loadingUsers } = useAdminUsers(1, 100, "", "user");
   const { data: clubs, isLoading: loadingClubs } = useAdminClubs();
   const { data: events, isLoading: loadingEvents } = useAdminEvents();
   const { data: posts, isLoading: loadingPosts } = useAdminPosts();
 
   const isLoading = loadingUsers || loadingClubs || loadingEvents || loadingPosts;
+
+  const filteredUserCount = (userData?.users || []).filter((u: any) => u.role === "user").length;
 
   return (
     <div className="space-y-12">
@@ -148,7 +150,7 @@ export default function AdminDashboard() {
         />
         <StatCard 
           label="Tổng Sinh viên" 
-          value={loadingUsers ? "..." : (userData?.total || 0)} 
+          value={loadingUsers ? "..." : filteredUserCount} 
           icon={Users} 
         />
       </section>
