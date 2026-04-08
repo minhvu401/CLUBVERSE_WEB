@@ -48,6 +48,11 @@ export function PaymentSuccessContent() {
           setStatus("success");
           setMessage("Gói Premium AI đã được kích hoạt cho tài khoản của bạn.");
           localStorage.removeItem("payment_pending");
+          
+          // Redirect ngay tới trang lịch sử thanh toán sau khi thành công
+          setTimeout(() => {
+            router.push("/my-payment");
+          }, 500);
         } else {
           setStatus("failed");
           setMessage("Thanh toán chưa được xác nhận. Vui lòng kiểm tra lại.");

@@ -417,7 +417,7 @@ export default function ForumPage() {
                           </div>
                         </div>
 
-                        {user && (user.id === (typeof p.clubId === 'object' ? p.clubId._id : p.clubId) || user._id === (typeof p.clubId === 'object' ? p.clubId._id : p.clubId)) && (
+                        {user && (user.id === (p.clubId && typeof p.clubId === 'object' ? p.clubId._id : p.clubId) || user._id === (p.clubId && typeof p.clubId === 'object' ? p.clubId._id : p.clubId)) && (
                           <button
                             type="button"
                             onClick={() => handleDelete(p._id)}
@@ -435,11 +435,11 @@ export default function ForumPage() {
                           <div className="h-10 w-10 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15">
                             <img
                               src={
-                                (typeof p.clubId === "object" && (p.clubId as any).avatarUrl)
+                                (p.clubId && typeof p.clubId === "object" && (p.clubId as any).avatarUrl)
                                   ? (p.clubId as any).avatarUrl.startsWith("http")
                                     ? (p.clubId as any).avatarUrl
                                     : `${AUTH_BASE_URL}${(p.clubId as any).avatarUrl}`
-                                  : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(typeof p.clubId === "object" ? p.clubId.fullName : "User")}`
+                                  : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.clubId && typeof p.clubId === "object" ? p.clubId.fullName : "User")}`
                               }
                               alt="avatar"
                               className="h-full w-full object-cover"
@@ -449,7 +449,7 @@ export default function ForumPage() {
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="truncate text-sm font-semibold text-white">
-                                {typeof p.clubId === 'object' ? p.clubId.fullName : 'Club'}
+                                {p.clubId && typeof p.clubId === 'object' ? p.clubId.fullName : 'Club'}
                               </span>
                             </div>
                             <div className="mt-0.5 text-[0.72rem] text-white/55">

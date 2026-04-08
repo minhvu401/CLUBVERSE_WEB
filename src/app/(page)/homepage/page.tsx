@@ -170,27 +170,32 @@ export default function HomeDashboardPage() {
   const clubCards = useMemo(() => {
     const tones = ["violet", "emerald", "fuchsia", "amber", "sky"];
 
-    return clubs.map((c, i) => {
-      const tone = tones[i % tones.length];
+    return clubs
+      .filter((c) => {
+        if ("clubName" in c) return true;
+        return (c as ClubItem).isActive !== false;
+      })
+      .map((c, i) => {
+        const tone = tones[i % tones.length];
 
-      if ("clubName" in c) {
+        if ("clubName" in c) {
+          return {
+            id: c._id ?? `recommend-${i}`,
+            title: c.clubName,
+            subtitle: c.reason,
+            score: c.matchScore,
+            tone,
+          };
+        }
+
         return {
-          id: c._id ?? `recommend-${i}`,
-          title: c.clubName,
-          subtitle: c.reason,
-          score: c.matchScore,
+          id: c._id ?? `club-${i}`,
+          title: c.fullName ?? "Câu lạc bộ",
+          subtitle: c.description,
+          members: c.clubJoined?.length ?? 0,
           tone,
         };
-      }
-
-      return {
-        id: c._id ?? `club-${i}`,
-        title: c.fullName ?? "Câu lạc bộ",
-        subtitle: c.description,
-        members: c.clubJoined?.length ?? 0,
-        tone,
-      };
-    });
+      });
   }, [clubs]);
 
   return (

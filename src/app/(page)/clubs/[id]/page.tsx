@@ -99,7 +99,16 @@ export default function ClubDetailPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data?.message || "Không tải được CLB");
 
-        setClub(data?.user ?? data);
+        const clubData = data?.user ?? data;
+        
+        // Check if club is active
+        if (clubData?.isActive === false) {
+          setError("Câu lạc bộ này đã bị vô hiệu hóa");
+          setLoadingPage(false);
+          return;
+        }
+
+        setClub(clubData);
       } catch (e: any) {
         setError(e.message || "Lỗi tải CLB");
       } finally {

@@ -50,28 +50,39 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(bytes);
 
     const uploadDir = path.join(process.cwd(), "public", "uploads", "posts");
-    await fs.mkdir(uploadDir, { recursive: true });
-
-    const filename = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}${ext}`;
-    const filepath = path.join(uploadDir, filename);
-
-    await fs.writeFile(filepath, buffer);
-
-    const requestUrl = new URL(req.url);
-    let origin = requestUrl.origin;
     
-    // NestJS class-validator (@IsUrl) does not consider 'localhost' a valid TLD.
-    // To bypass backend validation while ensuring the image still loads locally,
-    // we use nip.io (a wildcard DNS that resolves to 127.0.0.1).
-    if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
-      origin = `http://127.0.0.1.nip.io:${requestUrl.port || 3000}`;
-    }
+    try {
+      await fs.mkdir(uploadDir, { recursive: true });
+      const filename = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}${ext}`;
+      const filepath = path.join(uploadDir, filename);
+      await fs.writeFile(filepath, buffer);
 
-    // URL public
-    const url = `${origin}/uploads/posts/${filename}`;
-    return NextResponse.json({ url }, { status: 200 });
+      const requestUrl = new URL(req.url);
+      let origin = requestUrl.origin;
+      
+      // NestJS class-validator (@IsUrl) does not consider 'localhost' a valid TLD.
+      // To bypass backend validation while ensuring the image still loads locally,
+      // we use nip.io (a wildcard DNS that resolves to 127.0.0.1).
+      if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
+        origin = `http://127.0.0.1.nip.io:${requestUrl.port || 3000}`;
+      }
+
+      // URL public
+      const url = `${origin}/uploads/posts/${filename}`;
+      return NextResponse.json({ url }, { status: 200 });
+    } catch (fsError: any) {
+      // Handle read-only file system (e.g., serverless environments)
+      if (fsError?.code === "EROFS" || fsError?.code === "EACCES") {
+        return NextResponse.json(
+          { message: "File system không hỗ trợ tải lên. Vui lòng liên hệ quản trị viên." },
+          { status: 503 }
+        );
+      }
+      throw fsError;
+    }
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : "Upload hình ảnh bài viết thất bại";
+    console.error("Upload post image error:", err);
     return NextResponse.json(
       { message: errorMessage },
       { status: 500 }

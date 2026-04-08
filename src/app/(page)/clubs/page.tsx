@@ -86,8 +86,9 @@ export default function ClubsPage() {
   /* FILTER */
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
-    if (!query) return clubs;
-    return clubs.filter(
+    let result = clubs.filter((c) => c.isActive !== false);
+    if (!query) return result;
+    return result.filter(
       (c) =>
         c.fullName?.toLowerCase().includes(query) ||
         c.description?.toLowerCase().includes(query) ||
