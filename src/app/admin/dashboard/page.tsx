@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/app/layout/header/page";
@@ -17,6 +17,7 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { ProfileResponse } from "@/app/services/api/auth";
+import { adminApi, AdminStats } from "@/app/services/api/admin";
 
 /* ================= utils ================= */
 
@@ -86,6 +87,9 @@ export default function AdminDashboardPage() {
     loading: boolean;
   };
 
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
   const isAdmin = useMemo(
     () => String(user?.role).toLowerCase() === "admin",
     [user?.role]
@@ -96,6 +100,34 @@ export default function AdminDashboardPage() {
     if (!token) return router.replace("/login");
     if (!isAdmin) return router.replace("/");
   }, [loading, token, isAdmin, router]);
+
+  // Fetch dashboard stats
+  useEffect(() => {
+    if (!token || !isAdmin) return;
+
+    const fetchStats = async () => {
+      try {
+        setStatsLoading(true);
+        const data = await adminApi.getDashboardStats();
+        setStats(data);
+      } catch (err: any) {
+        console.error("Failed to fetch dashboard stats:", err);
+        // Set default stats on error
+        setStats({
+          totalClubs: 0,
+          activeClubs: 0,
+          newRequests: 0,
+          totalUsers: 0,
+          onlineUsers: 0,
+          pendingSync: 0,
+        });
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [token, isAdmin]);
 
   if (loading || !token || !isAdmin) return null;
 
@@ -138,10 +170,10 @@ export default function AdminDashboardPage() {
 
           {/* ================= METRICS ================= */}
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard label="CLB hoạt động" value={(user as any)?.activeClubs ?? "—"} />
-            <StatCard label="Đơn chờ duyệt" value={(user as any)?.pendingApplications ?? "—"} />
-            <StatCard label="Báo cáo mới" value={(user as any)?.reports ?? 0} />
-            <StatCard label="Lần đăng nhập" value={(user as any)?.lastLogin || "Hôm nay"} />
+            <StatCard label="CLB hoạt động" value={stats?.activeClubs ?? "—"} />
+            <StatCard label="Đơn chờ duyệt" value={stats?.newRequests ?? "—"} />
+            <StatCard label="Tổng người dùng" value={stats?.totalUsers ?? "—"} />
+            <StatCard label="Người dùng online" value={stats?.onlineUsers ?? "—"} />
           </div>
         </section>
 

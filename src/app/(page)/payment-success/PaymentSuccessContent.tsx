@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, ArrowRight, Home, AlertCircle, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -17,16 +17,29 @@ const glass =
 export function PaymentSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { token } = useAuth();
+  const { token, loading: authLoading } = useAuth();
 
   const [status, setStatus] = useState<"loading" | "success" | "failed">("loading");
   const [message, setMessage] = useState("");
+  const verifyRef = useRef(false);
 
   useEffect(() => {
+    // Nếu auth vẫn đang load, chưa làm gì
+    if (authLoading) {
+      return;
+    }
+
+    // Nếu auth đã load xong và không có token, redirect to login
     if (!token) {
       router.push("/login");
       return;
     }
+
+    // Nếu đã verify rồi, đừng verify lại
+    if (verifyRef.current) {
+      return;
+    }
+    verifyRef.current = true;
 
     const verifyPayment = async () => {
       try {
@@ -64,7 +77,7 @@ export function PaymentSuccessContent() {
     };
 
     verifyPayment();
-  }, [token, router, searchParams]);
+  }, [token, authLoading]);
 
   return (
     <motion.div
