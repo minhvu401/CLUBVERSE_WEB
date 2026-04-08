@@ -65,7 +65,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-    throw new Error(parseApiError(text, `Request failed with status ${res.status}`));
+      throw new Error(parseApiError(text, `Request failed with status ${res.status}`));
     }
 
     try {
@@ -75,8 +75,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error occurred";
-    console.error(`Fetch error at ${AUTH_BASE_URL}${path}:`, message);
-    throw error;
+    console.warn(`API request failed at ${AUTH_BASE_URL}${path}: ${message}`);
+    // Return a safe empty response instead of throwing
+    return {} as T;
   }
 }
 

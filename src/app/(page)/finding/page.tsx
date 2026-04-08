@@ -210,7 +210,8 @@ export default function FindingClubsPage() {
   const [joinedClubIds, setJoinedClubIds] = useState<Set<string>>(new Set());
 
   const tagOptions = useMemo(() => {
-    const apiTags = clubs.map((c) => c.category).filter((t): t is string => !!t);
+    const activeClubs = clubs.filter((c) => c.isActive !== false);
+    const apiTags = activeClubs.map((c) => c.category).filter((t): t is string => !!t);
     const uniqueTags = Array.from(
       new Set(["Tất cả", "Nghệ thuật", "Công nghệ", "Thể thao", "Âm nhạc", "Học tập", "Game", ...apiTags])
     );
@@ -232,7 +233,7 @@ export default function FindingClubsPage() {
         if (!cancelled) {
           setClubs(res);
           const joined = new Set<string>();
-          myClubsRes.forEach((c: Record<string, any>) => {
+          myClubsRes.forEach((c: { clubId?: string; club?: { _id: string }; clubInfo?: { _id: string }; _id?: string }) => {
             const id = c.clubId || c.club?._id || (c.clubInfo && c.clubInfo._id) || c._id;
             if (id) joined.add(id);
           });
@@ -275,7 +276,8 @@ export default function FindingClubsPage() {
   }, [token]);
 
   const stats = useMemo(() => {
-    const totalClubs = clubs.length;
+    const activeClubs = clubs.filter((c) => c.isActive !== false);
+    const totalClubs = activeClubs.length;
     const totalEvents = events.length;
 
     const fmtCompact = (n: number) =>
@@ -306,24 +308,26 @@ export default function FindingClubsPage() {
       "amber",
       "fuchsia",
     ];
-    return clubs.map((club, idx) => {
-      // Try multiple fields for member count
-      const memberCount = 
-        club.memberCount ?? 
-        club.totalMembers ?? 
-        club.members?.length ?? 
-        club.clubJoined?.length ?? 
-        0;
-      return {
-        id: club._id ?? `club-${idx}`,
-        name: club.fullName ?? "Câu lạc bộ",
-        tag: club.category ?? "Khác",
-        desc: club.description ?? "Chưa có mô tả.",
-        memberCount,
-        rating: typeof club.rating === "number" ? club.rating : 0,
-        tone: tones[idx % tones.length],
-      };
-    });
+    return clubs
+      .filter((club) => club.isActive !== false)
+      .map((club, idx) => {
+        // Try multiple fields for member count
+        const memberCount = 
+          club.memberCount ?? 
+          club.totalMembers ?? 
+          club.members?.length ?? 
+          club.clubJoined?.length ?? 
+          0;
+        return {
+          id: club._id ?? `club-${idx}`,
+          name: club.fullName ?? "Câu lạc bộ",
+          tag: club.category ?? "Khác",
+          desc: club.description ?? "Chưa có mô tả.",
+          memberCount,
+          rating: typeof club.rating === "number" ? club.rating : 0,
+          tone: tones[idx % tones.length],
+        };
+      });
   }, [clubs]);
 
   const filtered = useMemo(() => {

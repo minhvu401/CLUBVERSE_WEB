@@ -188,6 +188,7 @@ export type ClubItem = {
   memberCount?: number;
   totalMembers?: number;
   rating?: number;
+  isActive?: boolean;
 };
 
 export type GetAllClubsResponse = {
